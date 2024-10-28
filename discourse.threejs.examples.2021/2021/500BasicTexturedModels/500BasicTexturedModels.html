@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/displaying-500-basic-textured-models-performantly-instancedmesh-or-another-method/26891/11 -->
+<!-- https://codepen.io/prisoner849/pen/ZEexpVb -->
+<head>
+  <title> 500BasicTexturedModels </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+	body {
+	overflow: hidden;
+	margin: 0%;
+	}
+</style>
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.129.js";
+import { OrbitControls } from "../jsm/OrbitControls.129.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 50, 400);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper(500, 10));
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.25));
+
+const transportCount = 500;
+
+let transport = [];
+
+for(let i = 0; i < transportCount; i++){
+  let structure = new THREE.Group();
+  structure.userData = {
+    phase: Math.PI * 2 * Math.random(),
+    radius: Math.random() * 200 + 200,
+    speed: Math.random() * 0.05 + 0.01,
+    height: -100 + Math.random() * 200
+  }
+  
+  let body = new THREE.Object3D();
+  body.scale.set(1.5, 1, 1);
+  structure.add(body);
+  
+  let propeller = new THREE.Object3D();
+  propeller.position.z = 10;
+  structure.add(propeller);
+  
+  //scene.add(structure);
+  transport.push(structure);
+  
+}
+
+let gBody = new THREE.CylinderGeometry(10, 10, 2.5, 5);
+let body = new THREE.InstancedMesh(gBody, new THREE.MeshLambertMaterial(), transportCount);
+let c = new THREE.Color();
+for(let i = 0; i < transportCount; i++){
+  body.setColorAt(i, c.set(Math.random() * 0xffffff));
+}
+
+let gPropeller = new THREE.BoxGeometry(3, 10, 0.5);
+let propeller = new THREE.InstancedMesh(gPropeller, new THREE.MeshLambertMaterial({color: "yellow"}), transportCount);
+
+scene.add(body, propeller);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop( _ => {
+  
+  let t = clock.getElapsedTime();
+  
+  transport.forEach( (tr, trIdx) => {
+    
+    let angle = t * tr.userData.speed + tr.userData.phase; 
+    
+    tr.position.set(Math.cos(angle), 0, Math.sin(angle)).multiplyScalar(tr.userData.radius).setY(tr.userData.height);
+    tr.rotation.y = -angle;
+    tr.children[1].rotation.z = t * 250 * tr.userData.speed + tr.userData.phase;
+    tr.updateMatrixWorld(true);
+    
+    body.setMatrixAt(trIdx, tr.children[0].matrixWorld);
+    propeller.setMatrixAt(trIdx, tr.children[1].matrixWorld);
+    
+  })
+  body.instanceMatrix.needsUpdate = true;
+  propeller.instanceMatrix.needsUpdate = true;
+  
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

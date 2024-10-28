@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-perform-a-visibility-test/4615/3 -->
+<!-- https://codepen.io/prisoner849/pen/yRqwbG -->
+<head>
+  <title> Visibility </title>
+  <meta charset="utf-8" />
+  <style>
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}  
+  </style> 
+</head>
+
+<body> </body>
+<script src="../js/three.min.97.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script> 
+
+// @author prisoner 849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.setScalar(50);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+var canvas = renderer.domElement;
+document.body.appendChild(canvas);
+
+contorls = new THREE.OrbitControls(camera, canvas);
+
+var sphere = new THREE.Mesh(
+  new THREE.SphereBufferGeometry(10, 32, 16),
+  new THREE.MeshBasicMaterial({ color: "gray", wireframe: true })
+);
+scene.add(sphere);
+var pin = new THREE.Mesh(
+  new THREE.BoxGeometry(0.25, 0.25, 2.5),
+  new THREE.MeshBasicMaterial({ color: "aqua" })
+);
+pin.geometry.translate(0, 0, -1.25);
+pin.position.setFromSphericalCoords(15, Math.PI * 0.25, 0);
+pin.lookAt(scene.position);
+scene.add(pin);
+
+var v3CamSphere = new THREE.Vector3();
+var v3CamPin = new THREE.Vector3();
+
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+
+  v3CamSphere.subVectors(sphere.position, camera.position);
+  v3CamPin.subVectors(pin.position, camera.position);
+
+  if (
+    v3CamPin.dot(v3CamSphere) > v3CamSphere.dot(v3CamSphere) &&
+    v3CamSphere.angleTo(v3CamPin) <
+      Math.sin(sphere.geometry.parameters.radius / v3CamSphere.length())
+  ) {
+    pin.material.color.set(0x00ffff);
+  } else {
+    pin.material.color.set(0xff00ff);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+</script>
+</html>

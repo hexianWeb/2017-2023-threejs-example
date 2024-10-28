@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/clamping-of-length/3431 -->
+<!-- https://jsfiddle.net/prisoner849/d9ar8j07/ -->
+<head>
+  <title> clamp length </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body>
+
+</body>
+<script src="../js/three.min.94.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+//@author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(5, 8, 13);
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper(20, 20, 0x808080, 0x808080));
+
+var boxGeom = new THREE.BoxGeometry(5, 5, 5, 10, 10, 10);
+boxGeom.translate(-7.5, 2.5, 0);
+boxGeom.colors = boxGeom.vertices.map(v => {return new THREE.Color("aqua")});
+console.log(boxGeom.vertices.length);
+var sphereGeom = new THREE.SphereGeometry(2.5, 20, 31);
+sphereGeom.translate(7.5, 2.5, 0);
+console.log(sphereGeom.vertices.length);
+var coneGeom = new THREE.ConeGeometry(2.5, 5, 20, 30, false);
+coneGeom.translate(0, 2.5, 0);
+console.log(coneGeom.vertices.length);
+
+var morphs = [];
+var morphIndex = 0;
+
+var geom = boxGeom;
+
+function createMorph(geomStart, geomEnd, speed, colorStart, colorEnd){
+
+	let duration = 0;
+  let tempDist = new THREE.Vector3(); 
+  let vertices = [];
+  let longestDist = 0;
+  
+  vertices = geomStart.vertices.map(
+  	(v, i) => {
+    	
+      let nv = v.clone();
+      
+      tempDist.copy(geomEnd.vertices[i]).sub(nv);
+      let dist = tempDist.length();
+      longestDist = Math.max(dist, longestDist);
+      let dir = new THREE.Vector3().copy(tempDist).normalize();
+      
+      nv.dir = dir;
+      nv.dist = dist;
+      return nv;
+      
+    }
+  );
+  
+  duration = longestDist / speed;
+  
+	morphs.push(
+  	{
+    	speed: speed,
+      duration: duration,
+      vertices: vertices,
+      colorStart: colorStart,
+      colorEnd: colorEnd
+    }
+  );
+}
+
+createMorph(boxGeom, coneGeom, 8, new THREE.Color(0x00ffff), new THREE.Color(0xffff00));
+createMorph(coneGeom, sphereGeom, 5, new THREE.Color(0xffff00), new THREE.Color(0xff00ff));
+createMorph(sphereGeom, boxGeom, 10, new THREE.Color(0xff00ff), new THREE.Color(0x00ffff));
+
+var points = new THREE.Points(geom, new THREE.PointsMaterial({vertexColors: THREE.VertexColors, size: 0.25}));
+scene.add(points);
+
+var clock = new THREE.Clock();
+var currentDuration = 0;
+var clampedDirLength = new THREE.Vector3(); // for re-use
+
+render();
+function render(){
+  requestAnimationFrame(render);
+  currentDuration += clock.getDelta();
+  boxGeom.vertices.forEach((v, i) => {
+  	let morph = morphs[morphIndex];
+  	let morphV = morph.vertices[i];
+    clampedDirLength		// reusable vector
+    	.copy(morphV.dir) // set its value as a normalized direction from the array
+      .multiplyScalar(currentDuration * morph.speed)	// multiply it with the time, passed since the beginning of the current morph, and speed (the result is the distance, a scalar value)
+      .clampLength(0, morphV.dist); // magic is here: we clamp the length of the vector, thus it won't exceed the limit						
+    v.copy(morphV).add(clampedDirLength); // add the vector to the initial coordinates of a point
+    geom.colors[i].copy(morph.colorStart).lerp(morph.colorEnd, clampedDirLength.length() / morphV.dist);
+  });
+  geom.verticesNeedUpdate = true;
+ 	geom.colorsNeedUpdate = true;
+  
+  if (currentDuration >= morphs[morphIndex].duration + 0.5){
+  	morphIndex = (morphIndex + 1) % 3;
+    currentDuration = 0;
+  }
+  
+  renderer.render(scene, camera);
+}
+</script>
+</html>

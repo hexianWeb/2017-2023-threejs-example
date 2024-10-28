@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/apply-texture-to-custom-shape/21908/5 -->
+<!-- https://codepen.io/prisoner849/pen/yLaPope -->
+<head>
+  <title> TextureOnCustomShape </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: Verdana;
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  display; block;
+}
+
+#info{
+  position: absolute;
+  margin-left: 10px;
+}
+
+a{
+  color: yellow;
+  text-decoration: none;
+}
+</style>
+<body>
+<div id="info">
+  <!--   <a href="https://github.com/mapbox/delaunator" target="blank">Test<br>(Beta1)</a>  -->
+</div>
+</body>
+
+<script src="../js/three.min.123.js"></script>
+<script src="../js/OrbitControls.123.js"></script>
+<!--
+<script>
+  THREE.ShapeUtils.triangulateShape = (function() {
+  		var pnlTriangulator = new PNLTRI.Triangulator();
+  		return function triangulateShape(contour, holes) {
+  			return pnlTriangulator.triangulate_polygon([contour].concat(holes));
+  		};
+  	})();
+</script> 
+
+https://github.com/mapbox/delaunator  
+ 
+<script src="https://unpkg.com/delaunator@3.0.2/delaunator.js"></script>
+
+<script src="https://josephg.github.io/noisejs/perlin.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.3/dat.gui.min.js"></script>
+
+<script src="http://r3mi.github.io/poly2tri.js/dist/poly2tri.js"></script> -->
+
+<script src="../js/poly2tri.js"></script>
+
+<script>
+
+// @author ROXGAME + prisoner849
+
+var scene = new THREE.Scene();
+scene.add(new THREE.GridHelper(1000, 10))
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 2000);
+
+camera.position.setScalar(500);//camera.position.setScalar(150);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setClearColor(0x666666);
+var canvas = renderer.domElement;
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, canvas);
+
+var light = new THREE.DirectionalLight(0xffffff, 1.5);
+light.position.setScalar(100);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+var size = { x: 200, z: 200 };
+var pointsCount = 1000;
+var points3d = [];
+
+// obj [x1,y1,x2,y2....]
+const obj2 = [{"x":154,"y":0},{"x":140,"y":10},{"x":135,"y":23},{"x":126,"y":32},{"x":120,"y":44},{"x":106,"y":45},{"x":91,"y":54},{"x":88,"y":69},{"x":96,"y":88},{"x":90,"y":94},{"x":88,"y":104},{"x":95,"y":109},{"x":95,"y":127},{"x":98,"y":130},{"x":123,"y":128},{"x":125,"y":115},{"x":130,"y":116},{"x":140,"y":108},{"x":148,"y":118},{"x":164,"y":123},{"x":180,"y":140},{"x":75,"y":141},{"x":74,"y":144},{"x":52,"y":149},{"x":43,"y":134},{"x":28,"y":143},{"x":29,"y":152},{"x":13,"y":150},{"x":0,"y":167},{"x":15,"y":173},{"x":26,"y":165},{"x":25,"y":188},{"x":44,"y":190},{"x":46,"y":186},{"x":48,"y":190},{"x":33,"y":193},{"x":28,"y":212},{"x":45,"y":213},{"x":49,"y":202},{"x":60,"y":224},{"x":77,"y":220},{"x":68,"y":205},{"x":70,"y":204},{"x":75,"y":214},{"x":81,"y":217},{"x":96,"y":220},{"x":106,"y":215},{"x":107,"y":213},{"x":92,"y":207},{"x":90,"y":203},{"x":99,"y":182},{"x":130,"y":202},{"x":151,"y":190},{"x":145,"y":217},{"x":149,"y":217},{"x":154,"y":227},{"x":165,"y":234},{"x":150,"y":261},{"x":141,"y":270},{"x":155,"y":265},{"x":150,"y":278},{"x":137,"y":276},{"x":130,"y":268},{"x":118,"y":262},{"x":111,"y":264},{"x":105,"y":276},{"x":161,"y":294},{"x":161,"y":278},{"x":166,"y":271},{"x":170,"y":279},{"x":173,"y":267},{"x":186,"y":244},{"x":209,"y":272},{"x":206,"y":275},{"x":192,"y":276},{"x":187,"y":280},{"x":184,"y":292},{"x":187,"y":298},{"x":194,"y":300},{"x":246,"y":274},{"x":235,"y":261},{"x":222,"y":256},{"x":207,"y":238},{"x":227,"y":225},{"x":232,"y":226},{"x":217,"y":133},{"x":211,"y":134},{"x":210,"y":126},{"x":213,"y":123},{"x":247,"y":118},{"x":255,"y":114},{"x":282,"y":115},{"x":296,"y":108},{"x":300,"y":103},{"x":300,"y":91},{"x":296,"y":86},{"x":284,"y":83},{"x":293,"y":68},{"x":296,"y":47},{"x":286,"y":30},{"x":256,"y":15},{"x":211,"y":9},{"x":178,"y":0}];
+
+
+ // Allel shitty Stuff to draw points 
+for (let i = 0; i < obj2.length ; i++) {
+  let x = parseInt(obj2[i].x);
+  let z = parseInt(obj2[i].y);
+  points3d.push(new THREE.Vector3(x, 0, z));
+}
+var geom = new THREE.BufferGeometry().setFromPoints(points3d);
+var cloud = new THREE.Points(
+  geom,
+  new THREE.PointsMaterial({ color: "yellow", size: 2 })
+);
+scene.add(cloud);
+////////////////
+/// MATERIAL
+// https://i.ibb.co/2k3BbfS/test.png
+var texture = new THREE.TextureLoader().load( "test.png" );
+//var texture = new THREE.TextureLoader().load("https://threejs.org/examples/textures/uv_grid_opengl.jpg");
+//texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+//texture.offset.set(0.5,0.5);
+//texture.repeat.set( 0,0 );
+		var material = new THREE.MeshBasicMaterial( { 
+    	map: texture,
+      //wireframe: false,
+      side: THREE.DoubleSide
+    });
+/// Amine copy paste power haha
+ 
+var geometry = geometryFromTris(getTris(obj2));
+assignUVs(geometry);
+var mesh = new THREE.Mesh(geometry,material);
+scene.add(mesh);
+
+
+//threejs init stuff
+//var gui = new dat.GUI();
+//gui.add(mesh.material, "wireframe");
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+
+//Needed and i understand it
+function getTris( vecs, hole ){
+	var contour = [];
+	var holeContour = [];
+	for( var i = 0 ; i < vecs.length ; i++ ){
+		contour.push( new poly2tri.Point( vecs[ i ].x, vecs[ i ].y ) );	
+	}
+	return (new poly2tri.SweepContext(contour)).triangulate().getTriangles();
+}
+function geometryFromTris( tris ){
+	var geo = new THREE.Geometry();
+	for( var i = 0 ; i < tris.length ; i++ ){
+		var tri = tris[ i ];
+		var v1, v2, v3;
+					
+		v1 = new THREE.Vector3( tri.points_[ 0 ].x, 0, tri.points_[ 0 ].y );
+		v2 = new THREE.Vector3( tri.points_[ 1 ].x, 0, tri.points_[ 1 ].y );
+		v3 = new THREE.Vector3( tri.points_[ 2 ].x, 0, tri.points_[ 2 ].y );
+		
+		geo.vertices[ geo.vertices.length ] = v1;
+		geo.vertices[ geo.vertices.length ] = v2;
+		geo.vertices[ geo.vertices.length ] = v3;
+		
+		var face = new THREE.Face3();
+		
+		face.a = geo.vertices.length - 3;
+		face.b = geo.vertices.length - 2;
+		face.c = geo.vertices.length - 1;
+
+		geo.faces.push( face );
+		geo.mergeVertices();
+	}
+	return geo;
+}
+function assignUVs(geometry) {
+    geometry.faceVertexUvs[0] = [];
+    let box = new THREE.Box3().setFromPoints(geometry.vertices);
+    let boxSize = new THREE.Vector3();
+    box.getSize(boxSize);
+    geometry.faces.forEach(function(face) {
+
+        var v1 = geometry.vertices[face.a];
+        var v2 = geometry.vertices[face.b];
+        var v3 = geometry.vertices[face.c];
+
+        geometry.faceVertexUvs[0].push([
+            new THREE.Vector2((v1.x - box.min.x) / boxSize.x, (box.max.z - v1.z) / boxSize.z),
+            new THREE.Vector2((v2.x - box.min.x) / boxSize.x, (box.max.z - v2.z) / boxSize.z),
+            new THREE.Vector2((v3.x - box.min.x) / boxSize.x, (box.max.z - v3.z) / boxSize.z)
+        ]);
+
+    });
+    geometry.uvsNeedUpdate = true;
+}
+</script>
+</html>

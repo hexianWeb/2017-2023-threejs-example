@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/toon-shading-no-shadows/6454 -->
+<!-- https://codepen.io/anon/pen/oVWNQK -->
+<head>
+  <title> Shadow </title>
+  <meta charset="utf-8" />
+   <style>
+      body { margin: 0; }
+  	  canvas { width: 100%; height: 100% }
+   </style>
+</head>
+
+ <body onload="model_setup()">
+    <canvas id="model_canvas" width="600" height="600"></canvas>
+  </body>
+
+<script src="../js/three.min.102.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script>
+
+// @author  Lucky_De (updated Mugen87)
+
+
+function model_setup() {
+    var renderer,
+        scene,
+        camera,
+        container = document.getElementById("model_canvas");
+
+    // RENDERER
+    var renderer = new THREE.WebGLRenderer({canvas: container  });
+    renderer.setSize(container.width, container.height)
+    renderer.setClearColor(0x00000);
+  renderer.shadowMap.enabled = true;
+    
+    // camera
+    //(Field of view, aspect ratio, far clipping plane)
+    var camera = new THREE.PerspectiveCamera(35, container.width / container.height, 300, 2000);
+
+    camera.position.set( 0, 0, 500 );
+    var controls = new THREE.OrbitControls( camera );
+    controls.update();
+
+      /// SCENE
+    var scene = new THREE.Scene();
+    hemiLight = new THREE.HemisphereLight( 0x0000ff, 0x00ff00, 1.6 );
+    scene.add(hemiLight)
+    // LIGHTS
+    var dirLight = new THREE.DirectionalLight( 0xffffff );
+		dirLight.position.set( - 30, 200, - 200 );
+		dirLight.castShadow = true;
+    dirLight.shadow.camera.top = 200;
+    dirLight.shadow.camera.bottom = - 200;
+    dirLight.shadow.camera.left = - 200;
+    dirLight.shadow.camera.right = 200;
+    dirLight.shadow.camera.near = 0.1;
+    dirLight.shadow.camera.far = 500;
+    scene.add( dirLight );
+  
+    scene.add( new THREE.CameraHelper( dirLight.shadow.camera ) );
+
+    // MATERIALS
+    var colors = [0xad40b5,0xffd693,0x61ff9a,0x10d188,0xf2257c]
+    var toonMaterials=[];
+    for(var i=0;i<colors.length;i++){
+      toonMaterials[i]= new THREE.MeshToonMaterial({color:colors[i]})
+    }
+
+    // // GEOMETRY
+    var box_geometry = new THREE.BoxGeometry( 100, 100, 100 );
+    var box = new THREE.Mesh(box_geometry, toonMaterials[2]);
+    box.castShadow = true;
+    scene.add( box );
+    //
+    var ball_geometry = new THREE.SphereGeometry( 50, 20, 20 );
+    var ball = new THREE.Mesh(ball_geometry, toonMaterials[3]);
+    ball.position.z = 0;
+    ball.position.x = 100;
+    ball.castShadow = true;
+    scene.add( ball );
+
+    var geometry3 = new THREE.PlaneGeometry(10000, 10000, 100, 100);
+    var ground = new THREE.Mesh(geometry3, toonMaterials[0]);
+    ground.rotation.x = -90 * Math.PI / 180;
+    // ground.position.y = -100;
+    ground.position.y = -55;
+    ground.receiveShadow = true;
+    scene.add(ground);
+	
+     /*
+    var model_object;
+
+    var loader = new THREE.OBJLoader(  );
+   
+				loader.load( 'Pug_min.obj', function ( obj ) {
+          obj.traverse((node) => {
+           if (node.isMesh) {
+             node.material =toonMaterials[1];
+           }
+           });
+              model_object = obj;
+              model_object.scale.copy(new THREE.Vector3(0.06, 0.06, 0.06))
+              model_object.position.set(0, 150, -500);
+          scene.add(model_object);
+				});
+      */
+
+    function animate() {
+        requestAnimationFrame(animate);
+        	controls.update();
+	/*
+          if(model_object){
+              model_object.rotation.y += 0.019
+          }
+	*/
+        renderer.render(scene, camera);
+    }
+
+   animate()
+
+}
+
+</script>
+</html>

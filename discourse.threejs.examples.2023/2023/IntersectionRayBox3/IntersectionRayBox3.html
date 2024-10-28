@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/found-incorrectly-working-methods-intersectbox-intersectplane-for-determining-the-intersection-point-of-three-ray/54265/5 -->
+<!-- https://codepen.io/boytchev/pen/qBQJwzW -->
+<head>
+  <title>IntersectionRayBox3</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.158.js';
+import { OrbitControls } from '../jsm/OrbitControls.158.js';
+
+// general setup, boring, skip to the next comment
+
+console.clear( );
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 5, 15 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+		controls.autoRotate = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+var boxShape = new THREE.Mesh(
+			new THREE.BoxGeometry( 0.05, 5, 5 ),
+    	new THREE.MeshLambertMaterial( {color:'yellow'} )
+    );	
+		scene.add( boxShape );
+
+
+var box = new THREE.Box3( ).setFromObject( boxShape, true );
+
+
+var origin = new THREE.Mesh(
+			new THREE.SphereGeometry( 0.07 ),
+    	new THREE.MeshLambertMaterial( {color:'black'} )
+    );	
+		origin.position.x = -4;
+		scene.add( origin );
+
+
+var n = 10,
+		targets = [],
+		dir = new THREE.Vector3( ); 
+																						 
+for( var i=0; i<10; i++ )
+{
+		var target = origin.clone();
+		target.position.set(
+				3+3*Math.random(),
+				3-6*Math.random(),
+				3-6*Math.random(),
+		)
+		targets.push( target );
+		scene.add( target );
+	
+		dir.subVectors( target.position, origin.position );
+		var len = dir.length( );
+	
+		scene.add(
+				new THREE.ArrowHelper(
+						dir.normalize( ),
+						origin.position,
+						len, 0xFF0040, 0.3, 0.1
+					));
+}
+
+
+
+// next comment
+
+
+
+// find intersections of rays starting from
+// origin and ending at target[i] with box
+
+
+var ray = new THREE.Ray( origin.position );
+
+for( var i=0; i<n; i++ )
+{
+		// calculate the direction
+		dir.subVectors( targets[i].position, origin.position );
+		dir.normalize( );
+	
+		// set the ray direction
+		ray.direction.copy( dir );
+	
+		// create intersection object
+		var intersection = origin.clone();
+				scene.add( intersection );
+	
+		// calculate intersection position
+		ray.intersectBox( box, intersection.position );
+}
+
+
+function animationLoop( t )
+{
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

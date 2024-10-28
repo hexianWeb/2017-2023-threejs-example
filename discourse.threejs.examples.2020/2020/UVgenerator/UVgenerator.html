@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/texture-on-dynamically-created-object/2994/9 -->
+<!-- https://jsfiddle.net/prisoner849/39tbpgo1/ -->
+<head>
+  <title> UVgenerator </title>
+  <meta charset="utf-8" />
+ <style>
+	body {
+		background-color: #000;
+		margin: 0px;
+		overflow: hidden;
+	}
+  </style>
+</head>
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.115.js";
+import { OrbitControls } from "../jsm/OrbitControls.115.js";
+
+var mesh, points, renderer, scene, camera, controls;
+
+var customUVGenerator = {
+
+	generateTopUV: function ( geometry, vertices, indexA, indexB, indexC ) {
+    
+    var box = new THREE.Box3().setFromArray(vertices);
+    var size = new THREE.Vector3();
+    box.getSize(size);
+    
+		var a_x = vertices[ indexA * 3 ];
+		var a_y = vertices[ indexA * 3 + 1 ];
+		var b_x = vertices[ indexB * 3 ];
+		var b_y = vertices[ indexB * 3 + 1 ];
+		var c_x = vertices[ indexC * 3 ];
+		var c_y = vertices[ indexC * 3 + 1 ];
+
+		return [
+			new THREE.Vector2( (a_x - box.min.x) / size.x, (a_y - box.min.y) / size.y ),
+			new THREE.Vector2(  (b_x - box.min.x) / size.x, (b_y - box.min.y) / size.y ),
+			new THREE.Vector2(  (c_x - box.min.x) / size.x, (c_y - box.min.y) / size.y )
+		];
+
+	},
+
+	generateSideWallUV: function ( geometry, vertices, indexA, indexB, indexC, indexD ) {
+
+		var a_x = vertices[ indexA * 3 ];
+		var a_y = vertices[ indexA * 3 + 1 ];
+		var a_z = vertices[ indexA * 3 + 2 ];
+		var b_x = vertices[ indexB * 3 ];
+		var b_y = vertices[ indexB * 3 + 1 ];
+		var b_z = vertices[ indexB * 3 + 2 ];
+		var c_x = vertices[ indexC * 3 ];
+		var c_y = vertices[ indexC * 3 + 1 ];
+		var c_z = vertices[ indexC * 3 + 2 ];
+		var d_x = vertices[ indexD * 3 ];
+		var d_y = vertices[ indexD * 3 + 1 ];
+		var d_z = vertices[ indexD * 3 + 2 ];
+
+		if ( Math.abs( a_y - b_y ) < 0.01 ) {
+
+			return [
+				new THREE.Vector2( a_x, 1 - a_z ),
+				new THREE.Vector2( b_x, 1 - b_z ),
+				new THREE.Vector2( c_x, 1 - c_z ),
+				new THREE.Vector2( d_x, 1 - d_z )
+			];
+
+		} else {
+
+			return [
+				new THREE.Vector2( a_y, 1 - a_z ),
+				new THREE.Vector2( b_y, 1 - b_z ),
+				new THREE.Vector2( c_y, 1 - c_z ),
+				new THREE.Vector2( d_y, 1 - d_z )
+			];
+
+		}
+
+	}
+};
+
+init();
+animate();
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.setScalar( 5 );
+
+    // controls
+    controls = new OrbitControls( camera, renderer.domElement );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0xffffff, 0.5 ) );
+    
+    // light
+    var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
+    light.position.set( 20,20, 0 );
+    scene.add( light );
+    
+    // convex points
+    var points = [
+      new THREE.Vector2( 1, 1 ),
+      new THREE.Vector2( 1, -1 ),
+      new THREE.Vector2( -1, -1 ),
+    ];
+    
+    var shape = new THREE.Shape(points);
+    
+    var extrGeom = new THREE.ExtrudeBufferGeometry(
+    	shape,
+    	{
+        depth: 2,
+        bevelEnabled: false,
+        UVGenerator: customUVGenerator
+      }
+    )
+    
+    console.log(extrGeom);
+	
+    // https://threejs.org/examples/textures/uv_grid_opengl.jpg
+    var extrMat = new THREE.MeshLambertMaterial({map: new THREE.TextureLoader().load("uv_grid_opengl.jpg")});
+    
+    var extrMesh = new THREE.Mesh(extrGeom, extrMat);
+    scene.add(extrMesh);
+    
+
+    
+    scene.add(mesh);
+    
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

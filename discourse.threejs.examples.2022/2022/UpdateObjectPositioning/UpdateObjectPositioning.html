@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/update-object-positioning/41663/9 -->
+<!-- https://jsfiddle.net/tfoller/7gkpruLh/64/ -->
+<head>
+  <title> UpdateObjectPositioning </title>
+  <meta charset="utf-8" />
+  <style>
+    * {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    }
+    body {
+    background: #112233;
+    width: 100vw;
+    height: 100vh;
+    display: grid;
+    justify-content: center;
+    align-items: center;
+    }
+    #ui {
+    margin-bottom: 5px;
+    }
+    
+    .noselect {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    }
+    
+    #ctrl_over {
+    position: absolute;
+    opacity: 0.5;
+    bottom: 13px;
+    right: 5px;
+    
+    color: #aaa;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    }
+    
+    #ctrl_sw {
+    border: solid 1px #aaa;
+    padding: 3px;
+    margin-left: 10px;
+    cursor: pointer;
+    font-size: 11px;
+    text-transform: uppercase;
+    }
+    
+    #canv_wrap {
+    position:relative;
+    margin: 0px;
+    padding: 0px;
+    display: inline-block;
+    }
+</style>
+</head>
+
+<body>
+<canvas id="main_canvas" width="600" height="600">
+</body>
+
+<script type="module">
+
+// @author tfoller
+
+import * as THREE from '../jsm/three.module.136.js';
+import * as CONTROLS from '../jsm/controls.js'
+
+const get = id => document.getElementById(id);
+
+const canvas = get('main_canvas');
+const [w, h] = [canvas.width, canvas.height];
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  canvas: canvas,
+});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(w, h);
+
+const [near, far] = [1, 100];
+const mid = -0.5 * (near + far);
+const camera = new THREE.PerspectiveCamera(45, w / h, near, far);
+camera.position.set(20, 25, 20);
+camera.lookAt(0, 4, 0);
+
+const scene = new THREE.Scene();
+
+const axhlp = new THREE.AxesHelper(10);
+scene.add(axhlp);
+
+const dir = new THREE.DirectionalLight(0xffffff, 1);
+dir.position.set(1, 0.5, 0.7);
+
+const canv2D = labelText => {
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+
+  //ctx.fillStyle = "blue";
+  //ctx.fillRect(0, 0, 256, 256);
+  ctx.textAlign = "center";
+  //ctx.strokeStyle = "black";
+  ctx.lineWidth = 8;
+
+  //ctx.strokeText(labelText, 0, 0);
+  ctx.fillStyle = "white";
+  //ctx.fillText(labelText, 0, 0);
+  ctx.font = '24px Courier New';
+  ctx.fillText(labelText, 128, 110);
+
+  return canvas;
+}
+
+
+const createLabel = labelText => {
+
+  const createCanvas = canv2D(labelText)
+  const texture = new THREE.Texture(createCanvas);
+  texture.needsUpdate = true;
+
+  const spriteMat = new THREE.SpriteMaterial({
+    map: texture
+  });
+
+  return new THREE.Sprite(spriteMat)
+};
+
+const geo = new THREE.BoxGeometry(1, 1, 1);
+const [mat, mesh, rgb] = [
+  [],
+  [],
+  [0xff0000, 0x00ff00, 0x0000ff]
+];
+for (let i = 0; i < 3; i++) {
+  mat[i] = new THREE.MeshLambertMaterial({
+    color: rgb[i]
+  });
+  mesh[i + 3] = new THREE.Mesh(geo, mat[i]);
+  mesh[i] = createLabel('boom' + i);
+  mesh[i].scale.set(10, 10, 1)
+  scene.add(mesh[i]).add(mesh[i + 3]);
+}
+
+scene.add(dir);
+
+const material = new THREE.LineBasicMaterial();
+
+const pnt = [
+  [-5, 5, 5],
+  [5, 5, 0]
+];
+const points = [];
+pnt.forEach(p => {
+  points.push(new THREE.Vector3(...p))
+});
+
+const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+const update = () => {
+  const t = 0.001 * performance.now();
+
+  const arr = geometry.attributes.position.array;
+
+  for (let i = 0; i < arr.length; i += 3) {
+    const ind = i / 3;
+    arr[i] = pnt[ind][0] * Math.sin(t);
+    arr[i + 1] = pnt[ind][1] * Math.cos(t);
+    //arr[i + 2] = pnt[ind][2] * Math.cos(t / 2);
+  }
+  geometry.attributes.position.needsUpdate = true;
+
+  mesh[0].position.set(...arr.slice(0, 3));
+  mesh[2].position.set(...arr.slice(3));
+  
+  mesh[3].position.set(...arr.slice(0, 3));
+  mesh[4].position.set(...arr.slice(3));
+
+  const mid = [];
+  for (let i = 0; i < 3; i++) {
+    mid[i] = 0.5 * (arr[i] + arr[i + 3]);
+  }
+  mesh[1].position.set(...mid);
+  
+  mesh[5].position.set(...mid);
+
+};
+
+const line = new THREE.Line(geometry, material);
+scene.add(line);
+
+const state = {
+  play: true
+};
+
+const maybeRender = () => {
+  if (!state.play) render()
+};
+
+const framerate = 60;
+const fpsint = 1000 / framerate;
+let elapsed, now, then;
+
+const renderFrame = newtime => {
+
+  if (!state.play) return;
+  requestAnimationFrame(renderFrame);
+
+  if (!newtime) then = newtime = window.performance.now();
+
+  now = newtime;
+  elapsed = now - then;
+
+  if (!fpsint || elapsed > fpsint) {
+
+    then = now - (elapsed % fpsint);
+
+    update();
+
+    render();
+  }
+};
+renderFrame();
+
+function render() {
+  renderer.render(scene, camera)
+}
+render();
+
+CONTROLS.create({
+  cont: canvas,
+  cam: camera,
+  type: 'Orbital',
+  overlay: true,
+  lookAt: [0, 4, 0],
+  callback: maybeRender
+});
+
+</script>
+</html>

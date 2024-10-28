@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/instancedmesh-heightmaps/37818 -->
+<!-- https://codepen.io/prisoner849/pen/dydoRPp -->
+<head>
+  <title> TransitionBetweenHeightmaps </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.140.js';
+import {OrbitControls} from '../jsm/OrbitControls.140.js';
+import { TWEEN } from "../jsm/tween.module.min.140.js"; 
+
+console.clear();
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0.5, 0.5, 0.5);
+let camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 5, 8).setLength(80);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let heightMaps = [];
+let heightMapTexs = [];
+for(let i = 0; i < 2; i++){
+  let c = document.createElement("canvas");
+  c.width = c.height = 256;
+  heightMaps.push(c);
+  heightMapTexs.push(new THREE.CanvasTexture(heightMaps[i]));
+  updateHeightMap(i);
+}
+
+
+let light = new THREE.HemisphereLight(0xffffff, 0x646464);
+scene.add(light);
+
+let planeG = new THREE.PlaneGeometry(150, 150, 200, 200);
+planeG.rotateX(Math.PI * -0.5);
+const MAX_COUNT = planeG.attributes.position.count;
+
+let g = new THREE.TetrahedronGeometry(2);
+g.setAttribute(
+  "instUV",
+  new THREE.InstancedBufferAttribute(planeG.attributes.uv.array, 2)
+);
+let c = new THREE.Color();
+let u = {
+  time: {value: 0},
+  heightMapStart: {value: heightMapTexs[0]},
+  heightMapFinish: {value: heightMapTexs[1]},
+  colorStartLow: {value: new THREE.Color(randColor(Math.random()))},
+  colorStartHigh: {value: new THREE.Color(randColor(Math.random()))},
+  colorEndLow: {value: new THREE.Color(randColor(Math.random()))},
+  colorEndHigh: {value: new THREE.Color(randColor(Math.random()))},
+  lerpValue: {value: 0}
+}
+let m = new THREE.MeshLambertMaterial({
+  onBeforeCompile: shader => {
+    shader.uniforms.time = u.time;
+    shader.uniforms.heightMapStart = u.heightMapStart;
+    shader.uniforms.heightMapFinish = u.heightMapFinish;
+    shader.uniforms.colorStartLow = u.colorStartLow;
+    shader.uniforms.colorStartHigh = u.colorStartHigh;
+    shader.uniforms.colorEndLow = u.colorEndLow;
+    shader.uniforms.colorEndHigh = u.colorEndHigh;
+    shader.uniforms.lerpValue = u.lerpValue;
+    shader.vertexShader = `
+      uniform float time;
+      uniform sampler2D heightMapStart;
+      uniform sampler2D heightMapFinish;
+      uniform float lerpValue;
+      attribute vec2 instUV;
+      varying float vHeight;
+      varying float vLerpValue;
+      
+      mat4 rotationX( in float angle ) {
+        return mat4(	1.0,		0,			0,			0,
+          0, 	cos(angle),	-sin(angle),		0,
+          0, 	sin(angle),	 cos(angle),		0,
+          0, 			0,			  0, 		1);
+      }
+
+      mat4 rotationY( in float angle ) {
+        return mat4(	cos(angle),		0,		sin(angle),	0,
+          0,		1.0,			 0,	0,
+          -sin(angle),	0,		cos(angle),	0,
+          0, 		0,				0,	1);
+      }
+
+      mat4 rotationZ( in float angle ) {
+        return mat4(	cos(angle),		-sin(angle),	0,	0,
+          sin(angle),		cos(angle),		0,	0,
+          0,				0,		1,	0,
+          0,				0,		0,	1);
+      }
+                    
+      vec3 rot3d(vec3 rotation, vec3 vector){
+        return vec3( vec4(vector, 1.) * rotationX(rotation.x) * rotationY(rotation.y) * rotationZ(rotation.z) );
+      }
+      
+      ${shader.vertexShader}
+    `.replace(
+      `#include <defaultnormal_vertex>`,
+      `
+      vec3 transformedNormal = objectNormal;
+      vec3 rotVals = vec3(time * 0.25);
+      transformedNormal = rot3d(rotVals, transformedNormal);
+      #ifdef USE_INSTANCING
+        // this is in lieu of a per-instance normal-matrix
+        // shear transforms in the instance matrix are not supported
+        mat3 m = mat3( instanceMatrix );
+        transformedNormal /= vec3( dot( m[ 0 ], m[ 0 ] ), dot( m[ 1 ], m[ 1 ] ), dot( m[ 2 ], m[ 2 ] ) );
+        transformedNormal = m * transformedNormal;
+      #endif
+      transformedNormal = normalMatrix * transformedNormal;
+      #ifdef FLIP_SIDED
+        transformedNormal = - transformedNormal;
+      #endif
+      #ifdef USE_TANGENT
+        vec3 transformedTangent = ( modelViewMatrix * vec4( objectTangent, 0.0 ) ).xyz;
+        #ifdef FLIP_SIDED
+          transformedTangent = - transformedTangent;
+        #endif
+      #endif
+      `
+    )
+     .replace(
+      `#include <project_vertex>`,
+      `
+      vec4 mvPosition = vec4( rot3d(rotVals, transformed), 1.0 );
+      #ifdef USE_INSTANCING
+        mat4 im = instanceMatrix;
+        float hStart = texture2D(heightMapStart, instUV).r;
+        float hFinish = texture2D(heightMapFinish, instUV).r;
+        float lv = lerpValue;
+        vLerpValue = lv;
+        vHeight = mix(hStart, hFinish, lv);
+        im[3].y += vHeight * 20.;
+        vHeight = smoothstep(0.125, 0.25, vHeight);
+        mvPosition = im * mvPosition;
+      #endif
+      mvPosition = modelViewMatrix * mvPosition;
+      gl_Position = projectionMatrix * mvPosition;
+      
+      `
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+      uniform vec3 colorStartLow;
+      uniform vec3 colorStartHigh;
+      uniform vec3 colorEndLow;
+      uniform vec3 colorEndHigh;
+      varying float vHeight;
+      varying float vLerpValue;
+      ${shader.fragmentShader}
+    `.replace(
+      `vec4 diffuseColor = vec4( diffuse, opacity );`,
+      `
+      vec3 colorStart = mix(colorStartLow, colorStartHigh, vHeight);
+      vec3 colorEnd = mix(colorEndLow, colorEndHigh, vHeight);
+      vec3 colorFinal = mix(colorStart, colorEnd, vLerpValue);
+      vec4 diffuseColor = vec4( colorFinal, opacity );`
+    );
+    //console.log(shader.fragmentShader);
+  }
+});
+let io = new THREE.InstancedMesh(g, m, MAX_COUNT);
+scene.add(io);
+
+let dummy = new THREE.Object3D();
+let v3 = new THREE.Vector3();
+for (let i = 0; i < MAX_COUNT; i++) {
+  dummy.position.fromBufferAttribute(planeG.attributes.position, i);
+  dummy.rotation.setFromVector3(v3.random().multiplyScalar(Math.PI));
+  dummy.updateMatrix();
+  io.setMatrixAt(i, dummy.matrix);
+}
+
+runSequence();
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  let t = clock.getElapsedTime();
+  u.time.value = t;
+  controls.update();
+  TWEEN.update();
+  renderer.render(scene, camera);
+});
+
+function runSequence(){
+  new TWEEN.Tween({val: 0})
+  .to({val: 1}, 5000)
+  .easing(TWEEN.Easing.Exponential.InOut)
+  .onUpdate(val => {
+    u.lerpValue.value = val.val;
+  })
+  .onComplete(() => {
+    heightMaps[0].getContext("2d").drawImage(heightMaps[1], 0, 0);
+    updateHeightMap(1);
+    u.colorStartLow.value.copy(u.colorEndLow.value);
+    u.colorStartHigh.value.copy(u.colorEndHigh.value);
+    let rnd = Math.random();
+    u.colorEndLow.value.set(randColor(rnd));
+    u.colorEndHigh.value.set(randColor(rnd + (1 / 2.5) * (Math.random() < 0.5 ? -1 : 1)));
+    u.lerpValue.value = 0;
+    heightMapTexs.forEach(hm => {hm.needsUpdate = true});
+    runSequence();  
+  })
+  .start();
+}
+
+function randColor(shift){
+  return c.setHSL(shift % 1 , 1, 0.5).getHex();
+}
+
+function updateHeightMap(hmIndex) {
+  let c = heightMaps[hmIndex];
+  let ctx = c.getContext("2d");
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 100; i++) {
+    var x = Math.floor(Math.random() * 255);
+    var y = Math.floor(Math.random() * 255);
+    var radius = 50;
+    var grd = ctx.createRadialGradient(x, y, 1, x, y, radius);
+    var h8 = Math.floor(Math.random() * 255);
+    grd.addColorStop(0, "rgb(" + h8 + "," + h8 + "," + h8 + ")");
+    grd.addColorStop(1, "transparent");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, 256, 256);
+  }
+  //heightMapTexs[hmIndex].needsUpdate = true;
+}
+
+</script>
+</html>

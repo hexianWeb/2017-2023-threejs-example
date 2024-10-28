@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/assign-different-colors-to-different-parts-of-buffergeometry/6604/12 -->
+<head>
+	<title> ColorStripeChanging </title>
+	<meta charset="utf-8" />
+	<style>
+      body { margin: 0; }
+    </style>
+</head>
+<body> </body>
+	<script src="../js/three.min.102.js"></script>
+	<script src="../js/OrbitControls.js"></script>
+	
+<script>
+
+// @author hofk
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 0, 5, 4 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x555555, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+var ls = 24; // length segments
+var ws = 1; // width segments 
+
+var lss = ls + 1;
+var wss = ws + 1;
+
+var faceCount = ls * ws * 2;
+var vertexCount = lss * wss;
+
+var g = new THREE.BufferGeometry( );
+
+g.faceIndices = new Uint32Array( faceCount * 3 );
+g.vertices = new Float32Array( vertexCount * 3 );  
+
+g.setIndex( new THREE.BufferAttribute( g.faceIndices, 1 ) );	
+g.addAttribute( 'position', new THREE.BufferAttribute( g.vertices, 3 ) );
+
+var idxCount = 0;
+
+for ( var j = 0; j < ls; j ++ ) {
+		
+	for ( var i = 0; i < ws; i ++ ) {
+		
+		// 2 faces / segment,  3 vertex indices
+		a =  wss * j + i;
+		b1 = wss * ( j + 1 ) + i;		// right-bottom
+		c1 = wss * ( j + 1 ) + 1 + i;
+		b2 = wss * ( j + 1 ) + 1 + i;	// left-top
+		c2 = wss * j + 1 + i;
+		
+		g.faceIndices[ idxCount     ] = a; // right-bottom
+		g.faceIndices[ idxCount + 1 ] = b1;
+		g.faceIndices[ idxCount + 2 ] = c1; 
+		
+		g.faceIndices[ idxCount + 3 ] = a; // left-top
+		g.faceIndices[ idxCount + 4 ] = b2,
+		g.faceIndices[ idxCount + 5 ] = c2; 
+		
+		idxCount += 6;
+		
+	}
+		
+}
+
+// write groups for multi material
+
+for ( var f = 0, p = 0; f < faceCount; f ++, p += 6) {
+	
+	g.addGroup( p, 6, f % 8 );
+	
+}
+
+var x, y, z;
+var vIdx = 0; // vertex index
+var posIdx; // position  index
+
+for ( var j = 0; j < lss; j ++ ) {  // length
+		
+	for ( var i = 0; i < wss; i ++ ) { // width
+		
+		// calculate here the coordinates according to your wishes
+		x = j / 10 - 2;
+		y = Math.sin(  Math.PI * j / 25 );
+		z = i  ;
+		
+		xyzSet();
+		
+		vIdx ++;
+		
+	}
+	
+}
+
+var material = [
+	
+	new THREE.MeshBasicMaterial( { color: 0x000000, side: THREE.DoubleSide} ),
+	new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide} ),
+	new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide} ),
+	new THREE.MeshBasicMaterial( { color: 0x00ffff, side: THREE.DoubleSide} ),
+	new THREE.MeshBasicMaterial( { color: 0x00ff00, side: THREE.DoubleSide} ),
+	new THREE.MeshBasicMaterial( { color: 0xffff00, side: THREE.DoubleSide} ),
+	new THREE.MeshBasicMaterial( { color: 0x0000ff, side: THREE.DoubleSide} ),
+	new THREE.MeshBasicMaterial( { color: 0xff00ff, side: THREE.DoubleSide} )
+	
+];
+
+var mesh = new THREE.Mesh( g, material );
+scene.add( mesh );
+
+var t = 0;
+
+animate();
+
+//............................
+
+// set vertex position
+function xyzSet() {
+	
+	posIdx = vIdx * 3;
+	
+	g.vertices[ posIdx ]  = x;
+	g.vertices[ posIdx + 1 ]  = y;
+	g.vertices[ posIdx + 2 ]  = z;
+	
+}
+
+function getRandomInt( max ) {
+
+  return Math.floor( Math.random( ) * Math.floor( max ) );
+  
+}
+
+function animate( ) {
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	
+	g.groups[ getRandomInt( faceCount - 1 ) ].materialIndex = getRandomInt( 7 );
+	
+	g.groupsNeedUpdate = true; // to change materialIndex for multi material
+	
+	controls.update();
+	
+}
+
+</script>
+
+</html>

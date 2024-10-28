@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/objloader-in-layers/4658 -->
+<!-- https://jsfiddle.net/f2Lommf5/15474/ -->
+<head>
+  <title> LayersOBJ </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.97.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/OBJLoader.js"></script>
+<script src="../js/dat.gui.min.0.7.2.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var container;
+var camera, scene, renderer;
+var controls 
+var radius = 100, theta = 0;
+
+init();
+animate();
+
+function init() {
+
+  container = document.createElement( 'div' );
+  document.body.appendChild( container );
+
+  camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 1, 10000 );
+  camera.position.set( 1000, 50, 1500 );
+  camera.lookAt( 0, 0, 0 );
+  camera.layers.enable( 0 ); // enabled by default
+  camera.layers.enable( 1 );
+  camera.layers.enable( 2 );
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color( 0x022000 );
+
+  var light = new THREE.PointLight( 0xffffff, 1 );
+  light.layers.enable( 0 );
+  light.layers.enable( 1 );
+  light.layers.enable( 2 );
+
+  scene.add( camera );
+  camera.add( light );
+
+  var colors = [ 0xff0000, 0x00ff00, 0x0000ff ];
+  
+  var loader = new THREE.OBJLoader();
+  loader.load( 'https://threejs.org/examples/models/obj/walt/WaltHead.obj', function ( obj ) {
+  
+  	for ( var i = 0; i < 100; i ++ ) {
+    
+    	var layer = ( i % 3 );
+    
+    	var object = obj.children[ 0 ].clone();
+
+      object.material = new THREE.MeshLambertMaterial( { color: colors[ layer ] } );
+      
+      object.position.x = Math.random() * 800 - 400;
+      object.position.y = Math.random() * 800 - 400;
+      object.position.z = Math.random() * 800 - 400;
+
+      object.rotation.x = Math.random() * 2 * Math.PI;
+      object.rotation.y = Math.random() * 2 * Math.PI;
+      object.rotation.z = Math.random() * 2 * Math.PI;
+
+      object.scale.x = Math.random() + 0.5;
+      object.scale.y = Math.random() + 0.5;
+      object.scale.z = Math.random() + 0.5;
+
+      object.layers.set( layer );
+
+      scene.add( object );
+    
+    }
+  
+  } );
+
+  //raycaster = new THREE.Raycaster();
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio( window.devicePixelRatio );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  container.appendChild(renderer.domElement);
+
+
+  var layers = { red: true, green: true, blue: true };
+
+  //
+  // Init gui
+  var gui = new dat.GUI();
+  gui.add( layers, 'red' ).onChange( function () { camera.layers.toggle( 0 ); } );
+  gui.add( layers, 'green' ).onChange( function () { camera.layers.toggle( 1 ); } );
+  gui.add( layers, 'blue' ).onChange( function () { camera.layers.toggle( 2 ); } );
+
+  window.addEventListener( 'resize', onWindowResize, false );
+
+  var controls = new THREE.OrbitControls( camera, renderer.domElement );
+  controls.maxPolarAngle = Math.PI * 0.99;
+  controls.minDistance = 1000;
+  controls.maxDistance = 5000;
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+//
+
+function animate() {
+
+  requestAnimationFrame( animate );
+
+  render();
+
+}
+
+function render() {
+
+  renderer.render( scene, camera );
+
+}
+</script>
+
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/shape-lineto-animation-noob-question/11682/4 -->
+ <!-- https://codepen.io/michalkowalczyk/pen/dyPzXvX -->
+<head>
+  <title> ShapeLineToAnimation </title>
+  <meta charset="utf-8" />
+  <style>	
+	body,html{width:100%;height:100%;padding:0;margin:0;overflow: hidden;}
+  </style>
+</head>
+
+<body>
+	<canvas id="scene"></canvas>
+</body>
+<script src="../js/three.min.111.js"></script>
+
+<script>
+
+//@author Michał Kowalczyk 
+
+//Get the height and the width of the window
+var ww = window.innerWidth,
+  wh = window.innerHeight;
+
+function init() {
+
+  /* WEBGL RENDERER */
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('scene') });
+  renderer.setClearColor(0x3F3F3F);
+  renderer.setSize(ww, wh);
+
+  /* SCENE */
+  scene = new THREE.Scene();
+
+  /* CAMERA */
+  camera = new THREE.PerspectiveCamera(50, ww / wh, 1, 10000);
+  camera.position.set(0, 250, 400);
+  camera.lookAt(new THREE.Vector3(50, 0, 0));
+  scene.add(camera);
+
+  /* LIGHT */
+  light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(0, 500, 500);
+  scene.add(light);
+
+  //Create all our shapes
+  animatedShape();
+
+  //Render the scene
+  renderer.render(scene, camera);
+};
+
+function animatedShape() {
+
+  var extrudeSettings = { depth: 70 };
+  var bothshapesLength = 100, bothShapesWidth = 100;
+  
+  var firstShape = new THREE.Shape();
+  firstShape.moveTo(0, 0);
+  firstShape.lineTo(40, bothShapesWidth); // init = 40
+  firstShape.lineTo(bothshapesLength, bothShapesWidth);
+  firstShape.lineTo(bothshapesLength, 0);
+  firstShape.lineTo(0, 0);
+  var secondShape = new THREE.Shape();
+  secondShape.moveTo(0, 0);
+  secondShape.lineTo(70, bothShapesWidth); // after morph = 70
+  secondShape.lineTo(bothshapesLength, bothShapesWidth);
+  secondShape.lineTo(bothshapesLength, 0);
+  secondShape.lineTo(0, 0);
+
+  var geometry_BasedOn__FirstShape = new THREE.ExtrudeBufferGeometry(firstShape, extrudeSettings);
+  var geometry_BasedOn__SecondShape = new THREE.ExtrudeBufferGeometry(secondShape, extrudeSettings);
+
+  var copyOfPositions_BasedOn_geometry_BasedOn_SecondShape = geometry_BasedOn__SecondShape.attributes.position.array;
+
+  geometry_BasedOn__FirstShape.morphAttributes.position = []; // create empty array to hold targets
+  geometry_BasedOn__FirstShape.morphAttributes.position[0] =
+    new THREE.Float32BufferAttribute(copyOfPositions_BasedOn_geometry_BasedOn_SecondShape, 3);
+  
+  var material = new THREE.MeshLambertMaterial({ color: 0x00ff00, morphTargets: true });
+  mesh = new THREE.Mesh(geometry_BasedOn__FirstShape, material);
+  mesh.rotation.y = Math.PI / 5;
+  scene.add(mesh);
+
+  let iterator = 0;
+  setInterval(function () {
+    mesh.morphTargetInfluences[0] = (Math.cos(iterator / 50) + 1) / 2; // values from 0 to 1
+    renderer.render(scene, camera);
+    iterator += 1;
+  }, 10);
+};
+
+init();
+camera.updateProjectionMatrix();
+ 
+</script>
+
+</html>

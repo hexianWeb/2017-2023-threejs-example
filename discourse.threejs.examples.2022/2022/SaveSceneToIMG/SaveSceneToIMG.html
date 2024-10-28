@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-save-rendering-scene-to-img/41858/2 -->
+<!-- https://jsfiddle.net/tfoller/zLk24eh5/5/ -->
+<head>
+  <title>SaveSceneToIMG</title>
+  <meta charset="utf-8" />
+  
+  <!-- @author tfoller  -->
+  
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <style>
+    #btn {
+    position: fixed;
+    top: 0;
+    left: 0;
+    }
+    
+    #ctx2d {
+    background: yellow;
+    }
+    
+    #ctn {
+    position: fixed;
+    top: 0;
+    right: 0;
+    background: #fff;
+    }
+    
+    #img {
+    width: 100px;
+    height: 100px;
+    border: 1px solid blue;
+    }
+  </style>
+</head>
+
+<body> <!-- slightly changed -->
+    <button id="btn">save canvas to img</button>
+    <div id="ctn">
+      <div>saved img is show below</div>
+      <img id="img">
+    </div>
+    <canvas id="ctx2d" width="100" height="100"></canvas>
+    <div id="container"></div>
+</body>
+
+<script src="../js/three.min.142.js"></script>
+<script src="../js/OrbitControls.142.js"></script>
+
+<script>
+
+// @author tfoller 
+ 
+let snap = false;
+
+const capture = () => {
+	const cav = document.querySelector('#container canvas');
+  const base64 = cav.toDataURL('img/png');
+  document.querySelector('#img').src = base64;
+};
+
+document.getElementById('btn').addEventListener('click', () => { snap = true; });
+
+init2D()
+
+function init2D() {
+  // 2d context save code
+  var cav = document.querySelector('#ctx2d'),
+    ctx = cav.getContext('2d')
+  ctx.beginPath();
+  ctx.arc(20, 20, 50, 0, Math.PI);
+  ctx.stroke();
+  ctx.closePath()
+  var base64 = cav.toDataURL()
+  document.querySelector('#img').src = base64
+}
+
+const container = document.getElementById('container');
+
+let renderer, scene, camera, stats;
+let object = new THREE.Object3D(),
+  mesh, sprite
+
+window.addEventListener('load', init);
+
+function init() {
+  // three.js code
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+   // preserveDrawingBuffer: true,
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.set(50, 50, 50)
+
+  scene.add(new THREE.AmbientLight(0xdddddd));
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement)
+
+  var mesh = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(50, 50),
+    new THREE.ShaderMaterial({
+      vertexShader: `
+          void main() {
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          }
+          `,
+      fragmentShader: `
+          void main() {
+              gl_FragColor = vec4(1.0,0.0,0.0,1.0);
+          }
+      `,
+    })
+  )
+  scene.add(mesh)
+
+  scene.add(
+    new THREE.Mesh(
+      new THREE.BoxBufferGeometry(20, 20, 20),
+      new THREE.MeshBasicMaterial({
+        color: 0x0000ff
+      })
+    )
+  )
+
+
+  animate();
+
+}
+
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  renderer.render(scene, camera);
+  if(snap) {
+  	capture();
+  	snap = false;
+  }
+}
+
+
+</script>
+</html>

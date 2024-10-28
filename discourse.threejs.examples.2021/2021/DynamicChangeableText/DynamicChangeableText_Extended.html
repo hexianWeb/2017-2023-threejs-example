@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/load-font-into-global-variable-efficiency/31608 -->
+<head>
+    <title> DynamicChangeableText_Extended </title>
+    <meta charset="utf-8" />
+    <style>
+    body {
+        margin: 0;
+    }
+    </style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.134.js"></script>
+<script src="../js/OrbitControls.134.js"></script>
+<script src="../js/FontLoader.134.js"></script>
+<script>
+
+// @author hofk
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
+camera.position.set( 0, 0, 10 );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xfdfde2, 1 );
+
+document.body.appendChild( renderer.domElement );
+
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+ 
+const fontLoader = new THREE.FontLoader( );	
+let textsGeometry = [];
+let text = [];
+
+THREE.DefaultLoadingManager.onLoad = function ( ) {
+ 
+    initText( );
+    animate( );
+    
+};
+            // https://threejs.org/examples/fonts/helvetiker_regular.typeface.json
+fontLoader.load( 'helvetiker_regular.typeface.json', font => ft = font );
+
+function animate( ) {
+
+    requestAnimationFrame( animate );   
+    changeText( );
+    renderer.render( scene, camera );
+    
+}
+
+function initText( ) { // 1000 text lines
+
+  for ( let i = 0; i < 3200  ; i ++ ) {
+    
+    const textsShapes = ft.generateShapes( 'No. ' + i , 0.01 );
+    textsGeometry[ i ] = new THREE.ShapeGeometry( textsShapes );    
+    const textsMaterial = new THREE.MeshBasicMaterial( { color: 0x000000, side: THREE.DoubleSide } ); 
+    text[ i ] = new THREE.Mesh( textsGeometry[ i ], textsMaterial );
+    
+   // text[ i ].position.set( 0, -20 + i / 20 , 0 );
+   
+   text[ i ].position.set(  10 * Math.random( ) - 5, 10 * Math.random( ) - 5 , 10 * Math.random( ) - 5 );
+   
+   scene.add( text[ i ]); 
+  
+  }
+  
+}
+
+function changeText( ) { // change some text lines dynamically
+    
+    let i;
+    
+    for ( let j = 0; j <  8; j ++ ) {
+    
+        i = 100 + Math.trunc( 3000 * Math.random(  ) );
+        const textShp = ft.generateShapes( ' new value = ' + Math.trunc( 100 * Math.random( ) ) , 0.02 );
+        textsGeometry[ i ].dispose( );     
+        text[ i ].geometry = new THREE.ShapeGeometry( textShp );
+        text[ i ].geometry.needsUpdate = true;
+    
+    }
+    
+}
+
+</script>
+</html>

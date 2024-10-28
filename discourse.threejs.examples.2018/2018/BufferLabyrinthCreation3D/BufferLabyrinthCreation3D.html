@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-remove-interior-faces-while-keeping-exterior-faces-untouched/4869/27  -->
+<!-- http://threejs.hofk.de/BufferLabyrinthCreation3D/BufferLabyrinthCreation3D.html -->
+<head>
+	<title> BufferLabyrinthCreation3D </title>
+	<meta charset="utf-8" />
+</head>
+<body> 	
+
+</body>
+	<script src="../js/three.min.98.js"></script>
+	
+	<script src="../js/OrbitControls.js"></script>
+	<script src="../js/THREEx.WindowResize.js"></script>
+
+
+<script>
+
+// @author hofk
+
+'use strict';
+/*_______________________________________________
+
+icons
+The characters on the keyboard have been chosen so that they roughly reflect the form.
+
+wall description
+sides l f r b is left front right back, with floor and roof
+
+char sides
+G	l f r b   can only be achieved by beaming
+M	l f r
+C	b l f
+3	f r b
+U	l b r
+H	l r
+:	f b
+F	l f
+7	f r
+L	l b
+J	b r
+I	l 
+1	r
+-	f
+.	b
+
+without walls
+since extra character not possible on the wall
+* roof and floor
+^ roofless
+v floorless
+x roofless and floorless
+
+with four side walls but roofless and floorless
+#
+_________________________________________________*/
+
+var designBoxLabyrinth3D = [
+// upper storey first
+//23456789.......
+[
+'     M         G', // 1
+'     H          ', // 2
+'     H          ', // 3
+'   F-*--7       ', // 4
+'   I*7**1       ', // 5
+' C:v*L.**:::7   ', // 6
+'   L*...J   U   ', // 7
+'    H           ', // 8
+'    L::::3      '  // 9	
+],[
+'                ', // 1
+'                ', // 2
+'          G     ', // 3
+'                ', // 4
+'                ', // 5
+'   #            ', // 6
+'                ', // 7
+'                ', // 8
+'                '  // 9	
+],[
+'F::3            ', // 1
+'H    F:::::7    ', // 2
+'H    H     H    ', // 3
+'H  F-*-7   H    ', // 4
+'H  I****:::1    ', // 5
+'L::x***1   H    ', // 6
+'   I...J   H    ', // 7
+'   H   F:7 L:::7', // 8
+'   L:::J L:::::J'  // 9	
+]];
+
+// labyrinth material index
+var m = [
+// upper storey first
+// px, nx, py, ny, pz, nz 
+[ 0, 1, 2, 3, 4, 5 ], 
+[ 0, 0, 1, 1, 2, 2 ],
+[ 6, 7, 6, 7, 6, 7 ],
+];
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 2, 10, 25 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x111111, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+THREEx.WindowResize( renderer, camera );
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+var AxesHelper = new THREE.AxesHelper( 5 );
+scene.add( AxesHelper );
+
+//var material = new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide, wireframe: true } );
+
+var texture0	= new THREE.TextureLoader().load( "brick.jpg" );
+var texture1	= new THREE.TextureLoader().load( "uvSpray.png" );
+var texture2	= new THREE.TextureLoader().load( "Granit.jpg" );
+var texture3	= new THREE.TextureLoader().load( "kunst1.png" );
+var texture4	= new THREE.TextureLoader().load( "uvgrid01.png" );
+var texture5	= new THREE.TextureLoader().load( "Fliese03.png" );
+var texture6	= new THREE.TextureLoader().load( "Fliese01.png" );
+
+//var material = new THREE.MeshBasicMaterial( { map: texture0 , side: THREE.DoubleSide, wireframe: false } );
+var material = [
+	new THREE.MeshBasicMaterial( { map: texture0, side: THREE.DoubleSide } ), // 0 material index
+	new THREE.MeshBasicMaterial( { map: texture1, side: THREE.DoubleSide } ), // 1
+	new THREE.MeshBasicMaterial( { map: texture2, side: THREE.DoubleSide } ), // 2
+	new THREE.MeshBasicMaterial( { map: texture3, side: THREE.DoubleSide } ), // 3
+	new THREE.MeshBasicMaterial( { map: texture4, side: THREE.DoubleSide } ), // 4
+	new THREE.MeshBasicMaterial( { map: texture5, side: THREE.DoubleSide } ), // 5
+	new THREE.MeshBasicMaterial( { map: texture6, side: THREE.DoubleSide } ), // 6
+	new THREE.MeshBasicMaterial( { map: texture0, side: THREE.DoubleSide } ), // 7
+];
+
+
+var g = new THREE.BufferGeometry( );
+
+var storeys = designBoxLabyrinth3D.length;
+var s;
+var icon;
+var c1, f1, r1; // next column x, floor y, row z 
+var planesPos = [];
+var posIdx = 0; 
+var planesUVs = [];
+var uvIdx = 0;
+var groupStart = 0;
+
+// count faces
+g.faceCount = 0;
+
+for( var f = 0; f < storeys; f ++ ) {
+	
+	for( var r = 0; r < designBoxLabyrinth3D[ f ].length; r ++ ) {
+		
+		for( var c = 0; c < designBoxLabyrinth3D[ f ][ r ].length; c ++ ) {
+
+			icon = designBoxLabyrinth3D[ storeys - 1 - f ][ r ][ c ];
+			
+			if ( icon !== ' ' ) { countFaces( icon ) } 
+			
+		}		
+
+	}
+
+}
+
+g.positions = new Float32Array( g.faceCount * 9 );
+//g.normals = new Float32Array( g.faceCount * 9 );
+g.uvs = new Float32Array( g.faceCount * 6 );  // uv's to positions
+
+g.addAttribute( 'position', new THREE.BufferAttribute( g.positions, 3 ) );
+//g.addAttribute( 'normal', new THREE.BufferAttribute( g.normals, 3 ) );
+g.addAttribute( 'uv', new THREE.BufferAttribute( g.uvs, 2 ) );
+
+// create faces
+for( var f = 0; f < storeys; f ++ ) {
+	
+	for( var r = 0; r < designBoxLabyrinth3D[ f ].length; r ++ ) {
+		
+		for( var c = 0; c < designBoxLabyrinth3D[ f ][ r ].length; c ++ ) {
+
+			icon = designBoxLabyrinth3D[ storeys - 1 - f ][ r ][ c ];
+			
+			if ( icon !== ' ' ) {
+				
+				c1 = c + 1;
+				f1 = f + 1;
+				r1 = r + 1;
+				
+				createBox( icon )
+			
+			} 					
+			
+		}		
+
+	}
+
+}
+
+var labyrinthMesh = new THREE.Mesh( g, material );
+scene.add( labyrinthMesh );
+
+animate();
+
+function animate() {
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+function countFaces( icon ) {
+
+	switch ( icon ) {
+		case 'G':
+			g.faceCount += 12;
+			break;
+		case 'M':   
+		case 'C': 						
+		case '3':
+		case 'U':
+			g.faceCount += 10;
+			break;
+		case 'H': 	
+		case ':': 
+		case 'F': 
+		case '7': 
+		case 'L': 
+		case 'J':
+		case '#': // only 4 side walls
+			g.faceCount += 8;
+			break;		
+		case 'I': 
+		case '1': 
+		case '-':
+		case '.': 
+			g.faceCount += 6;
+		break;
+		case '*':
+			g.faceCount += 4;
+		break;			
+		case '^':
+		case 'v':
+			g.faceCount += 2;
+		break;
+		// case 'x': 
+		//  g.faceCount += 0
+		//  break;							
+		default: 
+		//  g.faceCount += 0
+	}
+
+}
+
+function createBox( icon ) {
+	
+	planesPos = [];
+	planesUVs = [];
+	
+	s = storeys - 1 - f; // upper storey first
+	 
+	switch ( icon ) {
+		case 'G': box_G( );     break;
+		case 'M': box_M( );     break;
+		case 'C': box_C( );     break;
+		case '3': box_3( );     break;
+		case 'U': box_U( );     break;
+		case 'H': box_H( );     break;
+		case ':': box_colon( ); break;
+		case 'F': box_F( );     break;
+		case '7': box_7( );     break;
+		case 'L': box_L( );     break;
+		case 'J': box_J( );     break;
+		case 'I': box_I( );     break;
+		case '1': box_1( );     break;
+		case '-': box_minus( ); break;
+		case '.': box_dot( );   break;
+		case '*': box_multi( ); break;
+		case '^': box_caret( ); break;
+		case 'v': box_v( );     break;
+		case 'x': box_x( );     break;
+		case '#': box_sharp( ); break;
+		default: box_x( );
+	}
+	
+	for ( let i = 0; i < planesPos.length; i ++ ) { 
+		
+		g.positions[ posIdx + i ] = planesPos[ i ];
+			
+	}
+	
+	posIdx += planesPos.length;
+	
+	for ( let i = 0; i < planesUVs.length; i ++ ) { 
+		
+		g.uvs[ uvIdx + i ] = planesUVs[ i ];
+			
+	}
+	
+	uvIdx += planesUVs.length;
+	
+}
+
+// function pushUVs( ) { planesUVs.push( 1,0, 1,1, 0,1,  1,0, 0,1, 0,0 ) } // outside
+function pushUVs( ) { planesUVs.push( 0,0, 0,1, 1,1,  0,0, 1,1, 1,0 ) }    // inside
+function groupAdd( m ) { g.addGroup( groupStart, 6, m ); groupStart += 6 }
+
+
+function px( ) { planesPos.push( c1,f,r, c1,f1,r, c1,f1,r1,   c1,f,r, c1,f1,r1, c1,f,r1 ); pushUVs( ); groupAdd( m[ s ][ 0 ] ) }
+function nx( ) { planesPos.push( c,f,r1, c,f1,r1, c,f1,r,   c,f,r1, c,f1,r, c,f,r ); pushUVs( ); groupAdd( m[ s ][ 1 ] ) }
+function py( ) { planesPos.push( c,f1,r1, c1,f1,r1, c1,f1,r,   c,f1,r1, c1,f1,r, c,f1,r ); pushUVs( ); groupAdd( m[ s ][ 2 ] ) }
+function ny( ) { planesPos.push( c,f,r, c1,f,r, c1,f,r1,   c,f,r, c1,f,r1, c,f,r1 ); pushUVs( ); groupAdd( m[ s ][ 3 ] ) }
+function pz( ) { planesPos.push( c1,f,r1, c1,f1,r1, c,f1,r1,   c1,f,r1, c,f1,r1, c,f,r1 ); pushUVs( ); groupAdd( m[ s ][ 4 ] ) }
+function nz( ) { planesPos.push( c,f,r, c,f1,r, c1,f1,r,   c,f,r, c1,f1,r, c1,f,r ); pushUVs( ); groupAdd( m[ s ][ 5 ] ) }
+
+function box_G( ) { px( ); nx( ); py( ); ny( ); pz( ); nz( ) }
+function box_M( ) { px( ); nx( ); py( ); ny( ); nz( ) }
+function box_C( ) { nx( ); py( ); ny( ); pz( ); nz( ) }
+function box_3( ) { px( ); py( ); ny( ); pz( ); nz( ) }
+function box_U( ) { px( ); nx( ); py( ); ny( ); pz( ) }
+function box_H( ) { px( ); nx( ); py( ); ny( ) }
+function box_colon( ) { py( ); ny( ); pz( ); nz( ) }
+function box_F( ) { nx( ); py( ); ny( ); nz( ) }
+function box_7( ) { px( ); py( ); ny( );  nz( ) }
+function box_L( ) { nx( ); py( ); ny( ); pz( ) }
+function box_J( ) { px( ); py( ); ny( ); pz( ) }
+function box_I( ) { nx( ); py( ); ny( ) }
+function box_1( ) { px( ); py( ); ny( ) }
+function box_minus( ) { py( ); ny( ); nz( ) }
+function box_dot( ) { py( ); ny( ); pz( ) }
+function box_multi( ) { py( ); ny( ) };
+function box_caret( ) { ny( ) }
+function box_v( ) { py( ) }
+function box_x( ) {  }
+function box_sharp( ) { px( ); nx( ); pz( ); nz( ) }
+
+</script>
+
+</html>

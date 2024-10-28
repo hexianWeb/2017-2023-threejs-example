@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/textures-show-only-certain-parts-of-them/32909 -->
+<head>
+  <title> ShowPartsOfTextures(Shader) </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+    margin: 0;
+    }
+   </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from '../jsm/three.module.135.js';
+import {OrbitControls} from '../jsm/OrbitControls.135.js';
+ 
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 15).setLength(15);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x000000);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+//scene.add(new THREE.GridHelper())
+
+let baseLayer = new THREE.Mesh(new THREE.PlaneGeometry(5, 10), new THREE.MeshBasicMaterial({color: "blue"}));
+scene.add(baseLayer);
+
+let g = new THREE.PlaneGeometry(10, 5);
+//console.log(uniforms)
+let u = {
+	baseLayerPosition: {value: new THREE.Vector3().copy(baseLayer.position)},
+  baseLayerSize: {value: new THREE.Vector2(baseLayer.geometry.parameters.width, baseLayer.geometry.parameters.height)}
+}
+let m = new THREE.MeshBasicMaterial({   
+	map: new THREE.TextureLoader().load("uv_grid_opengl.jpg"), // "https://threejs.org/examples/textures/uv_grid_opengl.jpg"
+  onBeforeCompile: shader => {
+  	shader.uniforms.baseLayerPosition = u.baseLayerPosition;
+    shader.uniforms.baseLayerSize = u.baseLayerSize;
+    shader.vertexShader = `
+    	varying vec3 vPos;
+      ${shader.vertexShader}
+    `.replace(
+    	`#include <begin_vertex>`,
+      `#include <begin_vertex>
+      	vPos = vec3(modelMatrix * vec4(position, 1.));
+      `
+    );
+    console.log(shader.vertexShader);
+    shader.fragmentShader = `
+    	uniform vec3 baseLayerPosition;
+      uniform vec2 baseLayerSize;
+      varying vec3 vPos;
+      ${shader.fragmentShader}
+    `.replace(
+    	`vec4 diffuseColor = vec4( diffuse, opacity );`,
+      `vec4 diffuseColor = vec4( diffuse, opacity );
+        
+      vec2 d = abs(vPos.xy - baseLayerPosition.xy) - baseLayerSize * 0.5;
+      float f = length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+      if (f >= 0.) discard;
+      `
+    );
+    console.log(shader.fragmentShader);
+  }
+});
+let plane = new THREE.Mesh(g, m);
+plane.position.z = 0.1;
+scene.add(plane);
+
+window.addEventListener("resize", onWindowResize);
+
+let clock = new THREE.Clock();
+
+animate();
+
+function animate() {
+	requestAnimationFrame( animate );
+  let t = clock.getElapsedTime();
+
+  baseLayer.position.x = Math.sin(t);
+  u.baseLayerPosition.value.copy(baseLayer.position);
+  plane.rotation.z = t * 0.5;
+  
+  renderer.render(scene, camera);
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth, innerHeight);
+
+}
+
+</script>
+</html>

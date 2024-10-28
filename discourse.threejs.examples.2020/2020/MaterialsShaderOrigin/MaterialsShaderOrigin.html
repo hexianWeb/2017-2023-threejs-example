@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-combine-gradient-shader-material-with-mesh-origin-material/21454/4 -->
+<!-- https://codepen.io/prisoner849/pen/dyXLOrp -->
+<head>
+  <title> MaterialsShaderOrigin </title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.122.js"; 
+import { OrbitControls } from "../jsm/OrbitControls.122.js";
+import {TWEEN} from "../jsm/tween.module.min.122.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 20, 20).multiplyScalar(2);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(20);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+let forceFieldColor = 0x00eeff;
+
+let forceFieldObject = new THREE.Mesh(new THREE.SphereBufferGeometry(1, 36, 18), new THREE.MeshBasicMaterial({color: forceFieldColor, transparent: true, opacity: 0.125, wireframe: true}));
+forceFieldObject.scale.setScalar(0.0001);
+scene.add(forceFieldObject)
+
+let uniforms = {
+  forceField: {value: new THREE.Vector4(0, 0, 0, 0.0001)},
+  forceFieldColor: {value: new THREE.Color(forceFieldColor)}
+}
+
+const count = 1000;
+
+let geom = new THREE.BoxBufferGeometry();
+let mat = getMaterial(0xffffff);
+let instMesh = new THREE.InstancedMesh(geom, mat, count);
+scene.add(instMesh);
+
+let dummy = new THREE.Object3D();
+let mat4 = new THREE.Matrix4();
+let color = new THREE.Color();
+
+for (let i = 0; i < count; i++){
+  
+  dummy.position.random().subScalar(0.5).multiplyScalar(40);
+  dummy.rotation.set(
+    Math.random() * Math.PI,
+    Math.random() * Math.PI,
+    Math.random() * Math.PI
+  );
+  dummy.scale.random().multiplyScalar(2);
+  dummy.updateMatrix();
+  
+  instMesh.setMatrixAt(i, dummy.matrix);
+  instMesh.setColorAt(i, color.set(Math.random() * 0x7f7f7f + 0x7f7f7f));
+}
+
+runTweening();
+
+renderer.setAnimationLoop(()=>{
+  TWEEN.update();
+  renderer.render(scene, camera);
+});
+
+function runTweening(){
+  let radius = 10 + Math.random() * 10;
+  let position = new THREE.Vector3().random().subScalar(0.5).multiplyScalar(40);
+  forceFieldObject.position.copy(position);
+  uniforms.forceField.value.copy(position);
+  let t = new TWEEN.Tween({val: 0.0001}).to({val: 1}, 10000).onUpdate(
+    value => {
+      //console.log(value);
+      forceFieldObject.scale.setScalar(value.val * radius);
+      uniforms.forceField.value.w = value.val * radius;
+    }
+  ).onComplete(
+    ()=>{
+      runTweening();
+    }
+  ).start();
+}
+
+function getMaterial(color){
+  return new THREE.MeshStandardMaterial({
+    color: color,
+    roughness: 0.25,
+    metalness: 0.5,
+    onBeforeCompile: shader => {
+      shader.uniforms.forceField = uniforms.forceField;
+      shader.uniforms.forceFieldColor = uniforms.forceFieldColor;
+      shader.vertexShader = `
+        varying vec4 vWorldPos;
+        ${shader.vertexShader}
+      `.replace(
+        `#include <worldpos_vertex>`,
+        `#include <worldpos_vertex>
+          vWorldPos = vec4( transformed, 1.0 );
+          #ifdef USE_INSTANCING
+            vWorldPos = instanceMatrix * vWorldPos;
+          #endif
+          vWorldPos = modelMatrix * vWorldPos;
+        `
+      );
+      //console.log(shader.vertexShader);
+      
+      shader.fragmentShader = `
+        uniform vec4 forceField;
+        uniform vec3 forceFieldColor;
+        varying vec4 vWorldPos;
+        ${shader.fragmentShader}
+      `.replace(
+        `#include <dithering_fragment>`,
+        `#include <dithering_fragment>
+        
+          float worldDist = distance(forceField.xyz, vWorldPos.xyz);
+          
+          float fadeoutWidth = 0.25;
+          vec3 posf = fwidth(vWorldPos.xyz);
+          float f = length(posf);
+          
+          float fadeout = smoothstep(forceField.w - fadeoutWidth, forceField.w, worldDist);
+          fadeout -= smoothstep(forceField.w, forceField.w + f, worldDist);
+          
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, forceFieldColor, fadeout);
+        
+        `
+      );
+      //console.log(shader.fragmentShader)
+    }
+  });
+}
+
+</script>
+</html>

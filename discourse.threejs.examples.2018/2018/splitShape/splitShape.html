@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+
+<!-- https://discourse.threejs.org/t/closed-how-to-split-separate-a-single-shapegeometry-into-individual-geometries-base-on-faces/4809/9 -->
+<!-- https://jsfiddle.net/prisoner849/g3qdz90r/ -->
+
+<!-- uses  https://github.com/voidqk/polybooljs -->
+
+<head>
+  <title> splitShape </title>
+  <meta charset="utf-8" />
+   <style>
+		body {
+	margin: 0px;
+	background-color: #050505;
+	color: #fff;
+	overflow: hidden;
+	}
+	
+	#container {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	}
+  </style>
+</head>
+
+<body></body>
+<script src="../js/three.min.98.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/dat.gui.min.0.7.2.js"></script>
+<script src="../js/polybool.min.js"></script>
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 20);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var gui = new dat.GUI();
+
+var shape = {
+  regions: [
+    [
+      [-10, -10],
+      [-10, 10],
+      [5, 10],
+      [10, 4],
+      [10, -11],
+      [2, -11],
+      [2, -9],
+      [-5, -9],
+      [-5, -10]
+    ]
+  ],
+  inverted: false
+};
+
+var cutter = {
+  regions: [],
+  inverted: false
+};
+
+for (let i = 0; i < 10; i++) {
+  let add = -11 + i * 2 * 1.1;
+  cutter.regions.push(
+    [
+      [-11, 0 + add],
+      [-11, 2 + add],
+      [11, 2 + add],
+      [11, 0 + add]
+    ]
+  );
+}
+
+var result = PolyBool.intersect(shape, cutter);
+
+showContour(result, 0x404040, "result", true, true);
+showContour(cutter, "gray", "cutter", false, false);
+showContour(shape, "aqua", "shape", false, false);
+
+function showContour(pbObject, color, name, isMesh, visible) {
+	let group = new THREE.Group();
+  group.visible = visible;
+  pbObject.regions.forEach(r => {
+    let v2s = r.map(rp => {
+      return new THREE.Vector2(rp[0], rp[1])
+    });
+
+    let contourGeom = isMesh ? new THREE.ShapeBufferGeometry(new THREE.Shape(v2s)) : new THREE.BufferGeometry().setFromPoints(v2s);
+    let contourMat = isMesh ? new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide}) : new THREE.LineBasicMaterial({
+      color: color
+    });
+    let contour = isMesh ? new THREE.Mesh(contourGeom, contourMat) : new THREE.LineLoop(contourGeom, contourMat);
+    group.add(contour);
+  });
+  
+  scene.add(group);
+  gui.add(group, "visible").name(name);
+
+}
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+</script>
+</html>

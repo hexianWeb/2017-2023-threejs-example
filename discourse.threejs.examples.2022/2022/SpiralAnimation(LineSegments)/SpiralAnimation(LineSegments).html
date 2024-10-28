@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/optimize-2d-spiral-real-time-animation/36268/2 -->
+<!--  https://codepen.io/prisoner849/pen/RwxopJd -->
+<head>
+  <title> SpiralAnimation(LineSegments) </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+const COUNT_MAX = 3600;
+let pts = new Array(COUNT_MAX * 2).fill().map(p => {return new THREE.Vector3()})
+let col = [];
+new Array(COUNT_MAX * 2).fill().forEach(c => {col.push(1, 1, 1)});
+
+let g = new THREE.BufferGeometry().setFromPoints(pts);
+g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+console.log(g)
+let m = new THREE.LineBasicMaterial({vertexColors: true});
+let l = new THREE.LineSegments(g, m);
+scene.add(l);
+
+let counter = 0;
+let v1 = new THREE.Vector3();
+let v2 = new THREE.Vector3();
+let c = new THREE.Vector3();
+renderer.setAnimationLoop(() => {
+  
+  counter = counter < COUNT_MAX ? counter+1 : 0;
+  
+  let a = THREE.MathUtils.degToRad(counter);
+  v1.set(Math.cos(a), Math.sin(a), 0).multiplyScalar(counter * 0.001);
+  let l = v1.length();
+  v2.copy(v1).setLength(l + Math.random());
+  g.attributes.position.setXYZ(counter * 2, v1.x, v1.y, v1.z);
+  g.attributes.position.setXYZ(counter * 2 + 1, v2.x, v2.y, v2.z);
+  g.attributes.position.needsUpdate = true;
+  
+  c.random();
+  g.attributes.color.setXYZ(counter * 2, c.x, c.y, c.z);
+  g.attributes.color.setXYZ(counter * 2 + 1, c.x, c.y, c.z);
+  g.attributes.color.needsUpdate = true;
+  
+  g.setDrawRange(0, counter * 2);
+    
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/positionate-cube-always-on-the-middle-left-middle-right/21702 -->
+<!-- https://jsfiddle.net/prisoner849/gweum3xa/ -->
+<head>
+  <title> PositionateCubeMiddleLeftRight </title>
+  <meta charset="utf-8" />
+<<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.122.js"; 
+import { OrbitControls } from "../jsm/OrbitControls.122.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x444444);
+document.body.appendChild(renderer.domElement);
+
+//let controls = new OrbitControls(camera, renderer.domElement);
+let raycaster = new THREE.Raycaster();
+let ndc = new THREE.Vector2();
+renderer.render(scene, camera);
+
+let boxL = new THREE.Mesh(new THREE.BoxBufferGeometry(), new THREE.MeshBasicMaterial({color: "red"}));
+let boxR = new THREE.Mesh(new THREE.BoxBufferGeometry(), new THREE.MeshBasicMaterial({color: "blue"}));
+scene.add(boxL, boxR);
+setBoxes();
+
+
+
+window.addEventListener("resize", onWindowResize, false);
+
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+	
+  setBoxes();
+}
+
+function setBoxes(){
+
+	ndc.set(-1, 0);
+  raycaster.setFromCamera(ndc, camera);
+	raycaster.ray.at(3, boxL.position);
+
+  ndc.set(1, 0);
+  raycaster.setFromCamera(ndc, camera);
+  raycaster.ray.at(3, boxR.position);
+
+}
+</script>
+</html>

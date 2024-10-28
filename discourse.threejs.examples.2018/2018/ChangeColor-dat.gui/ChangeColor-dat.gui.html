@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!-- 
+https://discourse.threejs.org/t/select-objects-with-mouse-and-change-color-with-dat-gui/4804 -->
+<!-- https://codepen.io/prisoner849/pen/qQEwyO -->
+
+<!-- see also https://discourse.threejs.org/t/change-material-to-wireframe-in-imported-ply-file-solved/5089 -->
+
+<head>
+  <title> ChangeColor-dat.gui </title>
+  <meta charset="utf-8" />
+  <style>
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.98.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/dat.gui.min.0.7.2.js"></script>
+
+<script>
+
+// @author Brabbit_640, prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.setScalar(50);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+var canvas = renderer.domElement;
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, canvas);
+
+var cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+var boxMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+
+var geometry1 = new THREE.CylinderBufferGeometry(5, 5, 20, 32);
+var cylinder = new THREE.Mesh(geometry1, cylinderMaterial);
+cylinder.position.x = -20;
+scene.add(cylinder);
+
+var geometry2 = new THREE.SphereBufferGeometry(7, 32, 32);
+var sphere = new THREE.Mesh(geometry2, sphereMaterial);
+scene.add(sphere);
+
+var geometry3 = new THREE.BoxBufferGeometry(10, 10, 10);
+var cube = new THREE.Mesh(geometry3, boxMaterial);
+cube.position.x = 20;
+scene.add(cube);
+
+var selected = cylinder;
+
+var guiControls = new function() {
+  this.color = cylinderMaterial.color.getStyle();
+};
+
+var gui = new dat.GUI();
+gui
+  .addColor(guiControls, "color")
+  .listen()
+  .onChange(function(e) {
+    selected.material.color.setStyle(e);
+  });
+
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+var objects = [cylinder, sphere, cube];
+var intersects = [];
+
+renderer.domElement.addEventListener("click", onClick);
+
+function onClick(event) {
+  mouse.x = event.clientX / window.innerWidth * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObjects(objects);
+  if (intersects.length > 0) {
+    selected = intersects[0].object;
+    guiControls.color = selected.material.color.getStyle();
+  }
+}
+
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+</script>
+</html>

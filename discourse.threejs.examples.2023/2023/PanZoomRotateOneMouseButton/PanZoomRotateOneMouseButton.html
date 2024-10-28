@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<!--  https://discourse.threejs.org/t/using-camera-with-just-one-mouse-button/47825 -->
+<!-- https://codepen.io/boytchev/pen/RwBzRwq -->
+<head>
+   <title>PanZoomRotateOneMouseButton</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> 
+    <fieldset>
+        <legend>Select action for the secondary mouse button:</legend>
+        <button id="btnPan">Pan</button>
+        <button id="btnZoom">Zoom</button>
+        <button id="btnRotate">Rotate</button>
+    </fieldset>
+</body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 10 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix( );
+  renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 3, 2 );
+    scene.add( light );
+
+
+var object = new THREE.Mesh(
+			new THREE.BoxGeometry( 1, 1, 1 ),
+    	new THREE.MeshPhongMaterial( {color:'tan', shininess: 10} )
+    );	
+		object.position.x = 0;
+		scene.add( object  );
+
+
+
+// set event handlers for button clicks
+document.getElementById('btnPan').onclick = function(){restrictOrbitControls( THREE.MOUSE.PAN )};
+document.getElementById('btnZoom').onclick = function(){restrictOrbitControls( THREE.MOUSE.DOLLY )};
+document.getElementById('btnRotate').onclick = function(){restrictOrbitControls( THREE.MOUSE.ROTATE )};
+
+
+// a function that sets the action for the right
+// mouse button and enables only this action
+function restrictOrbitControls( action )
+{
+    controls.mouseButtons = {
+        LEFT: null,
+	      MIDDLE: null,
+	      RIGHT: action
+    }
+    controls.enablePan = (action === THREE.MOUSE.PAN);
+    controls.enableZoom = (action === THREE.MOUSE.DOLLY);
+    controls.enableRotate = (action === THREE.MOUSE.ROTATE);
+}
+
+
+//restrictOrbitControls( THREE.MOUSE.PAN );
+//restrictOrbitControls( THREE.MOUSE.DOLLY );
+restrictOrbitControls( THREE.MOUSE.ROTATE );
+
+function animationLoop( t )
+{
+    controls.update( );
+	  renderer.render( scene, camera );
+}
+
+</script>
+</html>

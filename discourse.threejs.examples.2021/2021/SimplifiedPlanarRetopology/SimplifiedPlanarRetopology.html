@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/ability-to-draw-a-mesh/24419/3 -->
+<!-- https://codepen.io/mjurczyk/pen/JjKXVbo -->
+<head>
+  <title> SimplifiedPlanarRetopology </title>
+  <meta charset="utf-8" />
+  <style>
+	* {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+
+<!-- <link href="https://fonts.googleapis.com/css2?family=Baloo+Tamma+2&display=swap" rel="stylesheet">  -->
+<script src="../js/three.min.125.js"></script>
+<script src="../js/OrbitControls.125.js"></script>
+<script src="../js/GLTFLoader.125.js"></script>
+
+<script>
+
+// @author mjurczyk
+
+let camera, scene, renderer, controls, points = [], pointsGroup, mouse, raycaster;
+
+const pointMesh = new THREE.Mesh(new THREE.SphereBufferGeometry(0.1, 5, 5), new THREE.MeshStandardMaterial({ color: 0xff00ff }));
+const raycastPlane = new THREE.Mesh(new THREE.PlaneBufferGeometry(100.0, 100.0, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0, transparent: true, side: THREE.DoubleSide }));
+
+const selectPoint = (x, y, z) => {
+  const pointMeshClone = pointMesh.clone();
+  pointsGroup.add(pointMeshClone);
+  
+  if (!points[0]) {
+    // Create first point
+    pointMeshClone.position.set(x, y, z);
+    points[0] = pointMeshClone;
+
+    // Align selection plane (perpendicular to the ground) with the first point and move a bit away from the camera
+    raycastPlane.position.set(0, 0, z + 0.1 * (camera.getWorldDirection().z >= 0 ? 1 : -1));
+    pointsGroup.add(raycastPlane);
+  } else if (!points[1]) {
+    // Create end point aligned with the first one (ex. along x-plane)
+    pointMeshClone.position.set(x, y, points[0].position.z);
+    points[1] = pointMeshClone;
+    
+    createSelection(points);
+  } else {
+    // Unset points
+    clearGroup(pointsGroup);
+    points = [];
+  }
+}
+
+const createSelection = ([ startPoint, endPoint ] = [], { color } = {}) => {
+  // Draw plane between 4 generated points
+  let selectionGroup = pointsGroup.getObjectByName('selection');
+
+  if (!selectionGroup) {
+    selectionGroup = new THREE.Group();
+    selectionGroup.name = 'selection';
+    pointsGroup.add(selectionGroup);
+  } else {
+    clearGroup(selectionGroup);
+  }
+
+  // Create second horizontal point
+  const secondHorizontalPoint = pointMesh.clone();
+  
+  secondHorizontalPoint.position.set(endPoint.position.x, startPoint.position.y, startPoint.position.z);
+  selectionGroup.add(secondHorizontalPoint);
+
+  // Create second vertical point
+  const secondVerticalPoint = pointMesh.clone();
+  
+  secondVerticalPoint.position.set(startPoint.position.x, endPoint.position.y, startPoint.position.z);
+  selectionGroup.add(secondVerticalPoint);
+  
+  const shape = new THREE.Shape();
+  const shapeCentrePoint = (endPoint.position.x - startPoint.position.x) / 2;
+
+  [secondHorizontalPoint, endPoint, secondVerticalPoint, startPoint].forEach((point, index) => {
+    shape[index === 0 ? 'moveTo' : 'lineTo'](point.position.x - startPoint.position.x, point.position.y);
+  });
+  
+  const shapeMesh = new THREE.Mesh(new THREE.ShapeBufferGeometry(shape), new THREE.MeshStandardMaterial({ color: color || 0xff00ff, opacity: 0.5, transparent: true }));
+  shapeMesh.position.x -= shapeCentrePoint;
+  
+  // Pivot wrapper is useful when flipping the mesh later
+  const shapePivot = new THREE.Group();
+  shapePivot.add(shapeMesh);
+  shapePivot.position.z = startPoint.position.z;
+  shapePivot.position.x = startPoint.position.x + shapeCentrePoint;
+  
+  // Toggle this to change mesh rotation behaviour
+  const pointPlaneAtTheCamera = false;
+  
+  if (pointPlaneAtTheCamera) {
+    // Turn the rectangle towards camera (directionally, not only side-wise)
+    shapePivot.lookAt(camera.position);
+    shapePivot.rotation.x = 0;
+    shapePivot.rotation.z = 0;
+  } else {
+    // Flip created mesh towards the camera (side-wise only), mesh will always align with its axis instead of the camera
+    shapePivot.rotation.y = camera.getWorldDirection().z >= 0 ? Math.PI : 0; 
+  }
+  
+  selectionGroup.add(shapePivot);
+}
+
+// NOTE You can safely ignore anything below this line - it's only world creation and raycasting code
+
+const clearGroup = (group) => {
+  while (group.children.length) {
+    group.remove(group.children[0]);
+  }
+}
+
+const get3DCursorPosition = () => {
+  if (!raycaster) {
+    return;
+  }
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const hits = raycaster.intersectObjects(scene.children, true);
+
+  if (hits && hits[0]) {
+    const { point } = hits[0];
+    const raycastSensitivity = 0.5;
+
+    return {
+      x: Math.round(point.x / raycastSensitivity) * raycastSensitivity,
+      y: Math.round(point.y / raycastSensitivity) * raycastSensitivity,
+      z: point.z
+    };
+  }
+};
+
+const createWorld = () => { // https://cdn.wtlstudio.com/common-ptr.wtlstudio.com/1fcaf926-c1ba-4b2d-bb28-c500e4de1a9d.glb
+  (new THREE.GLTFLoader()).load('1fcaf926-c1ba-4b2d-bb28-c500e4de1a9d.glb', (model) => {
+    const house = model.scene.clone();
+    house.scale.set(0.2, 0.2, 0.2);
+    house.position.set(0, -0.5, 0);
+    
+    house.traverse(child => {
+      if (child.material) {
+        child.material = new THREE.MeshStandardMaterial({ color: 0x9999ff, roughness: 0.75, metalness: 0.1 });
+        child.castShadow = true;
+      }
+    });
+
+    scene.add(house);
+    
+    const ground = new THREE.Mesh(new THREE.PlaneBufferGeometry(10, 10), new THREE.MeshStandardMaterial({ color: 0xffff99 }));
+    ground.rotateX(-Math.PI / 2);
+    ground.receiveShadow = true;
+    scene.add(ground);
+    
+    pointsGroup = new THREE.Group();
+    scene.add(pointsGroup);
+    
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    camera.lookAt(house.position);
+  });
+};
+
+const init = () => {
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000.0);
+  camera.position.set(-5, 5, 7);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x333333);
+
+  scene.add(new THREE.HemisphereLight(0xffffcc, 0x19bbdc, 0.75));
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+
+  document.body.appendChild(renderer.domElement);
+  
+  const directionalLight = new THREE.DirectionalLight(0xffffcc, 0.5);
+  directionalLight.position.set(5, 5, 5);
+  directionalLight.castShadow = true;
+  scene.add(directionalLight);
+  
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+  
+  createWorld();
+}
+
+const animate = () => {
+  requestAnimationFrame(animate);
+
+  renderer.render(scene, camera); 
+}
+
+window.addEventListener('mousemove', (event) => {
+  if (!mouse) {
+    return;
+  }
+
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  if (points.length === 1) {
+    const point = get3DCursorPosition();
+
+    if (point) {
+      point.y = Math.max(point.y, points[0].position.y + 1.0);
+
+      createSelection([ points[0], { position: point } ], { color: 0xffffff });
+    }
+  }
+});
+
+window.addEventListener('click', (event) => {
+  if (!raycaster) {
+      return;
+  }
+
+  const point = get3DCursorPosition();
+
+  if (point) {
+    if (points.length === 1) {
+      point.y = Math.max(point.y, points[0].position.y + 1.0);
+    } else {
+      point.y = Math.max(point.y, 0);
+    }
+
+    selectPoint(point.x, point.y, point.z);
+  }
+})
+
+init();
+animate();
+
+</script>
+</html>

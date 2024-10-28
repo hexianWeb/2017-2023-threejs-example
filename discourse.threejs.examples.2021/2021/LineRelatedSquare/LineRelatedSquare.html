@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/line-related-square/22465/3 -->
+<!-- https://jsfiddle.net/prisoner849/owpz94ay/ -->
+<head>
+  <title> LineRelatedSquare </title>
+  <meta charset="utf-8" />
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.124.js"; 
+import {  OrbitControls } from "../jsm/OrbitControls.124.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let grid = new THREE.GridHelper(10, 8, "white");
+grid.rotation.x = Math.PI * 0.5;
+scene.add(grid);
+
+let basePts = []
+for(let i = 0; i < 5; i++){
+	basePts.push(new THREE.Vector2(i * 2.5 - 5, THREE.MathUtils.randFloat(-5, 5)));
+}
+
+let v1 = new THREE.Vector2();
+let v2 = new THREE.Vector2();
+let v3 = new THREE.Vector2();
+let v4 = new THREE.Vector2();
+let vD = new THREE.Vector2(); //direction
+let vN = new THREE.Vector2(); //normal
+for(let i = 0; i < basePts.length - 1; i++){
+	v1.copy(basePts[i]);
+  v2.copy(basePts[i+1]);
+	vD.subVectors(v2, v1).normalize();
+  vN.set(-vD.y, vD.x);
+  v3.addVectors(v1, vN);
+  v4.addVectors(v2, vN);
+  
+  let rg = new THREE.PlaneBufferGeometry();
+  rg.attributes.position.setXY(0, v3.x, v3.y);
+  rg.attributes.position.setXY(1, v4.x, v4.y);
+  rg.attributes.position.setXY(2, v1.x, v1.y);
+  rg.attributes.position.setXY(3, v2.x, v2.y);
+  
+  let rm = new THREE.MeshBasicMaterial({color: Math.random() * 0x7f7f7f + 0x7f7f7f, wireframe: true});
+  let ro = new THREE.Mesh(rg, rm);
+  scene.add(ro);
+}
+
+let points = new THREE.Points(new THREE.BufferGeometry().setFromPoints(basePts), new THREE.PointsMaterial({size: 0.25, color: "yellow"}));
+scene.add(points);
+
+let line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(basePts), new THREE.LineBasicMaterial({color: "aqua"}));
+scene.add(line);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

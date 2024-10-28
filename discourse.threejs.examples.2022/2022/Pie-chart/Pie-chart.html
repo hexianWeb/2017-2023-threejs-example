@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/help-me-to-port-a-shadertoy-shader-to-three-js/35505/6 -->
+<!-- https://codepen.io/prisoner849/pen/zYPeGqw -->
+<head>
+  <title> Pie-chart </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 2000);
+camera.position.set(0, 1, 1).setLength(12);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+window.addEventListener("resize", onWindowResize);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper());
+
+let light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let path = new THREE.Path();
+path.moveTo(0, -0.5);
+path.lineTo(4, -0.5);
+path.absarc(4, 0, 0.5, Math.PI * 1.5, Math.PI * 0.5);
+path.lineTo(0, 0.5);
+
+let data = [
+  new THREE.Vector4(1, 0, 0, 10),
+  new THREE.Vector4(0, 1, 0, 20),
+  new THREE.Vector4(0, 0, 1, 30),
+  new THREE.Vector4(1, 1, 0, 40),
+  new THREE.Vector4(1, 0, 1, 50),
+  new THREE.Vector4(0, 1, 1, 60),
+];
+const sumTotal = data.map(item => item.w).reduce((prev, curr) => prev + curr, 0);
+
+let dataString = [];
+let aStart = Number.MIN_VALUE;
+for(let i = 0; i < data.length; i++){
+  let d = data[i];
+  dataString.push(
+    `col = mix(col, vec3(${d.x}, ${d.y}, ${d.z}), step(${aStart} * PI2, angle));`
+  )
+  aStart += (d.w / sumTotal);
+}
+
+
+let g = new THREE.LatheGeometry(path.getPoints(50), 72);
+let m = new THREE.MeshLambertMaterial({
+  //color: 0x00ff7f,
+  //wireframe: true,
+  onBeforeCompile: shader => {
+    shader.vertexShader = `
+        varying vec3 vPos;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+        vPos = position;
+      `
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+        #define ss(a, b, c) smoothstep(a, b, c)
+        varying vec3 vPos;
+      ${shader.fragmentShader}
+    `.replace(
+      `vec4 diffuseColor = vec4( diffuse, opacity );`,
+      `
+      vec3 col = diffuse;
+      float angle = mod(atan(vPos.x, -vPos.z) + PI2, PI2);
+      
+      ${dataString.join("\n")}
+      
+      //col = mix(diffuse, col, clamp(sign(vPos.y), 0., 1.));
+      vec4 diffuseColor = vec4( col, opacity );
+      `
+    );
+    //console.log(shader.fragmentShader);
+  }
+})
+let o = new THREE.Mesh(g, m);
+o.position.y = 0.5;
+o.rotation.y = Math.PI;
+scene.add(o);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth, innerHeight);
+
+}
+</script>
+</html>

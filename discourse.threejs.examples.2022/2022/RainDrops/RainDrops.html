@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/uncaught-push-problem/37206/2 -->
+ <!-- https://jsfiddle.net/cpq7aug8/1/ -->
+<head>
+  <title> RainDrops </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.139.js"></script>
+
+<script>
+
+// @author  Mugen87
+
+let camera, scene, renderer;
+
+let rain;
+const velocity = [];
+
+init();
+animate();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 400;
+
+  scene = new THREE.Scene();
+
+  const geometry = new THREE.BufferGeometry();
+  const vertices = [];
+
+  for (let i = 0; i < 1000; i++) {
+    var rainDrop = new THREE.Vector3(
+      Math.random() * 400 - 200,
+      Math.random() * 500 - 250,
+      Math.random() * 400 - 200
+    );
+
+    vertices.push(rainDrop.x, rainDrop.y, rainDrop.z);
+    velocity.push(0);
+
+  }
+
+  const positionAttribute = new THREE.Float32BufferAttribute(vertices, 3)
+
+  positionAttribute.setUsage(THREE.DynamicDrawUsage);
+  geometry.setAttribute('position', positionAttribute);
+
+  const material = new THREE.PointsMaterial({
+    color: 0xaaaaaa,
+    size: 1,
+    transparent: true
+  });
+  rain = new THREE.Points(geometry, material);
+  scene.add(rain);
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  const positionAttribute = rain.geometry.getAttribute('position');
+
+  for (let i = 0; i < positionAttribute.count; i++) {
+
+    velocity[i] -= 0.1 + Math.random() * 0.1;
+
+    let y = positionAttribute.getY(i);
+
+    y += velocity[i];
+
+    if (y < -200) {
+
+      y = 200;
+      velocity[i] = 0;
+
+    }
+
+    positionAttribute.setY(i, y);
+
+  }
+
+  positionAttribute.needsUpdate = true;
+
+  rain.rotation.y += 0.002;
+
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/boxhelper-generates-incorrect-bounding-box/31340/3 -->
+<!-- https://codepen.io/boytchev/pen/eYLxqjM -->
+<head>
+  <title>BoundingBoxAroundRotatedModel</title>
+  <meta charset="utf-8" />
+    <style>
+        body {
+        overflow: hidden;
+        margin: 0;
+            text-align: center;
+        }
+        
+        button {
+                margin: 1em;
+                padding: 0.5em;
+        }
+    </style>
+</head>
+
+<body> 
+    <button id="randomize">Randomize orientation</button>
+</body>
+
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+import { GLTFLoader } from '../jsm/GLTFLoader.149.js';
+
+// general setup, boring, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 10 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+// load a GLTF model 
+//
+// Car Kit (1.4)
+// Created/distributed by Kenney (www.kenney.nl)
+// License: (Creative Commons Zero, CC0)
+// http://creativecommons.org/publicdomain/zero/1.0/
+        // https://boytchev.github.io/suica/assets/models/cars/tractor.glb
+var modelURL = './tractor.glb',
+		box = new THREE.Box3(),
+		model,
+		helper;
+
+var loader = new GLTFLoader();
+		loader.load( modelURL, gltf => {
+				model = gltf.scene;
+				box.setFromObject( model, true );
+
+				// fix material (metalness must be 0)
+				model.traverse( child =>
+				{
+						if( child.isMesh ) child.material.metalness=0;
+				} );
+			
+				// add bounding box helper
+				helper = new THREE.Box3Helper( box, 'crimson' );
+			
+				scene.add( model, helper );
+		} );
+
+
+document.getElementById( 'randomize' ).addEventListener( 'click', randomize );
+
+function randomize( )
+{
+		model.rotation.set( 7*Math.random(), 7*Math.random(), 7*Math.random() );	
+		box.setFromObject( model, true );
+}
+
+
+function animationLoop( t )
+{
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

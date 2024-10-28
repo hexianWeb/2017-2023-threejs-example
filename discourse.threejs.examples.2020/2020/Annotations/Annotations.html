@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-create-sketchfab-like-annotations-with-three-js/12595/11 -->
+<!-- https://jsfiddle.net/x8L1nwfh/   and more in the post -->
+<head>
+  <title> Annotations  </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin: 0;
+	}
+  </style>  
+</head>
+
+<body> </body>
+	
+<script src="../js/three.min.112.js"></script>
+	
+<script>
+
+// @author makc3d
+
+var camera, scene, renderer;
+var geometry, material, mesh, mesh2;
+
+// more hacking, I suppose...
+function updateMatrixWorld (force) {
+	this.quaternion.set (
+		this.parent.quaternion.x,
+		this.parent.quaternion.y,
+		this.parent.quaternion.z,
+		-this.parent.quaternion.w
+  );
+  THREE.Object3D.prototype.updateMatrixWorld.call (this, force);
+}
+
+var loader = new THREE.TextureLoader();
+loader.crossOrigin = "anonymous"; // https://i.imgur.com/Y2iD43A_d.jpg
+loader.load("Y2iD43A_d.jpg", function (map) {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+
+    geometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 );
+    material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+geometry = new THREE.PlaneGeometry( 0.2, 0.2 );
+material = new THREE.MeshBasicMaterial({ map: map });
+
+mesh2 = new THREE.Mesh( geometry, material );
+mesh2.updateMatrixWorld = updateMatrixWorld;
+mesh2.position.set (0.4, 0, 0);
+mesh.add( mesh2 );
+
+material = new THREE.MeshBasicMaterial({ map: map,
+	// hacky time
+  opacity: 0.3, transparent: true, depthTest: false
+});
+
+mesh2 = new THREE.Mesh( geometry, material );
+mesh2.updateMatrixWorld = updateMatrixWorld;
+mesh2.position.set (0.4, 0, 0);
+mesh.add( mesh2 );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+animate();
+});
+
+function animate() {
+
+    requestAnimationFrame( animate );
+
+    mesh.rotation.x += 0.01;
+    mesh.rotation.y += 0.02;
+
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

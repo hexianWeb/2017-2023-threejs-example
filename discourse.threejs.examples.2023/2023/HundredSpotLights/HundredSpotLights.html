@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/spotlight-limit-how-to-display-projection-surfaces/48251/4 -->
+<!-- https://codepen.io/boytchev/pen/VwGaGoW -->
+<head>
+  <title>HundredSpotLights</title>
+  <meta charset="utf-8" />
+   <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+// general setup, traditional, except that the auto clear is turned off
+
+var scene = new THREE.Scene();
+    //scene.background = new THREE.Color( 0 );
+		scene.add( new THREE.AmbientLight( 'white', 0.1));
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 50, 100 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true, alpha: true, preserveDrawingBuffer: true } );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+		renderer.autoClear = false;
+		renderer.clear();
+
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+
+// next comment
+
+// the ground uses custom blending as we will blend many
+// copies of the scene, each with a different light
+
+var ground = new THREE.Mesh(
+			new THREE.BoxGeometry( 100, 1, 100, 10, 1, 10 ),
+    	new THREE.MeshPhongMaterial( {
+					color: 'white',
+					shininess: 100,
+					blending: THREE.CustomBlending,
+					blendEquation: THREE.MaxEquation,
+					blendSrc: THREE.SrcColorFactor,
+					blendDst: THREE.DstColorFactor
+			 } )
+    );	
+		scene.add( ground );
+
+
+// add a ball, to have something becides the ground
+
+var ball = new THREE.Mesh(
+				new THREE.IcosahedronGeometry( 5, 10 ),
+				ground.material
+		);
+scene.add( ball );
+
+
+// lights
+
+const N = 100; // number of lights
+
+var lights = []; // array of passive randomly created lights
+
+for( var i=0; i<N; i++ )
+{
+		// random light position
+		var x = THREE.MathUtils.randFloat(-30,30),
+				y = THREE.MathUtils.randFloat(5,20),
+				z = THREE.MathUtils.randFloat(-30,30);
+
+		// random light color
+		var color = new THREE.Color().setHSL( Math.random(), 1, 0.5 );
+	
+		// the light itself
+		var light = new THREE.SpotLight( color, 0.5 );
+				light.angle = 0.5;
+    		light.position.set( x, y, z );
+				light.penumbra = 1;
+	
+		// and its target, slightly shifted
+		x += THREE.MathUtils.randFloat(-15,15);
+		z += THREE.MathUtils.randFloat(-15,15);
+		var target = new THREE.Object3D();
+				target.position.set( x, 0, z );
+				
+				light.target = target;
+				scene.add( target );
+	
+		lights.push( light );
+}
+
+
+// the main light of the scene, just one light
+
+var mainLight = lights[0].clone();
+		scene.add( mainLight );
+
+
+// animation cycle that makes the magic, it also
+// forces the fan of my laptop to make vroooooom
+
+function animationLoop( t )
+{
+    controls.update( );
+	
+		ball.position.setFromSphericalCoords( 20, Math.PI/2, t/1000 );
+	
+		renderer.clear();
+
+		// render the lights one by one, this can be significantly
+		// optimized if lights are processed in batches, not 1 by 1
+	
+		for( var i=0; i<N; i++)
+		{
+				mainLight.position.copy( lights[i].position );
+				mainLight.color = lights[i].color;
+				mainLight.target = lights[i].target;
+				renderer.render( scene, camera );
+		}
+
+}
+
+</script>
+</html>

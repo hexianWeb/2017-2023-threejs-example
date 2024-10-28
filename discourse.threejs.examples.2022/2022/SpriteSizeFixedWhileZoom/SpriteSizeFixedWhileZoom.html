@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/making-sprite-size-fixed-while-zoom/42804/2 -->
+<!-- https://jsfiddle.net/tfoller/n9a1u3v4 -->
+<head>
+  <title> SpriteSizeFixedWhileZoom </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        margin: 0;
+    }
+  </style>
+</head>
+<script src="../js/three.min.144.js"></script>
+<script src="../js/OrbitControls.144.js"></script>
+<body> </body>
+
+<script>
+
+// @author tfoller
+
+const cont = document.documentElement;
+const [w, h] = [cont.clientWidth - 20, cont.clientHeight - 20];
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 100);
+camera.position.set(10, 10, 10);
+
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(w, h);
+document.body.appendChild(renderer.domElement);
+
+const hlp = new THREE.AxesHelper(3);
+scene.add(hlp);
+
+const map = new THREE.TextureLoader().load(
+  
+  'sunflower.png' // 'https://source.unsplash.com/random/200x200'  // changed to local by hofk
+);
+const material = new THREE.SpriteMaterial({
+  map: map
+});
+
+const sprite_scale = 3;
+const sprite = new THREE.Sprite(material);
+sprite.scale.set(sprite_scale, sprite_scale);
+const virtual_d = sprite.position.distanceTo(camera.position) / sprite_scale;
+
+scene.add(sprite);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+const render = () => {
+  renderer.render(scene, camera);
+};
+
+const animate = () => {
+
+  requestAnimationFrame(animate);
+
+  render();
+
+};
+
+document.addEventListener('wheel', scaler);
+
+function scaler() {
+  const scale = sprite.position.distanceTo(camera.position) / virtual_d;
+  sprite.scale.set(scale, scale);
+}
+
+animate();
+
+</script>
+</html>

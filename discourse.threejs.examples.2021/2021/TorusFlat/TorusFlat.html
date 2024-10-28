@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/best-way-to-flatten-the-top-and-bottom-of-a-torus-geometry/23620/6 -->
+<head>
+  <title> TorusFlat </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+  </style>
+</head>
+
+<body></body>
+
+	<script src="../js/three.min.125.js"></script>
+	<script src="../js/OrbitControls.125.js"></script>
+	
+<script>
+
+// @author hofk
+
+const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
+camera.position.set( 5, 4, 3 );
+const scene = new THREE.Scene( );
+
+const light = new THREE.PointLight( );
+light.position.set( 2, 5, 4 );
+scene.add( light );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+controls = new THREE.OrbitControls( camera, renderer.domElement );
+const plane = new THREE.GridHelper( 5, 10 );
+scene.add( plane );
+
+const geometry = new THREE.TorusGeometry( 1, 0.5, 16, 100 );
+const material = new THREE.MeshPhongMaterial( { color: 0xff00ff, wireframe: false } )
+const mesh = new THREE.Mesh( geometry, material );
+
+let pos = geometry.attributes.position;
+let v = new THREE.Vector3(); 
+
+//const a =  0.4; // asymmetrically
+//const b = -0.1;
+
+for( let i = 0; i < pos.count; i++ ){
+
+	v.fromBufferAttribute( pos, i );
+	pos.setZ( i, Math.abs( v.z ) > 0.3 ? Math.sign( v.z ) * 0.3 : v.z ); // symmetrical
+	
+	// if ( v.z > a ) v.z = a;
+	// if ( v.z < b ) v.z = b;
+	// pos.setZ( i, v.z );
+	
+}
+
+geometry.computeVertexNormals( );
+scene.add( mesh );
+
+animate();
+
+function animate( ) {
+
+  requestAnimationFrame( animate );
+  renderer.render( scene, camera );
+  
+}
+
+</script>
+</html>

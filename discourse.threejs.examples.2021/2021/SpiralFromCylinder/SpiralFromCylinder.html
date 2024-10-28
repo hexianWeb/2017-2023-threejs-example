@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/bend-cylinder-on-specific-path/23295/3 -->
+ 
+<head>
+  <title> SpiralFromCylinder </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	margin: 0;
+	}  
+  </style>
+</head>
+
+<body></body>
+
+	<script src="../js/three.min.125.js"></script>
+	<script src="../js/OrbitControls.125.js"></script>
+	
+<script>
+
+// @author prisoner849 + hofk
+
+const camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 1000 );
+camera.position.set( 20, 5, 30 );
+const scene = new THREE.Scene( );
+const light = new THREE.PointLight( );
+light.position.set( 15, 25, 40 );
+scene.add( light );
+const renderer = new THREE.WebGLRenderer( { antialias: true} );
+renderer.setSize (window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+const plane = new THREE.GridHelper( 25, 25 );
+scene.add( plane );
+
+const rTop = 0.4;
+const rBtm = 1.4;
+const R = 10; // radius of the spiral
+const T = 4.5; // twists of the spiral
+const heightSegments = 500;
+const radialSegments = 10;
+const slope = 12;
+let s = 0;
+const geometry = new THREE.CylinderGeometry( rTop, rBtm, T * Math.PI * 2, radialSegments, heightSegments, true );
+const position = geometry.attributes.position;
+geometry.translate( R, T * Math.PI, 0 );
+const v = new THREE.Vector3( );
+const w = new THREE.Vector3( );
+
+for( let i = 0 ; i < position.count; i++ ) {
+	
+	s = i % ( radialSegments + 1 ) === 0 ? s + radialSegments + 1 : s; // slope
+	v.fromBufferAttribute( position, i );	
+	position.setXYZ( i,  Math.cos( v.y ) * v.x,  Math.sin( v.y ) * v.x, v.z + slope * s / heightSegments / radialSegments );
+	
+}
+
+v.fromBufferAttribute( position, 0 );
+w.fromBufferAttribute( position,  position.count - 1 );
+geometry.translate( 0, 0, - ( w.z - v.z ) / 2 );
+geometry.computeVertexNormals( );
+
+const mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( { side: THREE.DoubleSide, wireframe: false } ) );
+scene.add( mesh );
+
+mesh.rotation.x = Math.PI / 2;
+ 
+animate( );
+
+function animate( ) {
+
+  requestAnimationFrame( animate );
+  mesh.rotation.z += 0.01;
+  renderer.render( scene, camera );
+  
+}
+
+</script>
+</html>

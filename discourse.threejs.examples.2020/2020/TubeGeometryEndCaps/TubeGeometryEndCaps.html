@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/why-is-my-tube-geometry-faceless/14439/5 -->
+<!-- from 2019 https://discourse.threejs.org/t/end-caps-of-tubegeometry/9655/6 -->
+<!-- https://jsfiddle.net/prisoner849/yueLpdb2/ -->
+<head>
+  <title> TubeGeometryEndCaps </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.115.js"></script>
+<script src="../js/OrbitControls.115.js"></script>
+
+<script>
+
+// @author prisoner849
+ 
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 2.5, 5);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper());
+
+var curve = new THREE.CatmullRomCurve3([
+	new THREE.Vector3(),
+  new THREE.Vector3(2,0, 0),
+  new THREE.Vector3(2, 2, 2)
+]);
+
+var geom = new THREE.TubeBufferGeometry( curve, 10, 0.5, 10, false );
+var mat = new THREE.MeshBasicMaterial({color:"aqua", wireframe:true});
+var tube = new THREE.Mesh(geom, mat);
+scene.add(tube);
+
+var pos = geom.attributes.position;
+var startPoints = [];
+startPoints.push(curve.getPoint(0));
+for(let i = 0; i <= geom.parameters.radialSegments; i++){
+
+	startPoints.push(new THREE.Vector3().fromBufferAttribute(pos, i));
+  
+}
+console.log(startPoints.length);
+
+var pointsStartGeom = new THREE.BufferGeometry().setFromPoints(startPoints);
+var psgPos = pointsStartGeom.attributes.position;
+var indexStart = [];
+for (let i = 1; i < psgPos.count - 1; i++){
+	indexStart.push(0, i, i+1);
+}
+pointsStartGeom.setIndex(indexStart);
+
+var pointsStart = new THREE.Points( pointsStartGeom, new THREE.PointsMaterial({size: 0.25, color: "yellow"}));
+console.log(pointsStartGeom);
+scene.add(pointsStart);
+
+var shapeStart = new THREE.Mesh( pointsStartGeom, new THREE.MeshBasicMaterial({color: "orange"}));
+scene.add(shapeStart);
+
+var endPoints = [];
+endPoints.push(curve.getPoint(1));
+for (let i = (geom.parameters.radialSegments + 1) * geom.parameters.tubularSegments; i < pos.count; i++){
+	
+	endPoints.push(new THREE.Vector3().fromBufferAttribute(pos, i));
+
+}
+
+var pointsEndGeom = new THREE.BufferGeometry().setFromPoints(endPoints);
+var pegPos = pointsEndGeom.attributes.position;
+var indexEnd = [];
+for (let i = 1; i < pegPos.count - 1; i++){
+	indexEnd.push(0, i+1, i);
+}
+pointsEndGeom.setIndex(indexEnd);
+
+var pointsEnd = new THREE.Points( pointsEndGeom, new THREE.PointsMaterial({color: "magenta", size: 0.25}));
+scene.add(pointsEnd);
+
+var shapeEnd = new THREE.Mesh( pointsEndGeom, new THREE.MeshBasicMaterial({color: "red"}));
+scene.add(shapeEnd);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera)
+})
+</script>
+ 
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/convert-3d-design-to-2d-and-reverse/35670/12 -->
+<!-- https://jsfiddle.net/u3c7e8fo/18/ -->
+<head>
+  <title> 2D-3D-rendering </title>
+  <meta charset="utf-8" />
+  <style>
+      *{
+        margin: 0px;
+        padding: 0px;
+    }
+    #main{
+        width: 100vw;
+        height: 100vh;
+        display: grid;
+        grid-template-columns: 50% 50%;
+        grid-template-rows: 100%;
+    }
+    #twoD{
+        grid-column: 2;        
+        grid-row: 1;        
+        width:100%;
+        height: 100%;
+    }
+    #threeD{
+        grid-column: 1;        
+        grid-row: 1;        
+        width:100%;
+        height: 100%;
+        background-color: blueviolet;
+    }
+  </style>   
+</head>
+
+<body>
+    <div id="main">
+        <div id="twoD"></div>
+        <div id="threeD"></div>
+    </div>
+</body>
+
+ <!-- <script src="https://unpkg.com/konva@8/konva.min.js"></script>   -->
+ <script src="../js/konva@8.3.4_konva.min.js"></script> 
+ 
+<script type="module">
+
+// @author abstract
+
+import * as THREE from '../jsm/three.module.137.js';
+
+class demo{
+    constructor(options){
+        this.container = options.threeD;
+        this.scene = new THREE.Scene();
+        this.width = this.container.offsetWidth;
+        this.height = this.container.offsetHeight;
+        this.camera = new THREE.PerspectiveCamera( 70, 
+            this.width / this.height, 0.01, 50 );
+        this.camera.position.z = 8.8;
+        this.camera.position.y = 0.4;
+
+        this.renderer = new THREE.WebGLRenderer( { antialias: false } );
+        this.renderer.setSize( this.width, this.height );
+        this.container.appendChild( this.renderer.domElement );
+        this.setupResize();
+        this.ground();
+        this.init2D(options.twoD);
+    }
+
+    init2D(container){
+        this.twoDWidth = container.offsetWidth;
+        this.twoDHeight = container.offsetHeight;
+        // first we need to create a stage
+        var stage = new Konva.Stage({
+            container: container,   // id of container <div>
+            width: this.twoDWidth,
+            height: this.twoDHeight
+        });
+        
+        // then create layer
+        var layer = new Konva.Layer();
+        
+        // create our shape
+        var circle = new Konva.Circle({
+            x: stage.width() / 2,
+            y: stage.height() / 2,
+            radius: 70,
+            fill: 'red',
+            stroke: 'black',
+            strokeWidth: 4,
+            draggable: true
+        });
+        this.sphere(circle.attrs.x,circle.attrs.y);
+        
+        circle.on('xChange', (function() {
+            this.sphereMesh.position.x = circle.attrs.x*(10.0/this.twoDWidth)-5.0;
+            this.sphereMesh.position.z = circle.attrs.y*(10.0/this.twoDHeight)-5.0;
+            this.sphereMesh.position.y = 0.1;        
+            this.sphereMesh.rotateAroundWorldAxis(new THREE.Vector3(0, 0, 0),new THREE.Vector3(1, 0, 0),Math.PI / 4.0);    
+        }).bind(this));
+              
+        // add the shape to the layer
+        layer.add(circle);
+        
+        // add the layer to the stage
+        stage.add(layer);
+        
+        // draw the image
+        layer.draw();
+    }
+
+    setupResize(){
+        window.addEventListener('resize',this.resize.bind(this));
+    }
+
+    resize(){
+        this.width = this.container.offsetWidth;
+        this.height = this.container.offsetHeight;
+        this.renderer.setSize( this.width, this.height );
+        this.camera.aspect = this.width/this.height;
+        this.camera.updateProjectionMatrix(); 
+    }
+    render2(){
+        var time =Date.now();
+        this.renderer.render( this.scene, this.camera );
+        window.requestAnimationFrame(this.render2.bind(this))
+    }
+
+    ground() {        
+        let groundGeo = new THREE.PlaneBufferGeometry( 10,10,50,50);
+        let groundMat = new THREE.MeshBasicMaterial({color: 0x12AB32});
+
+        let groundMesh = new THREE.Mesh( groundGeo, groundMat );
+        groundMesh.rotateX(-Math.PI/4);
+        //groundMesh.rotateX(-Math.PI/2);
+        groundMesh.receiveShadow = true;
+        this.scene.add( groundMesh );
+        return groundMesh;
+    }
+
+    
+    sphere (x,y) {
+        this.sphereGeo = new THREE.SphereGeometry(0.1);
+        this.sphereMat = new THREE.MeshBasicMaterial({color:"red"});
+        this.sphereMesh = new THREE.Mesh( this.sphereGeo, this.sphereMat );
+        this.sphereMesh.position.x = x*(10.0/this.twoDWidth)-5.0;
+        this.sphereMesh.position.z = y*(10.0/this.twoDHeight)-5.0;
+        this.sphereMesh.position.y = 0.1;        
+        this.sphereMesh.rotateAroundWorldAxis(new THREE.Vector3(0, 0, 0),new THREE.Vector3(1, 0, 0),Math.PI / 4.0);
+        this.scene.add( this.sphereMesh );
+    }
+}
+
+THREE.Object3D.prototype.rotateAroundWorldAxis = function() {
+
+    // rotate object around axis in world space (the axis passes through point)
+    // axis is assumed to be normalized
+    // assumes object does not have a rotated parent
+
+    var q = new THREE.Quaternion();
+
+    return function rotateAroundWorldAxis( point, axis, angle ) {
+
+        q.setFromAxisAngle( axis, angle );
+
+        this.applyQuaternion( q );
+
+        this.position.sub( point );
+        this.position.applyQuaternion( q );
+        this.position.add( point );
+
+        return this;
+
+    }
+
+}();
+
+let v = new demo({
+    threeD: document.getElementById('threeD'),
+    twoD: document.getElementById('twoD'),
+});
+v.render2();
+
+</script>
+</html>

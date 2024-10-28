@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-use-outlineeffect-on-a-single-object/28546/2 -->
+<!-- https://jsfiddle.net/4bkurz6n/1/ -->
+<head>
+  <title> OutlineEffectOnSingleObject </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	margin: 0;
+	}
+	</style>
+</head>
+<body></body>
+
+<script src="../js/three.min.131.js"></script>
+<script src="../js/OutlineEffect.131.js"></script>
+ 
+<script>
+
+// @author Mugen87
+
+let camera, scene1, scene2, renderer, effect;
+
+init();
+render();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 4;
+
+    scene1 = new THREE.Scene();
+    scene2 = new THREE.Scene(); // outline
+
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial();
+
+    const mesh1 = new THREE.Mesh( geometry, material );
+    mesh1.position.x = - 2;
+    scene1.add( mesh1 );
+    
+    const mesh2 = new THREE.Mesh( geometry, material );
+    mesh2.position.x = 2;
+    scene2.add( mesh2 );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.autoClear = false;
+    renderer.setClearColor( 0x00ff00 );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+    
+    effect = new THREE.OutlineEffect( renderer );
+
+}
+
+function render() {
+
+		renderer.clear();
+    renderer.render( scene1, camera );
+    effect.render( scene2, camera );
+
+}
+
+</script>
+</html>

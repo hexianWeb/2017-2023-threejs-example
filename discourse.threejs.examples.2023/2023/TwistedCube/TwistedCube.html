@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-a-twisted-cube/48382/4 -->
+<!-- https://codepen.io/boytchev/pen/xxaOaRe -->
+<head>
+  <title>TwistedCube</title>
+  <meta charset="utf-8" />
+   <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+// general setup, boring, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 7 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+var object = new THREE.Mesh(
+			new THREE.BoxGeometry( 1, 1, 1, 1, 100, 1 ),
+    	new THREE.MeshPhongMaterial( {color:'tan', shininess: 10} )
+    );	
+		scene.add( object );
+
+
+// make a copy of the original geometry, it will be used
+// for absolute twisting (instead of relative twisting)
+
+object.originalGeometry = object.geometry.clone();
+
+
+// function to twist the object depending on the time
+
+function twistAgain( t )
+{
+		// get attribute buffers for current and original positions
+		var pos = object.geometry.getAttribute( 'position' ),
+				ori = object.originalGeometry.getAttribute( 'position' );
+
+		// also get attribute buffers for current and original normals
+		var npos = object.geometry.getAttribute( 'normal' ),
+				nori = object.originalGeometry.getAttribute( 'normal' );
+	
+		// scal all vertices
+		for( var i=0; i<pos.count; i++ )
+		{
+				// get the position
+				var x = ori.getX( i ),
+						y = pos.getY( i ),
+						z = ori.getZ( i );	
+			
+				// get the normal vector
+				var nx = nori.getX( i ),
+						ny = npos.getY( i ),
+						nz = nori.getZ( i );	
+			
+				// prepare rotation values
+				var alpha = 3*Math.sin(t)*y,
+						cos = Math.cos( alpha ),
+						sin = Math.sin( alpha );
+			
+				// rotate ... or twist
+				pos.setXYZ( i, x*cos-z*sin, y, x*sin+z*cos );
+				npos.setXYZ( i, nx*cos-nz*sin, ny, nx*sin+nz*cos );
+		}
+	
+		// indicate that the buffers has changed
+		pos.needsUpdate = true;
+		npos.needsUpdate = true;
+}
+
+
+function animationLoop( t )
+{
+		twistAgain( t/700 );
+    object.rotation.x = Math.sin( t/700 );
+
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

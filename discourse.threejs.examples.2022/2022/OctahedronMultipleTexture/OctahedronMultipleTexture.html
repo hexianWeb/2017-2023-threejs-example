@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/octahedrom-geometry-with-multiple-texture-images/43414/9 -->
+<!-- https://codepen.io/prisoner849/pen/vYrNpBr -->
+<head>
+  <title> OctahedronMultipleTexture </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+class Octahedron extends THREE.Mesh{
+  constructor(radius, materials){
+    let n = new THREE.Vector3(0, 1, 0);
+    let a = Math.PI * 0.5;
+    let c = new THREE.Vector2();
+    let uv = new THREE.Vector2();
+    let a2 = Math.PI * 2 / 3;
+    let pts = [];
+    let uvs = [];
+    for(let i = 0; i < 4; i++){
+      // top
+      pts.push(
+        new THREE.Vector3(0, 1, 0).applyAxisAngle(n, a * i),
+        new THREE.Vector3(0, 0, 1).applyAxisAngle(n, a * i),
+        new THREE.Vector3(1, 0, 0).applyAxisAngle(n, a * i)
+      )
+      for(let j = 0; j < 3; j++){
+          uv.set(0, 0.5).rotateAround(c, a2 * j).addScalar(0.5);
+          uvs.push(uv.x, uv.y);
+      }
+      //bottom
+      pts.push(
+        new THREE.Vector3(0, -1, 0).applyAxisAngle(n, a * i),
+        new THREE.Vector3(1, 0, 0).applyAxisAngle(n, a * i),
+        new THREE.Vector3(0, 0, 1).applyAxisAngle(n, a * i)
+      )
+      for(let j = 0; j < 3; j++){
+          uv.set(0, -0.5).rotateAround(c, a2 * j).addScalar(0.5);
+          uvs.push(uv.x, uv.y);
+      }
+    }
+    let g = new THREE.BufferGeometry().setFromPoints(pts);
+    g.scale(radius, radius, radius);
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    g.computeVertexNormals();
+    let groupStart = 0;
+    for (let i = 0; i < 8; i++) {
+      g.addGroup(groupStart, 3, i);
+      groupStart += 3;
+    }
+    
+    super(g, materials);
+  }
+}
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 0.1);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.9));
+
+let tl = new THREE.TextureLoader();
+let m = [
+  "uv_grid_opengl.jpg",
+  "758px-Canestra_di_frutta_(Caravaggio).jpg",
+  "brick_diffuse.jpg",
+  "crate.gif",
+  "colors.png",
+  "hardwood2_diffuse.jpg",
+  "sprite2.png",
+  "water.jpg"
+].map((tex) => {
+  let path = "https://threejs.org/examples/textures/";
+  return new THREE.MeshLambertMaterial({ map: tl.load(path + tex) });
+});
+let oct = new Octahedron(4, m);
+scene.add(oct);
+
+let raycaster = new THREE.Raycaster();
+let pointer = new THREE.Vector2();
+let intersected = null;
+window.addEventListener("pointerdown", event => {
+  pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+  
+  raycaster.setFromCamera(pointer, camera);
+  intersected = raycaster.intersectObject(oct);
+  if (intersected.length > 0){
+    let fId = intersected[0].faceIndex;
+    alert('Face #' + fId + ' clicked')
+  }
+})
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

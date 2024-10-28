@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-repeat-uvs-per-face-on-a-plane-that-can-be-accessed-in-fragment-shader/28676 -->
+<!-- https://jsfiddle.net/prisoner849/sct6ekw5/ -->
+<head>
+  <title> TiledByFragmentShader </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+<body></body>
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+import * as THREE from "../jsm/three.module.130.js";
+import { OrbitControls } from "../jsm/OrbitControls.130.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setClearColor(0x7f007f);
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let g = new THREE.PlaneGeometry(10, 10);
+let m = new THREE.MeshBasicMaterial({
+  color: "aqua",
+  transparent: true,
+  onBeforeCompile: shader => {
+    shader.fragmentShader = `
+      ${shader.fragmentShader}
+    `.replace(
+    	`#include <color_fragment>`,
+      `
+      	#include <color_fragment>
+        vec2 uv2 = fract(vUv * 10.);
+        diffuseColor.a = 1. - (uv2.x * uv2.y);
+      `
+    );
+  	//console.log(shader.fragmentShader)
+  }
+});
+m.defines = {"USE_UV":""};
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+renderer.setAnimationLoop(_ => { 
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

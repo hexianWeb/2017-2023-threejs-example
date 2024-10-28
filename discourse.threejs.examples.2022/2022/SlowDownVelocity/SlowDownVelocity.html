@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-do-i-progressively-slow-down-my-velocity-of-my-walk-speed-according-to-time/45039 -->
+<!-- https://jsfiddle.net/v6f29y0n/ -->
+<head>
+  <title> SlowDownVelocity </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.144.js"></script>
+
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer, mesh, clock;
+
+let speed = 1;
+const direction = new THREE.Vector3( 1, 0, 0 );
+const velocity = new THREE.Vector3();
+const displacement = new THREE.Vector3();
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 4;
+
+    scene = new THREE.Scene();
+    
+    clock = new THREE.Clock();
+
+    const geometry = new THREE.ConeGeometry( 0.2 );
+    geometry.rotateX( Math.PI * 0.5 );
+    const material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    mesh.lookAt( direction );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    
+    const delta = clock.getDelta();
+    
+    speed -= 0.2 * delta;
+    
+    speed = Math.max( speed, 0 ); // prevent negative speed
+    
+    velocity.copy( direction ).multiplyScalar( speed );
+    displacement.copy( velocity ).multiplyScalar( delta );
+    mesh.position.add( displacement );
+
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/three-js-logo-with-three-js-fiddle/16600 -->
+<!-- https://jsfiddle.net/notchris/x73a5q2v/ -->
+		<!-- see also https://codepen.io/prisoner849/pen/rNOVRmP -->
+<head>
+  <title> ThreeJS-Logo </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+		background-color: #000;
+		margin: 0px;
+		overflow: hidden;
+	}
+	</style>
+	
+	<script src="../js/tween.umd.min.18.6.0.js"></script>
+	
+</head>
+
+<body>
+<!--
+  Three.js Logo
+  Original design by mrdoob
+  Fiddle by notchris
+  Saturday, June 27, 2020
+-->
+</body>
+
+<script type="module">
+
+//@author notchris
+
+import * as THREE from "../jsm/three.module.118.js";
+import { OrbitControls } from "../jsm/OrbitControls.118.js";
+
+// Simple three.js example
+
+var mesh, renderer, scene, camera, controls, light, obj;
+
+
+init();
+animate();
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer({
+    	antialias: true
+    });
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+
+camera.position.z = 30;
+
+    // controls
+    controls = new OrbitControls( camera, renderer.domElement );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    
+    // light
+   	light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20,20, 0 );
+    scene.add( light );
+    
+      // background
+      const buffgeoBack = new THREE.BufferGeometry();
+      buffgeoBack.fromGeometry(new THREE.IcosahedronGeometry(3000, 2));
+      const back = new THREE.Mesh(
+        buffgeoBack,
+        new THREE.MeshBasicMaterial({
+          map: gradTexture([
+            [0.75, 0.6, 0.4, 0.25],
+            ["#8e9eab", "#8e9eab", "#eef2f3", "#eef2f3"]
+          ]),
+          side: THREE.BackSide,
+          depthWrite: false,
+          fog: false
+        })
+      );
+      //back.geometry.applyMatrix(new THREE.Matrix4().makeRotationZ(15*ToRad));
+      scene.add(back);
+	
+  makeLogo();
+  
+  // Tween
+  obj.children.forEach((child , i) => {
+    let start = { v: 0 };
+    let target = { v: 360 };
+    let tween = new TWEEN.Tween(start).to(target, 2000).delay(i * 100)
+    tween.yoyo()
+    tween.start()
+    tween.onUpdate(() => {
+        child.rotation.y = THREE.MathUtils.degToRad(start.v)
+    });
+  })
+
+    
+}
+
+function makeLogo () {
+	obj = new THREE.Object3D();
+  // Row 4
+  for (let i = 0; i < 4; i += 1) {
+    let t = drawTriangle(
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(4, 0, 0),
+      new THREE.Vector3(2, 3.5, 0)
+    );
+    t.translateX(4 * i);
+    obj.add(t);
+  }
+  // Row 3
+  for (let i = 0; i < 3; i += 1) {
+    let t = drawTriangle(
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(4, 0, 0),
+      new THREE.Vector3(2, 3.5, 0)
+    );
+    t.translateY(3.5);
+    t.translateX((4 * i) + 2);
+    obj.add(t);
+  }
+  // Row 2
+  for (let i = 0; i < 2; i += 1) {
+    let t = drawTriangle(
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(4, 0, 0),
+      new THREE.Vector3(2, 3.5, 0)
+    );
+    t.translateY(7);
+    t.translateX((4 * i) + 4);
+    obj.add(t);
+  }
+  // Row 1
+  let top = drawTriangle(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(4, 0, 0),
+    new THREE.Vector3(2, 3.5, 0)
+  );
+  top.translateY(10.5);
+  top.translateX(6);
+  obj.add(top);
+  scene.add(obj);
+  obj.position.x -= 3;
+  obj.position.y -= 5;
+  obj.rotation.z += THREE.MathUtils.degToRad(43.64);
+  return obj;
+}
+
+function drawTriangle (vertex1, vertex2, vertex3) {
+  let triangleGeometry = new THREE.Geometry();
+  let triangleMaterial = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    wireframe: true,
+    wireframeLinewidth: 1
+  });
+  let triangle = new THREE.Mesh(triangleGeometry, triangleMaterial);
+
+  triangleGeometry.vertices = [vertex1, vertex2, vertex3];
+  triangleGeometry.faces.push(new THREE.Face3(0, 1, 2));
+
+  triangleGeometry.center()
+
+  scene.add(triangle);
+
+  return triangle;
+}
+
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    TWEEN.update();
+    renderer.render( scene, camera );
+
+}
+
+function gradTexture(color) {
+      const c = document.createElement("canvas");
+      const ct = c.getContext("2d");
+      const size = 1024;
+      c.width = 16;
+      c.height = size;
+      const gradient = ct.createLinearGradient(0, 0, 0, size);
+      let i = color[0].length;
+      while (i--) {
+        gradient.addColorStop(color[0][i], color[1][i]);
+      }
+      ct.fillStyle = gradient;
+      ct.fillRect(0, 0, 16, size);
+      var texture = new THREE.Texture(c);
+      texture.needsUpdate = true;
+      return texture;
+    }
+
+</script>
+</html>

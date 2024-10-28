@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/buffergeometry-not-working/27976/3 -->
+<!-- https://jsfiddle.net/prisoner849/qyj43wLn/ -->
+<head>
+  <title> InstancedMeshIndividualSize </title>
+  <meta charset="utf-8" />
+<style>
+	body {
+	overflow: hidden;
+	margin: 0%;
+	}
+</style>
+<body></body>
+<script type="module">
+
+// @author prisoner849 
+
+import * as THREE from "../jsm/three.module.130.js";
+import { OrbitControls } from "../jsm/OrbitControls.130.js";
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(-100, 100, 100);
+
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1.0);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+const counter = 10000;
+
+let g = new THREE.BoxGeometry();
+let m = new THREE.MeshLambertMaterial();
+let io = new THREE.InstancedMesh(g, m, counter);
+
+let dummy = new THREE.Object3D();
+for(let i = 0; i < counter; i++){
+	dummy.position.random().subScalar(0.5).multiplyScalar(200);
+  dummy.scale.setScalar(Math.random() * 1.9 + 0.1); // individual size for each instance
+  dummy.updateMatrix();
+  
+  io.setMatrixAt(i, dummy.matrix);
+  io.setColorAt(i, new THREE.Color(Math.random(), Math.random(), Math.random()));
+}
+
+scene.add(io);
+
+renderer.setAnimationLoop( _ => {
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

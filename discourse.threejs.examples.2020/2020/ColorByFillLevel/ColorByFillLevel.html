@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/color-bottom-x-of-a-boxgeometry-using-faces/18502 -->
+<!-- https://jsfiddle.net/bq9e5c4w/ -->
+<head>
+  <title> ColorByFillLevel </title>
+  <meta charset="utf-8" />
+</head>
+
+<body> </body>
+<script src="../js/three.min.120.js"></script>
+
+<script id="vertexShader" type="x-shader/x-vertex">
+			varying vec2 vUv;
+			void main()	{
+				vUv = uv;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+			}
+</script>
+
+<script id="fragmentShader" type="x-shader/x-fragment">
+			varying vec2 vUv;
+			
+			uniform float threshold;
+
+			void main()	{
+			
+				float f = step( threshold, vUv.y );
+				
+				vec3 color1 = vec3( 1.0, 0.0, 0.0 );
+				vec3 color2 = vec3( 1.0, 1.0, 1.0 );
+				
+				vec3 color = mix( color1, color2, f );
+
+        gl_FragColor = vec4( color, 1.0 );
+
+			}
+</script>
+<script>
+
+//@author  Mugen87
+
+let camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+
+    const geometry = new THREE.PlaneBufferGeometry();
+		
+    const material = new THREE.ShaderMaterial( {
+    	uniforms: {
+      	threshold: {
+        	value: 0.2
+        }
+      },
+      vertexShader: document.getElementById( 'vertexShader' ).textContent,
+      fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+  	} );
+
+    const mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+</script>
+</html>

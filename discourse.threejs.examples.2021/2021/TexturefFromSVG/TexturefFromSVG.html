@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/problem-rendering-svg-to-texture/22626/4 -->
+<!-- https://jsfiddle.net/tfoller/81qyh0w2/14/ -->
+<head>
+  <title> TexturefFromSVG </title>
+  <meta charset="utf-8" />
+<style>
+	* {
+	margin: 0px;
+	padding: 0px;
+	}	
+	body {
+	background: #333;
+	}
+	#canvas {
+	border: solid 1px red;
+	}
+</style>
+
+<body>
+	
+<svg xmlns="http://www.w3.org/2000/svg" id="svg" viewBox="0 0 300 250" width="300" height="250">
+
+	<text x="7.875" y="28" style="font: 28px Garamond; fill: #ff66ff;">Duis aute irure dolor in </text>
+	<text x="48.43333435058594" y="61.6" style="font: 28px Garamond; fill: #ff66ff;">reprehenderit in </text>
+	<text x="33.56666564941406" y="95.2" style="font: 28px Garamond; fill: #ff66ff;">voluptate velit esse </text>
+	<text x="4.924999237060547" y="128.8" style="font: 28px Garamond; fill: #ff66ff;">cillum</text>
+	<text x="71.14166641235352" y="128.8" style="font: 28px Gabriola; fill: #ff66ff;"> </text>
+	
+	<text x="71.14166641235352" y="128.8" style="font: bold italic 28px Gill Sans MT; fill: #0099ff;">dolore eu fugiat </text>
+	<text x="47.991668701171875" y="162.4" style="font: bold italic 28px Gill Sans MT; fill: #0099ff;">nulla pariatur. </text>
+	<text x="47.34166717529297" y="196" style="font: bold italic 28px Gill Sans MT; fill: #0099ff;">Excepteur sint</text>
+	
+</svg>
+	
+<canvas width="300" height="250" id="canvas"></canvas>
+
+</body>
+
+<script type="module">
+
+// @author tfoller
+
+import * as THREE from "../jsm/three.module.124.js"; 
+
+let camera, scene, renderer;
+
+const loader = new THREE.TextureLoader();
+const img = new Image();
+
+const makeTexture = () => {
+	const cnv = document.querySelector('#canvas');
+  const ctx = cnv.getContext('2d');
+	const svg = document.getElementById('svg');
+	const svgData = (new XMLSerializer()).serializeToString(svg);
+  const base64 = window.btoa(unescape(encodeURIComponent(svgData)));
+  const src = "data:image/svg+xml;base64," + base64;
+	
+  img.onload = function() {
+  	ctx.drawImage(img, 0, 0);
+    texture.needsUpdate = true;
+    renderScene();
+  }
+  
+  img.src = src;
+  
+	const texture = new THREE.Texture(cnv);
+	
+  return texture;
+}
+
+init();
+
+function init() {
+
+	const [w, h] = [350, 300];
+  camera = new THREE.OrthographicCamera(-w/2, w/2, h/2, -h/2, 0,1);
+
+  scene = new THREE.Scene();
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio( window.devicePixelRatio );
+  //renderer.outputEncoding = THREE.sRGBEncoding;
+  //renderer.physicallyCorrectLights = true;
+  document.body.appendChild(renderer.domElement);
+
+  scene.background = new THREE.Color(0x000000);
+  
+  let geom = new THREE.PlaneBufferGeometry(300, 250, 1, 1);
+  let mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  mat.transparent = true;
+  
+  mat.map = makeTexture();
+  mat.map.minFilter = THREE.LinearFilter;
+  
+	const mesh = new THREE.Mesh(geom, mat);
+  scene.add(mesh);
+  
+  const bg = new THREE.Mesh(
+  new THREE.PlaneBufferGeometry(300, 250, 1, 1),
+  new THREE.MeshBasicMaterial({ color: 0x003300 })
+  );
+  bg.position.set(0,0,-0.5);
+  
+  scene.add(bg);
+
+	renderScene();
+}
+
+function renderScene() {
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/radial-gradient-shader-for-the-scene-background/25079/2 -->
+<!-- https://jsfiddle.net/prisoner849/xqpwk7e0/ -->
+<head>
+  <title> RadialGradientShaderBackground </title>
+  <meta charset="utf-8" />
+<style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+ </style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.127.js";
+//import { OrbitControls } from "../jsm/OrbitControls.127.js";
+
+
+let scene = new THREE.Scene();
+let camera = new THREE.Camera();
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+//let controls = new OrbitControls(camera, renderer.domElement);
+
+let g = new THREE.PlaneGeometry(2, 2);
+let m = new THREE.ShaderMaterial({
+    uniforms: {
+      color1: { value: new THREE.Color(0xff00ff)},
+      color2: { value: new THREE.Color(0xff0000)},
+      ratio: {value: innerWidth / innerHeight}
+    },
+    vertexShader: `varying vec2 vUv;
+      void main(){
+        vUv = uv;
+        gl_Position = vec4(position, 1.);
+      }`,
+          fragmentShader: `varying vec2 vUv;
+        uniform vec3 color1;
+        uniform vec3 color2;
+        uniform float ratio;
+        void main(){
+        	vec2 uv = (vUv - 0.5) * vec2(ratio, 1.);
+          gl_FragColor = vec4( mix( color1, color2, length(uv)), 1. );
+        }`
+    })
+let p = new THREE.Mesh(g, m);
+scene.add(p);
+
+window.addEventListener( 'resize', onWindowResize );
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+function onWindowResize() {
+	m.uniforms.ratio.value = innerWidth / innerHeight;
+  renderer.setSize( innerWidth, innerHeight );
+
+}
+
+</script>
+</html>

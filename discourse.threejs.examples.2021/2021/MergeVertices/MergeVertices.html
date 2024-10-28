@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/geometry-to-buffergeometry-manipulate-vertices/27909 -->
+<!-- https://jsfiddle.net/felixmariotto/bwL3fv9s/94/ -->
+<head>
+  <title> MergeVertices </title>
+  <meta charset="utf-8" />
+<style>
+	body {
+	margin: 0%;
+	}
+</style>
+<body></body>
+<script type="module">
+
+// @author felixmariotto 
+
+import * as THREE from "../jsm/three.module.129.js";
+import { OrbitControls } from "../jsm/OrbitControls.129.js";
+import { BufferGeometryUtils } from '../jsm/BufferGeometryUtils.129.js';
+
+const WIDTH = window.innerWidth;
+const HEIGHT = window.innerHeight;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 75, WIDTH / HEIGHT, 0.1, 1000 );
+camera.position.set( 2, 5, 5 );
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize( WIDTH, HEIGHT );
+document.body.appendChild( renderer.domElement );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+//
+
+let boxGeometry = new THREE.BoxGeometry();
+
+boxGeometry.deleteAttribute( 'normal' );
+boxGeometry.deleteAttribute( 'uv' );
+
+boxGeometry = BufferGeometryUtils.mergeVertices( boxGeometry );
+
+// normals where removed, so we recompute them.
+boxGeometry.computeVertexNormals();
+
+const mesh = new THREE.Mesh(
+	boxGeometry,
+  new THREE.MeshNormalMaterial()
+);
+
+scene.add( mesh );
+
+//
+
+function animate() {
+  requestAnimationFrame( animate );
+  renderer.render( scene, camera );
+};
+
+animate();
+
+</script>
+</html>

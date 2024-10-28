@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-move-line-along-with-mouse-but-in-perpendicular-direction/10972 -->
+<!-- https://jsfiddle.net/uLjtycpd/3/ -->
+<head>
+  <title> PerpendicularLineMove </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+	margin: 0;
+	}
+   </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.110.js"></script>
+ 
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer, clock;
+
+let geometry;
+
+const p1 = new THREE.Vector3();
+const p2 = new THREE.Vector3();
+const offset = new THREE.Vector3();
+
+const points = [], normals = [];
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 5;
+
+    scene = new THREE.Scene();
+		
+		clock = new THREE.Clock();
+		
+		// generate data
+		
+		points.push( new THREE.Vector3( - 1, 0, 0 ) );
+		points.push( new THREE.Vector3(   1, 0, 0 ) );
+		
+		normals.push( computeNormal( points[ 0 ], points[ 1 ] ) );
+		
+		points.push( new THREE.Vector3(   1, 0, 0 ) );
+		points.push( new THREE.Vector3(   1, 1, 0 ) );
+		
+		normals.push( computeNormal( points[ 2 ], points[ 3 ] ) );
+
+		points.push( new THREE.Vector3(   1, 1, 0 ) );
+		points.push( new THREE.Vector3(   0, 1.5, 0 ) );
+		
+		normals.push( computeNormal( points[ 4 ], points[ 5 ] ) );
+		
+		points.push( new THREE.Vector3(   0, 1.5, 0 ) );
+		points.push( new THREE.Vector3( - 1, 1, 0 ) );
+		
+		normals.push( computeNormal( points[ 6 ], points[ 7 ] ) );
+		
+		points.push( new THREE.Vector3( - 1, 1, 0 ) );
+		points.push( new THREE.Vector3( - 1, 0, 0 ) );
+		
+		normals.push( computeNormal( points[ 8 ], points[ 9 ] ) );
+		
+		geometry = new THREE.BufferGeometry().setFromPoints( points );
+		
+		//
+		
+		const position = geometry.getAttribute( 'position' );
+		position.setUsage( THREE.DynamicDrawUsage );
+		
+		const material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
+		const lines = new THREE.LineSegments( geometry, material );
+		
+		scene.add( lines );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function computeNormal( a, b ) {
+
+	const v = new THREE.Vector3().subVectors( b, a );
+	
+	return new THREE.Vector3( v.y, - v.x, 0 ).normalize();
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+		
+		const time = clock.getElapsedTime();
+
+		const position = geometry.getAttribute( 'position' );
+		
+		for ( let i = 0, j = 0, l = points.length; i < l; i += 2, j ++ ) {
+		
+			p1.copy( points[ i ] );
+			p2.copy( points[ i + 1 ] );
+			
+			offset.copy( normals[ j ] );
+			
+			// animate
+			
+			offset.multiplyScalar( Math.abs( Math.sin( time ) ) );
+			
+			p1.add( offset );
+			p2.add( offset );
+			
+			position.setXY( i, p1.x, p1.y );
+			position.setXY( i + 1, p2.x, p2.y );
+		
+		}
+		
+		position.needsUpdate = true;
+		
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

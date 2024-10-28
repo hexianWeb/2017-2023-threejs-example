@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/azimuth-polar-and-radius-from-xyz/4765/7 -->
+<!-- https://codepen.io/prisoner849/pen/gQpwJG -->
+<head>
+  <title> Paris-lat-lon  </title>
+  <meta charset="utf-8" />
+  <style>
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.98.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.setScalar(20);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setClearColor(0x404040);
+var canvas = renderer.domElement;
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var paris = {
+  lat: 48.864716,
+  lon: 2.349014
+};
+console.log(paris);
+
+var parisSpherical = {
+  lat: THREE.Math.degToRad(90 - paris.lat),
+  lon: THREE.Math.degToRad(paris.lon)
+};
+console.log(parisSpherical);
+
+var radius = 10;
+
+var parisVector = new THREE.Vector3().setFromSphericalCoords(
+  radius,
+  parisSpherical.lat,
+  parisSpherical.lon
+);
+// check we did it correctly
+var spherical = new THREE.Spherical().setFromVector3(parisVector);
+console.log(spherical);
+////////////////////////////
+
+var lineGeom = new THREE.Geometry();
+lineGeom.vertices = [new THREE.Vector3(), parisVector];
+var line = new THREE.Line(
+  lineGeom,
+  new THREE.LineBasicMaterial({ color: "yellow" })
+);
+scene.add(line);
+var texLoader = new THREE.TextureLoader();
+texLoader.setCrossOrigin("anonymous");
+var tex = texLoader.load(
+      "https://cywarr.github.io/small-shop/map-political1.gif"
+    );
+var globe = new THREE.Mesh(
+  new THREE.SphereGeometry(radius, 18, 9),
+  new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    opacity: 0.25
+  })
+);
+globe.rotation.y = -Math.PI * 0.5;
+scene.add(globe);
+
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+</script>
+</html>

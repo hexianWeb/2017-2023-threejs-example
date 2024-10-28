@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/creation-of-rays-passing-through-a-3d-model/15085/4 -->
+<!-- https://codepen.io/prisoner849/pen/zYvayLZ -->
+<head>
+  <title> RadiationCuttingLine </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.116.js";
+import { OrbitControls } from "../jsm/OrbitControls.116.js";
+import { FBXLoader } from "../jsm/FBXLoader.116.js";
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.set(0, 20, 15);
+
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 10, 0);
+controls.update();
+
+var light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(1);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+// model
+var plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+var helper = new THREE.PlaneHelper(plane, 20, 0xff0000);
+scene.add(helper);
+var uniforms = {
+  plane: {
+    value: new THREE.Vector4(
+      plane.normal.x,
+      plane.normal.y,
+      plane.normal.z,
+      plane.constant
+    )
+  }
+};
+var loader = new FBXLoader();
+// "https://threejs.org/examples/models/fbx/Samba Dancing.fbx"
+loader.load(
+  "Samba Dancing.fbx",
+  function (object) {
+    object.traverse(function (child) {
+      if (child.isMesh) {
+        let mat = child.material;
+        mat.onBeforeCompile = (shader) => {
+          shader.uniforms.scanPlane = uniforms.plane;
+          shader.vertexShader = `
+        varying vec3 vWPos;
+        ${shader.vertexShader}
+`;
+          shader.vertexShader = shader.vertexShader.replace(
+            `#include <worldpos_vertex>`,
+            `
+          vec4 worldPosition = modelMatrix * vec4( transformed, 1.0 );
+        	vWPos = worldPosition.xyz;
+`
+          );
+          console.log(shader.fragmentShader);
+          shader.fragmentShader = `
+        uniform vec4 scanPlane;
+        varying vec3 vWPos;
+        ${shader.fragmentShader}
+`;
+          shader.fragmentShader = shader.fragmentShader.replace(
+            `#include <dithering_fragment>`,
+            `#include <dithering_fragment>
+
+      float scanline = smoothstep(0.05, 0.04, abs(scanPlane.w - dot( vWPos, scanPlane.xyz )));
+      gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1, 0, 0), scanline);
+`
+          );
+        };
+      }
+    });
+    object.scale.setScalar(0.1);
+    scene.add(object);
+  }
+);
+
+var clock = new THREE.Clock();
+
+var pn = new THREE.Vector3(); //plane normal
+var pcp = new THREE.Vector3(); // plane co-planar point
+
+var animate = function () {
+  requestAnimationFrame(animate);
+  let t = clock.getElapsedTime();
+  pcp.y = Math.sin(t * 0.25) * 9 + 9;
+  pn.setFromSphericalCoords(1, Math.sin(t * 0.314) * Math.PI, Math.cos(t * 0.27) * Math.PI * 2);
+  plane.setFromNormalAndCoplanarPoint(pn, pcp);
+  uniforms.plane.value.set(plane.normal.x, plane.normal.y, plane.normal.z, -plane.constant);
+  renderer.render(scene, camera);
+};
+
+animate();
+
+</script>
+
+</html>

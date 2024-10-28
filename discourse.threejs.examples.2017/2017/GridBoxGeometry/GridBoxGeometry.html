@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!-- 
+	https://discourse.threejs.org/t/gridboxgeometry/1420
+	https://jsfiddle.net/prisoner849/8hqy99jj/ 
+-->
+<head>
+	<meta charset="utf-8" />   
+	<title> GridBox </title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">    
+</head>
+<body> </body>
+<script src="../js/three.min.88.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script>
+
+// @ author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(-3, 2, 1).setLength(20);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x808080);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var light = new THREE.DirectionalLight(0xffffff, .5);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, .5));
+
+var boxGeometry = new THREE.BoxBufferGeometry(10, 3, 3, 10, 5, 4);
+boxGeometry.attributes.positionStart = boxGeometry.attributes.position.clone();
+
+var gridGeometry = GridBoxGeometry(boxGeometry, false);
+
+var box = new THREE.Mesh(boxGeometry, new THREE.MeshStandardMaterial({
+  color: 0x999999
+}));
+box.position.z = -3;
+scene.add(box);
+var grid = new THREE.LineSegments(gridGeometry, new THREE.LineBasicMaterial({
+  color: "aqua"
+}));
+grid.position.z = -3;
+scene.add(grid);
+
+var boxGeometry2 = new THREE.BoxBufferGeometry(10, 3, 3, 10, 5, 4);
+boxGeometry2.attributes.positionStart = boxGeometry2.attributes.position.clone();
+var box2 = new THREE.Mesh(boxGeometry2, box.material.clone());
+box2.position.z = 3;
+scene.add(box2);
+
+var gridGeometry2 = GridBoxGeometry(boxGeometry2, true);
+var grid2 = new THREE.LineSegments(gridGeometry2, grid.material.clone());
+grid2.position.z = 3;
+scene.add(grid2);
+
+var position = boxGeometry.attributes.position;
+var positionStart = boxGeometry.attributes.positionStart;
+var position2 = boxGeometry2.attributes.position;
+var positionStart2 = boxGeometry2.attributes.positionStart;
+var clock = new THREE.Clock();
+var time = 0;
+render();
+
+function GridBoxGeometry(geometry, independent) {
+
+	if (!(geometry instanceof THREE.BoxBufferGeometry)) {
+	console.log("GridBoxGeometry: the parameter 'geometry' has to be of the type THREE.BoxBufferGeometry");
+	return geometry;
+	}
+	independent = independent !== undefined ? independent : false;
+	
+	let newGeometry = new THREE.BoxBufferGeometry();
+	let position = geometry.attributes.position;
+	newGeometry.attributes.position = independent === false ? position : position.clone();
+	
+	let segmentsX = geometry.parameters.widthSegments || 1;
+	let segmentsY = geometry.parameters.heightSegments || 1;
+	let segmentsZ = geometry.parameters.depthSegments || 1;
+	
+	let startIndex = 0;
+	let indexSide1 = indexSide(segmentsZ, segmentsY, startIndex);
+	startIndex += (segmentsZ + 1) * (segmentsY + 1);
+	let indexSide2 = indexSide(segmentsZ, segmentsY, startIndex);
+	startIndex += (segmentsZ + 1) * (segmentsY + 1);
+	let indexSide3 = indexSide(segmentsX, segmentsZ, startIndex);
+	startIndex += (segmentsX + 1) * (segmentsZ + 1);
+	let indexSide4 = indexSide(segmentsX, segmentsZ, startIndex);
+	startIndex += (segmentsX + 1) * (segmentsZ + 1);
+	let indexSide5 = indexSide(segmentsX, segmentsY, startIndex);
+	startIndex += (segmentsX + 1) * (segmentsY + 1);
+	let indexSide6 = indexSide(segmentsX, segmentsY, startIndex);
+	
+	let fullIndices = [];
+	fullIndices = fullIndices.concat(indexSide1);
+	fullIndices = fullIndices.concat(indexSide2);
+	fullIndices = fullIndices.concat(indexSide3);
+	fullIndices = fullIndices.concat(indexSide4);
+	fullIndices = fullIndices.concat(indexSide5);
+	fullIndices = fullIndices.concat(indexSide6);
+	
+	newGeometry.setIndex(fullIndices);
+	
+	function indexSide(x, y, shift) {
+		let indices = [];
+		for (let i = 0; i < y + 1; i++) {
+			let index11 = 0;
+			let index12 = 0;
+			for (let j = 0; j < x; j++) {
+			index11 = (x + 1) * i + j;
+			index12 = index11 + 1;
+			let index21 = index11;
+			let index22 = index11 + (x + 1);
+			indices.push(shift + index11, shift + index12);
+			if (index22 < ((x + 1) * (y + 1) - 1)) {
+				indices.push(shift + index21, shift + index22);
+			}
+			}
+			if ((index12 + x + 1) <= ((x + 1) * (y + 1) - 1)) {
+			indices.push(shift + index12, shift + index12 + x + 1);
+			}
+		}
+		return indices;
+	}
+	return newGeometry;
+};
+
+function render( ) {
+  requestAnimationFrame(render);
+  time += clock.getDelta();
+  
+  for ( let i = 0; i < position.count; i++ ) {
+    position.setY( i, positionStart.getY(i) + Math.sin(position.getX(i) * .5 + time) * .25);
+    position.setZ( i, positionStart.getZ(i) + Math.cos(position.getX(i) * .5 + time) * .25);
+  }
+  position2.needsUpdate = true;
+    for (let i = 0; i < position2.count; i++) {
+    position2.setY(i, positionStart2.getY(i) + Math.sin(position2.getX(i) * .5 + time) * .25);
+    position2.setZ(i, positionStart2.getZ(i) + Math.cos(position2.getX(i) * .5 + time) * .25);
+  }
+  position.needsUpdate = true;
+  renderer.render(scene, camera);
+}
+</script> 
+</html>
+

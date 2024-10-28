@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/beginner-question-twisting-a-mesh/10576/2 -->
+<!-- https://codepen.io/prisoner849/pen/xxxpGzZ -->
+<head>
+  <title> 3d_Marshmallow </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	font-family: Arial;
+	padding: 0;
+	margin: 0;
+	box-sizing: border-box;
+	}
+	
+	.container {
+	padding: 20px;
+	margin: 20px;
+	}
+	
+	.main-container {
+	max-width: 100vw;
+	display: flex;
+	padding: 0;
+	margin: 20px;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	}
+	
+	.img-container {
+	border: 1px solid black;
+	float: left;
+	}
+	
+	img {
+	width: 300px;
+	height: auto;
+	}
+	
+	#threejs-container {
+	height: auto;
+	border: 1px solid black;
+	position: relative;
+	}
+  </style>
+</head>
+<body> 
+	<div class="main-container">
+	<div class="img-container container">
+		<p>What I want to achieve:</p>
+	<!-- <img src="https://www.heavenlydelights.com/pub/media/catalog/product/cache/1/image/1000x1320/e9c3970ab036de70892d86c6d221abfe/t/w/twisted_-mallows_2.jpg">
+	 -->
+	 <img src="twisted_-mallows_2.jpg">
+	</div>
+	
+	<div id="threejs-container" class="container">
+		<p>What I have so far:</p>
+	</div>
+	</div>
+</body>
+
+<script src="../js/three.min.109.js"></script>
+<script src="../js/BufferGeometryUtils.js"></script>
+ 
+<script>
+
+// @author shinypan + prisoner849
+
+var renderer, scene, camera, mallow;
+
+init();
+animate();
+
+function init() {
+
+  var container= document.querySelector('#threejs-container');
+
+  // renderer
+  renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setPixelRatio(1);
+  renderer.setSize(400, 400);
+  renderer.setClearColor( 0xc0c0c0, 1 );
+  container.appendChild(renderer.domElement);
+
+  // scene
+  scene = new THREE.Scene();
+
+  // camera
+  camera = new THREE.PerspectiveCamera(45, 1, 1, 10000);
+  camera.position.set(0, 0, 10);
+
+  // colors
+  vanilla =  new THREE.MeshBasicMaterial({color: 0xffffc9} );
+  pink = new THREE.MeshBasicMaterial({color: 0xffd6f4} );
+  peach = new THREE.MeshBasicMaterial({color: 0xffdab9} );
+  green = new THREE.MeshBasicMaterial({color: 0xaaf1aa} );
+  white = new THREE.MeshBasicMaterial({color: 0xffffff} );
+  
+  mallow = new THREE.Mesh(createMallow(), [vanilla, green, white, peach]);
+  scene.add(mallow);
+  
+  function createMallow(){
+    let c = new THREE.CylinderBufferGeometry(0.5, 0.5, 4, 32, 32);
+    c.translate(0.5, 2, 0.5);
+    let pos = c.attributes.position;
+    let vec3 = new THREE.Vector3();
+    let axis = new THREE.Vector3(0, 1, 0);
+    for(let i = 0; i < pos.count; i++){
+      vec3.fromBufferAttribute(pos, i);
+      vec3.applyAxisAngle(axis, (vec3.y / c.parameters.height) * Math.PI * 2);
+      pos.setXYZ(i, vec3.x, vec3.y, vec3.z);
+    }
+    c.translate(0, -2, 0);
+
+    let geoms = [];
+    geoms.push(c);
+    let mat = new THREE.Matrix4();
+    for(let i = 1; i < 4; i++){
+      let g = c.clone();
+      mat.makeRotationAxis(axis, i * Math.PI * 0.5);
+      mat.applyToBufferAttribute(g.attributes.position);
+      geoms.push(g);
+    }
+
+    let m = THREE.BufferGeometryUtils.mergeBufferGeometries(geoms, true);
+    return m;
+  }
+}
+
+// render
+function render() {
+  renderer.render(scene, camera);
+}
+
+function animateBox() {
+  angleY = 0.027;
+  mallow.rotateY(angleY);
+}
+
+// animate
+function animate() {
+  animateBox();
+  requestAnimationFrame(animate);
+  render();
+}
+
+</script>
+
+</html>

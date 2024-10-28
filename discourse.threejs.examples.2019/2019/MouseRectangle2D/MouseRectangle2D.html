@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-a-dynamic-2d-rectangle-based-on-mouse-coordinates/11616/2 -->
+<!-- https://jsfiddle.net/prisoner849/0pemrnjt/ -->
+<!--   from https://stackoverflow.com/questions/42246502/anchoring-a-geomety-mesh-to-its-corner-for-scaling-three-js/42254068#42254068 --> 
+<head>
+  <title> MouseRectangle2D </title>
+  <meta charset="utf-8" />
+ <style>	
+	body {
+	overflow: hidden;
+	margin: 0;
+	}	
+	#buildMe {
+	position: absolute;
+	}
+  </style>
+</head>
+<body>
+	<button id="buildMe">
+	Build Mode: <span id="indicator">off</span>
+	</button>
+</body>
+<script src="../js/three.min.111.js"></script>
+<script src="../js/OrbitControls.js"></script> 
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000000);
+camera.position.set(0, 10, 20);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x999999);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var planeGeo = new THREE.PlaneGeometry(20, 20);
+planeGeo.rotateX(-Math.PI / 2);
+var plane = new THREE.Mesh(planeGeo, new THREE.MeshBasicMaterial({
+  color: "darkgray"
+}));
+scene.add(plane);
+
+var grid = new THREE.GridHelper(20, 40);
+grid.position.set(0, .05, 0);
+scene.add(grid);
+
+
+var buildMode = false;
+buildMe.addEventListener("click", function() {
+  if (buildMode) {
+    indicator.innerHTML = "off";
+  } else {
+    indicator.innerHTML = "on";
+  }
+  buildMode = !buildMode;
+  controls.enabled = !buildMode;
+}, false);
+
+var raycaster = new THREE.Raycaster(),
+  mouse = new THREE.Vector2();
+document.addEventListener("mouseup", mouseUp, false);
+document.addEventListener("mousedown", mouseDown, false);
+document.addEventListener("mousemove", mouseMove, false);
+
+var newRect;
+var buildStarted = false;
+var onPlanePoint;
+var startPoint = new THREE.Vector3();
+var intersect;
+
+function mouseUp(event) {
+  console.log("mouseup fired");
+  buildStarted = false;
+  newRect = undefined;
+}
+
+function mouseDown(event) {
+  if (buildMode && onPlanePoint) {
+    buildStarted = true;
+    var newRectGeom = new THREE.PlaneGeometry(1, 1);
+    newRectGeom.rotateX(-Math.PI / 2);
+    var newRectMaterial = new THREE.MeshBasicMaterial({
+      color: Math.random() * 0xffffff, transparent: true, opacity: 0.25
+    })
+    newRect = new THREE.Mesh(newRectGeom, newRectMaterial);
+    startPoint.copy(onPlanePoint);
+    scene.add(newRect);
+  }
+}
+
+function mouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  intersect = raycaster.intersectObjects([plane]);
+  if (intersect.length) {
+    onPlanePoint = intersect[0].point;
+  } else {
+    onPlanePoint = undefined;
+  }
+}
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  if (newRect) {
+    if (buildStarted) {
+      newRect.position.addVectors(startPoint, onPlanePoint).divideScalar(2);
+      newRect.position.y = 0.5;
+      newRect.scale.set(Math.abs(onPlanePoint.x - startPoint.x), 1, Math.abs(onPlanePoint.z - startPoint.z))
+    }
+
+  }
+  renderer.render(scene, camera);
+}
+
+</script>
+ 
+</html>

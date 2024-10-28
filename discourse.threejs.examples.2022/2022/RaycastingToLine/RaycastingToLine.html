@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-maintain-the-alignment/39779/11 -->
+<!-- https://jsfiddle.net/Chrisssie/os0wfe4p/ -->
+<head>
+  <title> RaycastingToLine </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author Chrisssie vielzutun.ch
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+let camera, scene, raycaster, renderer, parentTransform, sphereInter;
+
+const pointer = new THREE.Vector2();
+
+init();
+animate();
+
+function init() {
+
+	scene = new THREE.Scene();
+	scene.background = new THREE.Color( 0xf0f0f0 );
+
+	camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 100 );
+	camera.position.x = 0;
+	camera.position.y = 0;
+	camera.position.z = 1;
+	camera.lookAt( scene.position );
+
+	const geometry = new THREE.SphereGeometry( 1, 16, 8 );
+	const material = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true	} );
+
+	sphereInter = new THREE.Mesh( geometry, material );
+	sphereInter.visible = false;
+	scene.add( sphereInter );
+
+	const lineGeometry = new THREE.BufferGeometry();
+	const points = [];
+
+	points.push( 0, 0, -20 );
+	points.push( 100, 50, -200 );
+
+	lineGeometry.setAttribute( 'position', new THREE.Float32BufferAttribute( points, 3 ) );
+	const lineMaterial = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+	let line = new THREE.Line( lineGeometry, lineMaterial );
+
+	parentTransform = new THREE.Object3D();
+	parentTransform.add( line );
+
+	scene.add( parentTransform );
+
+	raycaster = new THREE.Raycaster();
+	raycaster.params.Line.threshold = 1;
+
+  renderer = new THREE.WebGLRenderer( { antialias: true } );
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	document.body.appendChild( renderer.domElement );
+
+	document.addEventListener( 'pointermove', onPointerMove );
+
+	//
+
+	window.addEventListener( 'resize', onWindowResize );
+
+}
+
+function onWindowResize() {
+
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+function onPointerMove( event ) {
+
+	pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+}
+
+//
+
+function animate() {
+
+	requestAnimationFrame( animate );
+
+	render();
+
+}
+
+function render() {
+
+	// find intersections
+
+	raycaster.setFromCamera( pointer, camera );
+
+	const intersects = raycaster.intersectObjects( parentTransform.children, true );
+
+	if ( intersects.length > 0 ) {
+
+		sphereInter.visible = true;
+		sphereInter.position.copy( intersects[ 0 ].point );
+
+	} else {
+
+		sphereInter.visible = false;
+
+  }
+
+	renderer.render( scene, camera );
+
+}
+</script>
+</html>

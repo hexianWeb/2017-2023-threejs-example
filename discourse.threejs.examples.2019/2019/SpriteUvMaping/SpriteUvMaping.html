@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sprite-uv-maping/8389/2 -->
+<!-- https://jsfiddle.net/prisoner849/3hnq09rz/ -->
+<head>
+  <title> SpriteUvMaping </title>
+  <meta charset="utf-8" />
+  	<style>
+		body {
+			margin: 0;
+		}
+	</style>
+  
+</head>
+
+<body> </body>
+<script src="../js/three.min.106.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+var texAtlas={};
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+
+    geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
+    material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+mycode();
+}
+
+function mycode(){
+var tex = new THREE.TextureLoader().load("https://threejs.org/examples/textures/minecraft/atlas.png", done);
+function done(tex){
+var size=16;
+tex.wrapS = THREE.RepeatWrapping;
+		tex.wrapT = THREE.RepeatWrapping;
+		tex.minFilter = THREE.NearestFilter;
+		tex.magFilter = THREE.NearestFilter;
+		texAtlas.size = size;
+		texAtlas.numX = tex.image.width / size;
+		texAtlas.numY = tex.image.height / size;
+		texAtlas.loaded = true;
+		texAtlas.offsetX = 1 / texAtlas.numX;
+    texAtlas.offsetY = 1 / texAtlas.numY;
+		texAtlas.texture = tex;
+makeSpr();
+}
+function makeSpr(){
+	var tex=texAtlas.texture ;
+		var mat = new THREE.SpriteMaterial({
+			map:tex,
+			transparent: true
+		});
+		
+	var sprite = new THREE.Sprite(mat);
+  console.log(sprite.geometry);
+	sprite.center.y=0;
+	sprite.scale.set(0.3, 0.3, 0.3);
+
+	setSprUv(sprite.geometry.attributes.uv,0,1);
+	
+	function setSprUv(uv,nx,ny){
+
+    uv.setXY(0, nx * texAtlas.offsetX,                      ny * texAtlas.offsetY);
+    uv.setXY(1,(nx * texAtlas.offsetX) + texAtlas.offsetX,  ny * texAtlas.offsetY);
+    uv.setXY(2,(nx * texAtlas.offsetX) + texAtlas.offsetX, (ny * texAtlas.offsetY) + texAtlas.offsetY);
+    uv.setXY(3, nx * texAtlas.offsetX,                     (ny * texAtlas.offsetY) + texAtlas.offsetY);
+  
+	}
+	sprite.geometry.attributes.uv.needsUpdate=true;
+  
+	scene.add(sprite);
+}
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+
+    mesh.rotation.x += 0.01;
+    mesh.rotation.y += 0.02;
+
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

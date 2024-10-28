@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-the-process-more-efficient/59515/4 -->
+<!-- https://codepen.io/boytchev/full/JjzjGzB -->
+<head>
+  <title>CarvingViaExtrusion</title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.158.js';
+import { OrbitControls } from '../jsm/OrbitControls.158.js';
+
+// general setup, boring, skip to the next comment
+
+console.clear( );
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, -40, -30 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var light = new THREE.DirectionalLight( 'white', 2 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+// the overall square shape
+
+var shape = new THREE.Shape();
+		shape.moveTo( -12, -12 );
+		shape.lineTo( 12, -12 );
+		shape.lineTo( 12, 12 );
+		shape.lineTo( -12, 12 );
+		shape.lineTo( -12, -12 );
+
+// the circle to be extruded
+
+var cShape = new THREE.Shape();
+		cShape.absarc( 0, 6, 2, 0, 2*Math.PI+0.1, true );
+
+// the star to be extruded
+
+var sShape = new THREE.Shape();
+for( var i=0; i<14; i++ )
+{
+		var a = (2*i+1)*Math.PI/14,
+				r = 2*(i%2)+1,
+				x = r*Math.cos(a),
+				y = r*Math.sin(a);
+		if( i )
+				sShape.lineTo(x,y);
+		else
+				sShape.moveTo(x,y);
+}
+
+
+// the U shape to be extruded
+
+var uShape = new THREE.Shape();
+		uShape.moveTo( 0, -6 );
+		uShape.quadraticCurveTo( 4, -6, 4, -2 );
+		uShape.lineTo( 4, 6 );
+		uShape.quadraticCurveTo( 4, 8, 6, 8 );
+		uShape.quadraticCurveTo( 8, 8, 8, 6 );
+		uShape.lineTo( 8, -2 );
+		uShape.quadraticCurveTo( 8, -10, 0, -10 );
+		uShape.quadraticCurveTo( -8, -10, -8, -2 );
+		uShape.lineTo( -8, 6 );
+		uShape.quadraticCurveTo( -8, 8, -6, 8 );
+		uShape.quadraticCurveTo( -4, 8, -4, 6 );
+		uShape.lineTo( -4, -2 );
+		uShape.quadraticCurveTo( -4, -6, 0, -6 );
+
+
+var extrudeOptions = {
+			curveSegments: 30,
+			depth: -1,  // note, negative value
+			bevelEnabled: true,
+			bevelThickness: -1,  // note, negative value
+			bevelSegments: 20,
+			bevelOffset: 1.1,
+};
+
+shape.holes = [uShape, cShape, sShape];
+
+renderer.localClippingEnabled = true;
+
+
+// the cutout is made of three objects
+
+var midObject = new THREE.Mesh( 
+						new THREE.ExtrudeGeometry( shape, extrudeOptions ),
+						new THREE.MeshPhongMaterial( {
+								color: 'royalblue',
+								shininess: 300,
+								side: THREE.DoubleSide,
+								clippingPlanes: [new THREE.Plane(new THREE.Vector3(0,0,1),0)],
+						} )
+				);
+		scene.add( midObject );
+
+
+var topObject = new THREE.Mesh( 
+						new THREE.ShapeGeometry( shape,20 ),
+						new THREE.MeshPhongMaterial( {
+								color: 'royalblue',
+								shininess: 300,
+								side: THREE.DoubleSide,
+						} )
+				);
+		scene.add( topObject );
+
+
+var bottomObject = new THREE.Mesh( 
+						new THREE.BoxGeometry( 26.2, 26.2, 2 ),
+						new THREE.MeshPhongMaterial( {
+								color: 'royalblue',
+								shininess: 300,
+								side: THREE.DoubleSide,
+						} )
+				);
+		bottomObject.position.z = 2;
+		scene.add( bottomObject );
+
+
+function animationLoop( t )
+{
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+</script>
+</html>

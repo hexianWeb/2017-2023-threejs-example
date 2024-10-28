@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/problems-with-creating-custom-polyhedron-geometry/5412/46 -->
+<!-- http://threejs.hofk.de/BufferGeometry/buffer_withNormals.html -->
+
+<head>
+	<title> BufferWithNormals</title>
+	<meta charset="utf-8">
+	<script src="../js/three.min.99.js"></script>
+	<script src="../js/OrbitControls.js"></script>
+</head>
+<body>
+	very simple indexed BufferGeometry with normals
+	<div id="container"></div>
+
+</body>
+
+<script>
+
+'use strict'
+
+// @ author hofk
+
+var container, camera, scene, renderer, mesh, normalsHelper;
+init();
+animate();
+
+function init() {
+
+	container = document.getElementById( 'container' );
+
+	camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 1, 100 );
+  	camera.position.y = 2;
+	camera.position.z = 15;
+
+	scene = new THREE.Scene();
+	
+	renderer = new THREE.WebGLRenderer( { antialias: false } );
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.setClearColor( 0x444444, 1 );	
+
+	container.appendChild( renderer.domElement );
+	
+	var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+	scene.add( new THREE.AmbientLight( 0x225588) );
+	
+	var light1 = new THREE.DirectionalLight( 0xffffff, 1.1 );
+	light1.position.set( -4, 25, 5 );
+	scene.add( light1 );
+
+	var light2 = new THREE.DirectionalLight( 0xffffff, 0.6 );
+	light2.position.set( 0, -20, 0 );
+	scene.add( light2 );	
+
+	// Vector operations programmed for demonstration here.
+	// Of course you can also use the operations of three.js. 
+	// https://threejs.org/docs/index.html#api/en/math/Vector3
+	
+	// see also
+	// https://threejs.org/docs/index.html#api/en/core/BufferGeometry.computeVertexNormals
+
+	var c0 = {}, c1 = {}, c2 = {}, c3 = {}; // corners
+	
+	c0.x = 0; c0.y = 0, c0.z = 0;
+	c1.x = 2; c1.y = 0, c1.z = 4;
+	c2.x = 5; c2.y = 1, c2.z = 1;
+	c3.x = 3; c3.y = 4, c3.z = 2; // peak
+	
+	var geometry = new THREE.BufferGeometry();
+	
+	var indices = new Uint32Array( 4 * 3 );  	// indices for 4 faces
+	var positions = new Float32Array( 4 * 3 );  // buffer arrray, position of 4 vertices	
+	var normals = new Float32Array( 4 * 3 );  	// buffer arrray, 4 vertex normals
+
+	// 4 positions with 3 coordinates
+	
+	// vertex 0
+	positions[ 0 ] = c0.x;
+	positions[ 1 ] = c0.y;
+	positions[ 2 ] = c0.z;
+	
+	// vertex 1
+	positions[ 3 ] = c1.x;
+	positions[ 4 ] = c1.y;
+	positions[ 5 ] = c1.z;
+	
+	// vertex 2
+	positions[ 6 ] = c2.x;
+	positions[ 7 ] = c2.y;
+	positions[ 8 ] = c2.z;
+	
+	// vertex 3     
+	positions[ 9 ]  = c3.x;
+	positions[ 10 ] = c3.y;
+	positions[ 11 ] = c3.z;
+	
+	// 4 faces with 3 vertices indices, from outside counterclockwise
+	
+	// face 0: vertices indices 0, 2, 1
+	indices[0] = 0;  
+	indices[1] = 2;
+	indices[2] = 1;
+	
+	// face 1 vertices indices 0, 1, 3
+	indices[3] = 0;
+	indices[4] = 1;
+	indices[5] = 3;
+	
+	// face 2 vertices indices 1, 2, 3
+	indices[6] = 1;
+	indices[7] = 2;
+	indices[8] = 3;
+	
+	// face 2 vertices indices 0, 3, 2
+	indices[9] = 0;
+	indices[10] = 3;
+	indices[11] = 2;
+
+	// 6 edge vectors (difference of the positions)
+	
+	var v = {};
+	var edges = [];
+	
+	edges.push( calculateEdge( c0, c1 ) );
+	edges.push( calculateEdge( c0, c2 ) );
+	edges.push( calculateEdge( c0, c3 ) );
+	edges.push( calculateEdge( c1, c2 ) );
+	edges.push( calculateEdge( c1, c3 ) );
+	edges.push( calculateEdge( c2, c3 ) );
+	 
+	// 4 face  normals
+	 
+	var faceNormals = [];
+	
+	faceNormals.push( calculateFaceNormal( edges[ 1 ], edges[ 0 ] ) );
+	faceNormals.push( calculateFaceNormal( edges[ 0 ], edges[ 2 ] ) );
+	faceNormals.push( calculateFaceNormal( edges[ 3 ], edges[ 4 ] ) );
+	faceNormals.push( calculateFaceNormal( edges[ 2 ], edges[ 1 ] ) );
+	
+	// 4 vertex normals (normalized average of face normals of the adjacent faces)
+	
+	var vertexNormals = [];
+	
+	// normals not area weighted
+	vertexNormals.push( calculateVertexNormal( faceNormals[0], faceNormals[1], faceNormals[3] ) );
+ 	vertexNormals.push( calculateVertexNormal( faceNormals[0], faceNormals[1], faceNormals[2] ) );
+	vertexNormals.push( calculateVertexNormal( faceNormals[0], faceNormals[2], faceNormals[3] ) );
+	vertexNormals.push( calculateVertexNormal( faceNormals[1], faceNormals[2], faceNormals[3] ) );
+		
+	for ( let i = 0; i < vertexNormals.length; i ++ ) {
+	
+		normals[ 3 * i ] = vertexNormals[ i ].x;
+		normals[ 3 * i + 1 ] = vertexNormals[ i ].y;
+		normals[ 3 * i + 2 ] = vertexNormals[ i ].z;
+	
+	}
+
+	geometry.setIndex( new THREE.BufferAttribute( indices, 1 ) );
+	geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ));
+	
+	geometry.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ));
+	
+	// geometry.computeVertexNormals( ); // or take .computeVertexNormals( ) from three.js
+	
+		console.log( geometry.attributes.normal.array );/////////////////////////////////////////////////
+	
+	var material = new THREE.MeshPhongMaterial( { color: 0xffff00, side: THREE.DoubleSide, wireframe: false } );
+	//var material = new THREE.MeshLambertMaterial( { color: 0xffff00, side: THREE.DoubleSide, wireframe: false } );
+	//var material = new THREE.MeshStandardMaterial( { color: 0xffff00, side: THREE.DoubleSide, wireframe: false } );
+	//var material = new THREE.MeshBasicMaterial( { color: 0xffff00, side: THREE.DoubleSide, wireframe: false } );
+	
+	mesh = new THREE.Mesh( geometry, material );
+	mesh.position.y = -2;
+	scene.add( mesh );
+	
+	normalsHelper = new THREE.VertexNormalsHelper( mesh, 2, 0xff0000, 1 );
+	scene.add( normalsHelper );
+
+}
+
+function animate() {
+
+	requestAnimationFrame( animate );		
+	var time = Date.now() * 0.001;
+	mesh.rotation.y = time;
+	mesh.rotation.z = 0.5* ( 1 +  Math.sin( time ) );
+	normalsHelper.update();
+	renderer.render( scene, camera );
+
+}
+
+function calculateEdge( v1, v2 ) {
+	
+	// v1, v2 position vectors
+	
+	var edge = {};
+	
+	edge.x = v2.x - v1.x;
+	edge.y = v2.y - v1.y;
+	edge.z = v2.z - v1.z;
+	
+	return edge;
+
+}
+
+function calculateFaceNormal( v1, v2 ) {
+	
+	// v1, v2 edge vectors
+	
+	var lenV;
+	var normal = {};
+	
+	// cross product
+	normal.x = v1.y * v2.z - v1.z * v2.y;
+	normal.y = v1.z * v2.x - v1.x * v2.z;
+	normal.z = v1.x * v2.y - v1.y * v2.x;
+		
+	lenV = Math.sqrt( normal.x * normal.x + normal.y * normal.y + normal.z * normal.z  );
+	
+	// normalize
+	
+	normal.x = normal.x / lenV;
+	normal.y = normal.y / lenV;
+	normal.z = normal.z / lenV;
+	
+	return normal;
+	
+}
+
+function calculateVertexNormal( v1, v2, v3 ) {
+
+	// v1, v2, v3  face normal vectors
+	
+	var lenV;
+	var normal = {};
+	
+	// normals not area weighted
+	normal.x = ( v1.x + v2.x + v3.x ) / 3;
+	normal.y = ( v1.y + v2.y + v3.y ) / 3;
+	normal.z = ( v1.z + v2.z + v3.z ) / 3;
+	
+	lenV = Math.sqrt( normal.x * normal.x + normal.y * normal.y + normal.z * normal.z  );
+	
+	// normalize
+	
+	normal.x = normal.x / lenV;
+	normal.y = normal.y / lenV;
+	normal.z = normal.z / lenV;	
+	
+	return normal;
+	
+}
+
+</script>
+</html>

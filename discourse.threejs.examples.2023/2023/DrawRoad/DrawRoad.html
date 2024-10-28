@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/draw-road-bout-using-threejs/53461/2 -->
+<!-- https://jsfiddle.net/cg4a5fph/ -->
+<head>
+  <title>DrawRoad</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    margin: 0px;
+    }
+  </style>
+</head>
+<body> </body>
+
+<script type="module">
+
+// @author makc3d
+
+import * as THREE from '../jsm/three.module.149.js';
+
+// init
+
+const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+camera.position.set(0, 0.5, 1);
+camera.lookAt(0, 0, 0);
+
+const scene = new THREE.Scene();
+
+const geometry = new THREE.PlaneGeometry( 0.2, 10, 1, 200 );
+geometry.rotateX(-0.5 * Math.PI);
+
+for(let p = geometry.attributes.position, i = 0; i < p.count; i++) {
+	p.array[3*i + 0] += 0.2 * Math.sin( p.array[3*i + 2] * 3.45 );
+}
+
+const material = new THREE.MeshBasicMaterial({
+   //wireframe: true,                 
+                  // https://i.imgur.com/lUOhMoL.jpeg
+    map: new THREE.TextureLoader().load('lUOhMoL.jpeg', function(texture) {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set( 1, 10 / 0.2 );
+    texture.anisotropy = 8;
+  })
+});
+
+const mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setAnimationLoop( animation );
+document.body.appendChild( renderer.domElement );
+
+// animation
+
+function animation( time ) {
+
+	//mesh.rotation.y = time / 1000;
+
+	renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

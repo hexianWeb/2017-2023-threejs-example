@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<!--  https://discourse.threejs.org/t/three-geometry-will-be-removed-from-core-with-r125/22401/25 -->
+<head>
+	<title>  SpeedTest_r124  </title>
+	<meta charset="utf-8" />
+<style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+ </style>
+</head>
+<body> 
+
+	_______ ..... segments 
+	<input type="text" size="5" id="hs" value="100" >  x  
+ 	<input type="text" size="5" id="rs" value="100" > 
+	 .......
+	<input type="checkbox" name="color" id="matindex" checked="checked" > Mat.index
+	</br>_______ ..... 	
+	<input type="radio" name="geom" id="Geometry" checked="checked" > Geometry
+	<input type="radio" name="geom" id="BufferGeometry" > ind. BufferGeo. 
+	|
+	<input type="radio" name="mat" id="multimat" checked="checked" > multi Mat. [ ]
+	<input type="radio" name="mat" id="singlemat"  > single Mat. |
+	</br>.................... 
+	<button type="button" id="show"> >>>>> show new mesh <<<<< </button>
+	
+	
+</body>
+
+	<script src="three.min.124.js"></script>
+	<script src="OrbitControls.124.js"></script>
+	<script src="stats.min.124.js"></script>
+	
+<script>
+
+'use strict'
+
+// @author hofk
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 200000 );
+camera.position.set( 400, 600, 1000 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xeeeeee, 1 );
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+controls.enableZoom = true;
+const clock  = new THREE.Clock( true );
+let t; // time
+let	g; // Geometry or BufferGeometry
+let mesh;
+let hs; // height segment count ( y direction )
+let rs; // radial segment count ( here in test:  x direction )
+let hss; // hs + 1
+let rss; // rs + 1
+let vertexCount;
+let vIdx;	// vertex Index
+let idxCount;
+let faceCount;
+let fIdx;	// face index
+let j0, j1; // j index 
+let a, b1, c1, c2; // vertex indices,  b2 equals c1
+let ni, nj; // relative counter variable
+let posIdx; // position Index
+let x, y, z; // position coordinates
+let materialSegment;
+let matindex = null;
+let multimat = null;;
+
+let showGeo = false;
+
+// materials
+ 
+const side = THREE.DoubleSide;
+
+// material or multi materials
+
+const material = new THREE.MeshBasicMaterial( { color: 0x880088, side: side, wireframe: false } );
+
+/*
+const materials = [
+
+	new THREE.MeshBasicMaterial( { color: 0x228822, side: side, wireframe: false } ),
+	new THREE.MeshBasicMaterial( { color: 0x000000, side: side, wireframe: true } )	
+	
+];
+*/
+ 
+const materials = [
+																	// material index 
+    new THREE.MeshBasicMaterial( { color: 0xc4a013, transparent: true, opacity: 0.3, side: side } ), //  0 transparent
+	new THREE.MeshBasicMaterial( { color: 0xff0000, side: side } ),	//  1 red
+	new THREE.MeshBasicMaterial( { color: 0x00ff00, side: side } ),	//  2 green
+	new THREE.MeshBasicMaterial( { color: 0x0000ff, side: side } ),	//  3 blue
+	new THREE.MeshBasicMaterial( { color: 0xffff00, side: side } ),	//  4 yellow
+	new THREE.MeshBasicMaterial( { color: 0xff00ff, side: side } ),	//  5 mgenta
+	new THREE.MeshBasicMaterial( { color: 0x00ffff, side: side } ),	//  6 cyan	
+	new THREE.MeshBasicMaterial( { color: 0x7755ff, side: side } ),	//  7 color
+	new THREE.MeshBasicMaterial( { color: 0x000000, side: side, wireframe: true } )	//  8 grey
+	
+];
+ 
+const stats = new Stats();
+container.appendChild( stats.dom );
+
+document.getElementById( "show" ).onclick = showNewMesh;
+
+animate();
+
+// ......................
+
+function showNewMesh() {
+
+	if ( mesh ) {
+	
+		scene.remove( mesh );
+		g.dispose();
+		showGeo = false;
+		
+		matindex = null;
+		multimat = null;
+				
+	}
+	
+	hs = Math.floor( document.getElementById( "hs" ).value );
+	rs = Math.floor( document.getElementById( "rs" ).value );
+	
+	hss = hs + 1;
+	rss = rs + 1;
+	
+	vertexCount = hss * rss;
+	faceCount =  hs * rs * 2;
+	
+	matindex = document.getElementById( "matindex" ).checked;
+	multimat = document.getElementById( "multimat" ).checked;
+	
+	//  ....................... Geometry or BufferGeometry ...................................
+	
+	if ( document.getElementById( "Geometry" ).checked ) g = new THREE.Geometry();
+	if ( document.getElementById( "BufferGeometry" ).checked ) g = new THREE.BufferGeometry();
+		
+	// mesh
+	
+	if ( multimat ) {
+		
+		mesh = new THREE.Mesh( g, materials ); // multi materials
+		
+	} else {
+	
+		mesh = new THREE.Mesh( g, material ); // single material
+			
+	}		
+
+	scene.add( mesh );
+	
+	// configure Geometry or BufferGeometry
+	
+	if ( g.isGeometry ) {
+		
+		for ( let i = 0; i < vertexCount; i ++ ) { 
+			
+			g.vertices.push( new THREE.Vector3( 0, 0, 0 ) ); 
+		
+		}
+		
+	}	
+		
+	if ( g.isBufferGeometry ) {
+	
+		idxCount = 0;
+		
+		g.faceIndices = new Uint32Array( faceCount * 3 );
+		g.vertices = new Float32Array( vertexCount * 3 );  
+				
+		g.setIndex( new THREE.BufferAttribute( g.faceIndices, 1 ) );
+		//g.addAttribute( 'position', new THREE.BufferAttribute( g.vertices, 3 ).setDynamic( true ) ); // older version
+		g.setAttribute( 'position', new THREE.BufferAttribute( g.vertices, 3 ).setUsage(THREE.DynamicDrawUsage ) );
+		
+		 // ***** write groups for multi material *****
+		
+		for ( let f = 0, p = 0; f < faceCount; f ++, p += 3 ) {
+			
+			g.addGroup( p, 3, 0 );
+			
+		}
+ 		
+	}
+	
+	// faces Geometry or BufferGeometry	
+	
+	for ( let j = 0; j < rs; j ++ ) {
+	
+		j0 = hss * j; 
+		j1 = hss * ( j + 1 );
+		
+		for ( let i = 0; i < hs; i ++ ) {
+			
+			// 2 faces / segment,  3 vertex indices
+			a =  j0 + i;
+			b1 = j1 + i;			// right-bottom
+			c1 = j1 + 1 + i;
+			// b2 = j1 + 1 + i; =c1// left-top 
+			c2 = j0 + 1 + i;
+			
+			if ( g.isGeometry ) {
+				
+				g.faces.push( new THREE.Face3( a, b1, c1 ) ); // right-bottom
+				g.faces.push( new THREE.Face3( a, c1, c2 ) ); // left-top
+				
+			}
+			
+			if ( g.isBufferGeometry ) {
+			
+				g.faceIndices[ idxCount     ] = a; // right-bottom
+				g.faceIndices[ idxCount + 1 ] = b1;
+				g.faceIndices[ idxCount + 2 ] = c1; 
+				
+				g.faceIndices[ idxCount + 3 ] = a; // left-top
+				g.faceIndices[ idxCount + 4 ] = c1,
+				g.faceIndices[ idxCount + 5 ] = c2; 
+				
+				idxCount += 6;
+				
+			}
+						
+		}
+		
+	}
+	
+	showGeo = true;	 // start animation
+	
+}
+
+function move( t ) {
+	
+	for ( let j = 0; j < rss; j ++ ) {
+		
+		nj = j / rs;
+		
+		y = 400 * nj;							// calculate y
+		
+		for ( let i = 0; i < hss; i ++ ) {
+			
+			ni   = i / hs;
+			
+			x = 400 * ni;						// calculate x
+			
+			z =  400 * Math.sin( t + ni + nj );	// calculate z
+			
+			vIdx = hss * j + i;
+			
+			// set vertices Geometry or BufferGeometry
+				
+			if ( g.isGeometry ) g.vertices[ vIdx ].set( x, y, z );
+			
+			if ( g.isBufferGeometry ) {
+			
+				posIdx = vIdx * 3;
+				
+				g.vertices[ posIdx ]  = x;		
+				g.vertices[ posIdx + 1 ]  = y;
+				g.vertices[ posIdx + 2 ]  = z;
+				
+			}	
+			
+		}
+		
+	}
+	   
+	if ( matindex ) {
+		
+		for ( let j = 0; j < rs ; j ++ ) {
+			
+			for ( let i = 0; i < hs; i ++ ) {
+				
+				materialSegment = Math.floor( materials.length * ( 1 + Math.cos( 0.2 * t + i * i + 2 * j ) ) / 2 ); // calculate material
+				
+				fIdx = 2 * hs * j + 2 * i;
+				
+				// set material index:   Geometry - faces /  BufferGeometry - groups 
+				if ( multimat )	{
+				
+					if ( g.isGeometry ) {
+						
+						g.faces[ fIdx ].materialIndex = materialSegment;
+						g.faces[ fIdx + 1 ].materialIndex = materialSegment;
+						
+					}
+					
+					if ( g.isBufferGeometry ) {
+						
+						g.groups[ fIdx ].materialIndex = materialSegment;
+						g.groups[ fIdx + 1 ].materialIndex = materialSegment;
+						
+					}
+				}
+			}			
+		}		
+	}		
+
+	// dynamic update:  Geometry - vertices  /  BufferGeometry - attributes.position
+	
+	if ( g.isGeometry ) g.verticesNeedUpdate  = true;	
+	if ( g.isBufferGeometry ) g.attributes.position.needsUpdate = true;
+	
+	// for Geometry:		docs: .groupsNeedUpdate : Boolean | Set to true if a face3 materialIndex has been updated.
+	// for BufferGeometry:	docs: ?
+	g.groupsNeedUpdate = true;
+	
+}
+
+function animate() {
+	
+	requestAnimationFrame( animate );
+	t = clock.getElapsedTime();
+	
+	if ( showGeo ) move( t );
+	 
+	renderer.render( scene, camera );
+	controls.update();
+	
+	stats.update();
+	
+}	
+</script>
+</html>

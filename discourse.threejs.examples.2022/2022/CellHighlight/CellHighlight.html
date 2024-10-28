@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/cover-custom-3d-fbx-mesh-with-a-grid-of-faces-to-be-highlighted-by-mouse-hover/39064/8 -->
+<!-- https://codepen.io/prisoner849/pen/xxYyavd -->
+<head>
+  <title>CellHighlight</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+
+ 
+import {OrbitControls} from '../jsm/OrbitControls.136.js'  
+import { ImprovedNoise } from '../jsm/ImprovedNoise.136.js'  
+
+console.clear();
+
+let perlin = new ImprovedNoise();
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 1, 1000);
+camera.position.set(10, 10, 10).setLength(50);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 0.75);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.25));
+
+let g = new THREE.PlaneGeometry(100, 100, 100, 100);
+g.rotateX(-Math.PI * 0.5);
+let v2 = new THREE.Vector2();
+for(let i = 0; i < g.attributes.position.count;i++){
+  v2.fromBufferAttribute(g.attributes.uv, i).multiplyScalar(5);
+  let y = perlin.noise(v2.x, v2.y, 2.7) * 10;
+  g.attributes.position.setY(i, y)
+}
+g.computeVertexNormals();
+
+let gu = {
+  mouse: {value: new THREE.Vector3().setScalar(-9999)}
+}
+let m = new THREE.MeshLambertMaterial({
+  color: 0xFACE8D,
+  onBeforeCompile: shader => {
+    shader.uniforms.mouse = gu.mouse;
+    shader.vertexShader = `
+      varying vec3 vPos;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+        vPos = position;
+      `
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+      #define ss(a, b, c) smoothstep(a, b, c)
+      uniform vec3 mouse;
+      varying vec3 vPos;
+      ${shader.fragmentShader}
+    `.replace(
+      `#include <dithering_fragment>`,
+      `#include <dithering_fragment>
+      
+      // https://madebyevan.com/shaders/grid/
+        float cellSize = 10.;
+        vec2 coord = vPos.xz / cellSize;
+        
+        vec2 mouseCell = floor(mouse.xz / cellSize) + 0.5;
+        vec2 rect = abs(coord - mouseCell);
+        
+        float mf = float(abs(max(rect.x,rect.y)) < 0.5);
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0, 1, 1), mf);
+
+        vec2 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
+        float line = min(grid.x, grid.y);
+
+        float color = 1.0 - min(line, 1.0);
+        
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1, 0, 0), color);
+        
+      `
+    );
+    console.log(shader.fragmentShader);
+  }
+})
+
+let pointer = new THREE.Vector2();
+let raycaster = new THREE.Raycaster();
+let intersects;
+window.addEventListener("pointermove", event => {
+  pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  intersects = raycaster.intersectObject(o, false);
+  if(intersects.length > 0){
+    gu.mouse.value.copy(intersects[0].point);
+  }
+})
+
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+</script>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<!--https://discourse.threejs.org/t/how-do-i-create-several-instanced-meshes-with-the-same-geometry-but-with-different-textures/49842/2-->
+<!--https://codepen.io/illuminsi/pen/mdGYYmN-->
+<head>
+  <title>InstancedMeshSeveralTexturesArray</title>
+  <meta charset="utf-8" />
+</head>
+<body></body>
+<script >
+let tex1 = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAwSURBVBhXY2D4z8DQgIGAgigcOBuIUDjICJ0PRyCMZgiEi0UIghAsNIRuDgT9ZwAADnoj+YsyPEwAAAAASUVORK5CYII=`;
+let tex2=`data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAOwwAADsMBx2+oZAAAAC9JREFUGFdj+N/g0ODAgIaAguh8OBuLEIQN5WAiEMZqDQoHogLFKExN2M353+AAAB6YOvZpRxb+AAAAAElFTkSuQmCC`;
+</script>
+
+<script type="module">
+
+// @author Chaser_Code = chaserboy   
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+import {ImprovedNoise} from '../jsm/ImprovedNoise.149.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 5, 20).setLength(40);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+	camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(8, 0, 8);
+controls.update();
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let texMap1 = new THREE.TextureLoader().load(tex1);
+let texMap2 = new THREE.TextureLoader().load(tex2);
+
+let g = new THREE.BoxGeometry(1, 1, 1);
+let m = new THREE.MeshLambertMaterial({
+	onBeforeCompile: shader => {
+  	shader.uniforms.map = {value: [texMap1,texMap2]};
+    shader.vertexShader = `
+    	attribute float texIdx;
+    	varying float vTexIdx;
+      ${shader.vertexShader}
+    `.replace(
+    	`void main() {`,
+      `void main() {
+      	vTexIdx = texIdx;
+      `
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+    	uniform sampler2D map[2];
+    	varying float vTexIdx;
+      ${shader.fragmentShader}
+    `.replace(
+    	`#include <map_fragment>`,
+      `#include <map_fragment>
+      	
+
+        //vec4 blockColor = texture(texAtlas, blockUv);
+        
+if(vTexIdx==0.0){ diffuseColor *=texture2D(map[0],vUv); }
+if(vTexIdx==1.0){ diffuseColor *=texture2D(map[1],vUv); }
+
+      `
+    );
+    //console.log(shader.fragmentShader);
+  }
+});
+m.defines = {"USE_UV" : ""};
+let blocks = new THREE.InstancedMesh(g, m, 10240);
+
+let perlin = new ImprovedNoise();
+let vecUV = new THREE.Vector2();
+let dummy = new THREE.Object3D();
+let texIdx = new Float32Array(10240).fill(0);
+let instIdx = 0;
+for(let x = 0; x < 16; x++){
+	for(let z = 0; z < 16; z++){
+  	vecUV.set(x,z).divideScalar(16).multiplyScalar(2.5);
+    let h = Math.floor(perlin.noise(vecUV.x, vecUV.y, 100) * 4) + 32;
+    for(let y = 0; y < h; y++){
+    	dummy.position.set(x, y - 32, z);
+      dummy.updateMatrix();
+      blocks.setMatrixAt(instIdx, dummy.matrix);
+      texIdx[instIdx] = y < (h - 1) ? 0 : 1;
+instIdx++;      
+    }
+  }
+}
+g.setAttribute("texIdx", new THREE.InstancedBufferAttribute(texIdx,1));
+
+scene.add(blocks);
+
+renderer.setAnimationLoop(() => {
+	renderer.render(scene, camera);
+});
+
+</script>
+</html>

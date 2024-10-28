@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/use-camera-like-human-eyes/2714/4 -->
+<!-- http://threejs.hofk.de/fiddle/camera_fiddle_01.html -->
+
+<!-- see also  https://jsfiddle.net/prisoner849/9xL0qp3h/ -->
+
+<head>
+  <title> HumanEyesCamera </title>
+  <meta charset="utf-8" />
+</head>
+
+<body ></body>
+<script src="../js/three.min.92.js"></script>
+<script src="../js/THREEx.WindowResize.js"></script>
+
+<script> 'use strict'
+
+// @author prisoner849, hofk
+
+var scene = new THREE.Scene( );
+var camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.001, 10000 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+THREEx.WindowResize( renderer, camera );
+
+var scout = new THREE.Object3D( );
+
+// The  speeds in this demo are constant.
+var speedVorward = 40;
+var speedBackward = 20;
+var speedLeftRight = 12;
+var speedTurn = 0.1;
+var speedUpDown = 15;
+var speedLookHighDeep = 0.06;
+
+var clock = new THREE.Clock( );
+var delta = 0;
+
+var camHolder = new THREE.Group( );
+camHolder.add( camera );
+camHolder.position.set( 0, 1.5, 0 ); // height of human eyes
+scene.add( camHolder );
+
+var keyCode = -1;
+document.addEventListener( 'keydown', function( evt ) { keyCode = evt.keyCode; } );
+document.addEventListener( 'keyup', function( ) { keyCode = -1; } );
+
+/*
+Author CubeMap
+======
+This is the work of Emil Persson, aka Humus.
+http://www.humus.name
+License
+=======
+This work is licensed under a Creative Commons Attribution 3.0 Unported License.
+http://creativecommons.org/licenses/by/3.0/
+*/
+
+var texturArray = [ 'CubeMap/', 'posx.jpg', 'negx.jpg', 'posy.jpg', 'negy.jpg', 'posz.jpg', 'negz.jpg'];
+
+var skyboxTexture = new THREE.CubeTextureLoader( ).setPath( texturArray[ 0 ] ).load( [
+		texturArray[ 1 ],
+		texturArray[ 2 ],
+		texturArray[ 3 ],
+		texturArray[ 4 ],
+		texturArray[ 5 ],
+		texturArray[ 6 ]
+	] );
+
+var shader = THREE.ShaderLib[ "cube" ];
+shader.uniforms[ "tCube" ].value = skyboxTexture;
+var shMaterial = new THREE.ShaderMaterial( {
+		fragmentShader: shader.fragmentShader,
+		vertexShader: shader.vertexShader,
+		uniforms: shader.uniforms,
+		side: THREE.BackSide 
+	} );
+
+var surroundings = new THREE.Mesh( new THREE.BoxBufferGeometry( 800, 800, 800 ), shMaterial );
+surroundings.position.set( 0 , 10, 0 );
+
+scene.add( surroundings );
+
+animate();
+
+// ...................
+
+function animate( ) {
+	
+	requestAnimationFrame( animate );
+	delta = clock.getDelta( );
+	if ( keyCode !== -1 ) move( );
+	renderer.render( scene, camera );
+	
+}
+
+function move( ) {
+	
+	if ( keyCode === 87 ) { if ( withinBorders( moveForward ) ) moveForward( camHolder ) }	// w fast vorward
+	if ( keyCode === 83 ) { if ( withinBorders( moveBack ) ) moveBack( camHolder ) }		// s backward a little slower
+	if ( keyCode === 65 ) { if ( withinBorders( moveLeft ) ) moveLeft( camHolder ) }		// a slowly leftwards
+	if ( keyCode === 68 ) { if ( withinBorders( moveRight ) ) moveRight( camHolder ) }		// d slowly rightwards
+		
+	if ( keyCode === 76 ) { turnLeft( camHolder ) }		// l turn to the left
+	if ( keyCode === 82 ) { turnRight( camHolder ) }	// r turn to the right
+		
+	if ( keyCode === 84 ) { goTop( camHolder ) }	 	// t upstretch
+	if ( keyCode === 66 ) { goBottom( camHolder ) }	 	// b bend down
+	
+	if ( keyCode === 38 ) { lookUp( camera ) }	 		// up arrow, looking higher		-> camera
+	if ( keyCode === 40 ) { lookDown( camera ) }		// down arrow, looking deeper	-> camera
+}
+
+function withinBorders( moveFunction ) {
+	
+	scout.position.x = camHolder.position.x;
+	scout.position.z = camHolder.position.z;
+	
+	moveFunction( scout );
+	
+	// Here a simple circle. Uniting of figures is possible.
+	return Math.sqrt( scout.position.x * scout.position.x + scout.position.z * scout.position.z ) < 200;
+	
+}
+
+function moveForward( obj ) { obj.translateZ( -speedVorward * delta ); }
+function moveRight( obj ) {	obj.translateX( speedLeftRight * delta ); }
+function moveLeft( obj ) { obj.translateX( -speedLeftRight * delta ); }
+function moveBack( obj ) { obj.translateZ( speedBackward * delta ); }
+
+function turnLeft( obj ) { obj.rotateY( speedTurn * delta ); }
+function turnRight( obj ) { obj.rotateY( -speedTurn * delta ); }
+
+function goTop( obj ) {	if ( obj.position.y < 20 ) obj.translateY( speedUpDown * delta ); }
+function goBottom( obj ) { if ( obj.position.y > -5 ) obj.translateY( -speedUpDown * delta ); }
+
+function lookUp( obj ) { if ( obj.rotation.x < 1.45 ) obj.rotation.x += speedLookHighDeep * delta; }
+function lookDown( obj ) { if ( obj.rotation.x > -1.45 ) obj.rotation.x += -speedLookHighDeep * delta; }
+
+</script>
+</html>

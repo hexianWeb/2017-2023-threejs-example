@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/selecting-one-faceindex/1586/3 -->
+<!-- https://jsfiddle.net/prisoner849/8jubLsy7/ -->
+<head>
+  <title> selectingFaceindex </title>
+  <meta charset="utf-8" />
+       <style>
+	body {
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.89.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(5, 0, 10);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x818181);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var mesh = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 15, 32, 20, true), new THREE.MeshBasicMaterial({vertexColors: THREE.FaceColors, wireframe: false, side: THREE.DoubleSide}));
+mesh.rotation.x = -Math.PI * .5;
+scene.add(mesh);
+
+var wire = new THREE.LineSegments(new THREE.WireframeGeometry(mesh.geometry), new THREE.LineBasicMaterial({color: "black"}));
+mesh.add(wire);
+
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+var intersects;
+var prevIndex = -1;
+var prevColor = new THREE.Color();
+
+document.addEventListener("mousedown", onMouseDown, false);
+function onMouseDown(event){
+
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+  
+  raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObject(mesh);
+  if (intersects.length == 0) return;
+  if (intersects[0].faceIndex !== prevIndex){
+  	if (prevIndex !== -1) {intersects[0].object.geometry.faces[prevIndex].color.copy(prevColor);}
+    prevColor.copy(intersects[0].face.color);
+    prevIndex = intersects[0].faceIndex;
+    intersects[0].face.color.setHex(0xff0000);
+    intersects[0].object.geometry.colorsNeedUpdate = true;
+  }
+}
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

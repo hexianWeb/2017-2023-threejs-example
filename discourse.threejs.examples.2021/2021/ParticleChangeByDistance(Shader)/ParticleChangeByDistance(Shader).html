@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-particles-change-shape-when-distance-from-the-viewer-or-camera-is-too-large/29899 -->
+<!-- https://codepen.io/prisoner849/pen/ExXvrqJ -->
+<head>
+  <title> ParticleVhangeByDistance(Shader) </title>
+  <meta charset="utf-8" />
+  	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 5);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let g = new THREE.BufferGeometry().setFromPoints(
+  new Array(10000).fill().map((p) => {
+    return new THREE.Vector3().random().subScalar(0.5).multiplyScalar(200);
+  })
+);
+let uniforms = {
+  time: {value: 0}
+}
+let m = new THREE.PointsMaterial({
+  color: 0x007fff,
+  size: 0.5,
+  onBeforeCompile: (shader) => {
+    shader.uniforms.time = uniforms.time;
+    shader.vertexShader = `
+      uniform float time;
+      varying float distRatio;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+      
+      transformed.z = -100. + mod(transformed.z + time * 5., 200.);
+      
+      `
+    ).replace(
+      `gl_PointSize = size;`,
+      `
+      distRatio = smoothstep(25., 75., -mvPosition.z);
+      gl_PointSize = size * (1. + (1. - distRatio) * 5.);
+        
+      `
+    );
+    console.log(shader.vertexShader);
+    shader.fragmentShader = `
+      varying float distRatio;
+      ${shader.fragmentShader}
+    `
+      .replace(
+        `#include <clipping_planes_fragment>`,
+        `#include <clipping_planes_fragment>
+        
+        vec2 uv = gl_PointCoord - 0.5;
+        float a = atan(uv.x,uv.y);
+        float r = PI2/float(3.);
+        float d1 = cos(floor(.5+a/r)*r-a)*length(uv) * 2.;
+        
+        float d2 = length(uv);
+        
+        float d = mix(d1, d2, distRatio);
+        
+        if(d > 0.5) discard;
+      `
+      )
+      .replace(
+        `vec4 diffuseColor = vec4( diffuse, opacity );`,
+        `
+      vec3 col = mix(vec3(0, 1, 1), vec3(1, 0, 1), d1 * 2.);
+      col = mix(col, diffuse, distRatio);
+      vec4 diffuseColor = vec4( col, opacity );`
+      );
+    console.log(shader.fragmentShader);
+  }
+});
+let p = new THREE.Points(g, m);
+scene.add(p);
+
+window.addEventListener("resize", onResize);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  uniforms.time.value = t;
+  renderer.render(scene, camera);
+});
+
+function onResize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+
+</script>
+</html>

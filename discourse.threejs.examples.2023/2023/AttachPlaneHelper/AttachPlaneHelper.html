@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/center-threejs-planehelper-on-geometry/48516/4 -->
+<!-- https://codepen.io/boytchev/pen/KKxaYwp -->
+<head>
+  <title>AttachPlaneHelper</title>
+  <meta charset="utf-8" />
+    <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+// general setup, boring, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 2, 3, 10 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+// draw a coordinate system
+
+var axesHelper = new THREE.AxesHelper( 5 );
+		axesHelper.setColors( 0, 0, 0 );
+		scene.add( axesHelper );
+
+
+// this is the object with attached plane helper
+
+var object = new THREE.Mesh(
+			new THREE.BoxGeometry( 1, 1, 1 ),
+    	new THREE.MeshPhongMaterial( {color:'tan', shininess: 10} )
+    );	
+		scene.add( object );
+
+
+// a custom PlaneHelper that uses THREE.PlaneHelper
+// but modifies its updateMatrixWorld() method
+
+class PlaneHelper extends THREE.PlaneHelper {
+	
+		static matrix = new THREE.Matrix4();
+	
+		updateMatrixWorld( force ) {
+
+				this.position.set( 0, 0, 0 );
+				this.scale.set( 0.5 * this.size, 0.5 * this.size, 1 );
+
+				PlaneHelper.matrix.lookAt( this.position, this.plane.normal, this.up );
+				this.quaternion.setFromRotationMatrix( PlaneHelper.matrix );
+
+				this.translateZ( - this.plane.constant );
+				THREE.Line.prototype.updateMatrixWorld.call(this, force);
+	}
+}
+
+
+// define a plane and its helper
+
+var plane = new THREE.Plane( new THREE.Vector3(1,1,1).normalize(), 1 ),
+		helper = new PlaneHelper( plane, 2, 'crimson' );
+
+
+// IMPORTANT: the helper must be added to the object
+// in order to take its position and orientation
+
+object.add( helper );
+
+
+
+function animationLoop( t )
+{
+		// move and rotate the object
+    object.position.x = Math.sin( t/700 );
+		object.rotation.y = 3*Math.sin( t/700*2 );
+
+    controls.update( );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

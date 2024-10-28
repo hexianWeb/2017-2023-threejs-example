@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/three-js-texture-scale/30564/2 -->
+<!-- https://jsfiddle.net/prisoner849/swxorn21/ -->
+<head>
+  <title> TextureScaleDynamic </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+camera.lookAt(scene.position);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+let controla = new OrbitControls(camera, renderer.domElement);
+
+let g = new THREE.PlaneGeometry(5, 5);
+let m = new THREE.MeshBasicMaterial({
+                                    // https://threejs.org/examples/textures/brick_diffuse.jpg
+	map: new THREE.TextureLoader().load("brick_diffuse.jpg", tex => {
+  	tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  })
+})
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+window.addEventListener("resize", onResize);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(_ => {
+	
+  let t = clock.getElapsedTime() * 0.5;
+  let x = 2.5 + Math.cos(t) * 1.5;
+  let y = 2.5 + Math.sin(t) * 1.5;
+  g.attributes.position.setXY(1, x, y);
+	g.attributes.position.needsUpdate = true;
+  let u = (x - (-2.5)) / 5;
+  let v = (y - (-2.5)) / 5;
+  g.attributes.uv.setXY(1, u, v);
+  g.attributes.uv.needsUpdate = true;
+  renderer.render(scene, camera);
+})
+
+function onResize(event) {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+
+
+</script>
+</html>

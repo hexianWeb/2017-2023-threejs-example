@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-could-be-the-best-way-of-implementing-an-fft-chart/27113/6 -->
+<!-- https://codepen.io/prisoner849/full/rNyqMJJ -->
+
+<!--  @author  MQdev + prisoner849 --> 
+<head>
+  <title> InstancedMeshDataInfoColors </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+
+#info {
+  position: absolute;
+  color: white;
+  font-family: Arial;
+}
+</style>
+<script>
+  const imgData = `data:image/png;base64,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`;
+</script>
+ 
+<body>	
+	<div id="info"></div>
+</body>
+
+<script type="module">
+
+// @author  MQdev + prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.129.js";
+import { OrbitControls } from "../jsm/OrbitControls.129.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(-100, 100, 150);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2( 1, 1 );
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper(250, 10));
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.75));
+
+let g = new THREE.BoxGeometry();
+g.translate(0, 0.5, 0);
+let m = new THREE.MeshLambertMaterial({
+  onBeforeCompile: shader => {
+    shader.uniforms.lut = {
+      value: new THREE.TextureLoader().load(imgData)
+    }
+    shader.vertexShader = `
+      uniform sampler2D lut;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <color_vertex>`,
+      `
+        float lutVal = clamp(instanceMatrix[1][1] / 100., 0., 1.);
+        vColor = texture(lut, vec2(0.5, lutVal)).rgb;
+      `
+    );
+    console.log(shader.vertexShader)
+  }
+});
+m.defines = {"USE_COLOR" : ""};
+
+let rows = 50;
+let cols = 125;
+let c1 = new THREE.Color(0, 0.5, 1);
+let c2 = new THREE.Color(0.5, 0, 1);
+let c = new THREE.Color();
+
+let o = new THREE.InstancedMesh(g, m, rows * cols);
+
+let dummy = new THREE.Object3D();
+let mat4 = new THREE.Matrix4();
+for(let y = 0; y < rows; y++){
+  let factor0 = y * 0.1;
+  let factor1 = Math.random();
+  for(let x = 0; x < cols; x++){
+    
+    dummy.position.set(-(cols - 1) / 2 + x,0, (rows - 1) / 2 - y).multiplyScalar(2);
+    
+    let hData = Math.random() * 0.05 + 0.005 + Math.max(Math.abs(Math.sin(x * 0.012 * 2)*factor0)-factor1,0);
+    
+    dummy.scale.set(1.5, Math.pow(hData, 3) ,1.5);
+    dummy.updateMatrix();
+    o.setMatrixAt(y * cols + x, dummy.matrix);
+    
+    //o.setColorAt(y * cols + x, c.lerpColors(c1, c2, hData))
+  }
+}
+
+scene.add(o);
+
+window.addEventListener( 'resize', onWindowResize );
+document.addEventListener( 'mousemove', onMouseMove );
+
+renderer.setAnimationLoop( _ => {
+  
+  raycaster.setFromCamera( mouse, camera );
+
+  const intersection = raycaster.intersectObject( o );
+
+  if ( intersection.length > 0 ) {
+
+    info.style.display = "block";
+    const instanceId = intersection[ 0 ].instanceId;
+
+    o.getMatrixAt(instanceId, mat4);
+    mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
+    
+    info.innerText = `data: ${dummy.scale.y}`;
+
+  }
+  else {
+    info.style.display = "none";
+  }
+  
+  renderer.render(scene, camera);
+})
+
+function onMouseMove( event ) {
+
+  event.preventDefault();
+  
+  info.style.transform = `translate(${event.clientX + 15}px, ${event.clientY + 5}px)`;
+  
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+</script>
+</html>

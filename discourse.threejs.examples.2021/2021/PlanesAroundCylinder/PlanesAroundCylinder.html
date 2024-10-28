@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/wrapping-planegeometry-around-cylindergeometry/25987 -->
+<!-- https://jsfiddle.net/prisoner849/deyLc8qk/ -->
+<!-- see also @S33 / @gilomer88   https://jsfiddle.net/gilomer88/xy9jwrbg/18/ -->
+<head>
+  <title> PlanesAroundCylinder </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body,
+html {
+  margin: 0%;
+  padding: 0%;
+}
+
+</style>
+<body> </body>
+
+<script type="module">
+
+// @author S33 + prisoner849
+
+import * as THREE from "../jsm/three.module.125.js";
+import { OrbitControls } from "../jsm/OrbitControls.125.js";
+
+let container;
+let camera, scene, renderer, rayCaster, controls;
+let mesh, mixer;
+let shapesArray = [];
+let objectsForRayCasterArray = [];
+let mouseX, mouseY;
+var mousePositionVector = new THREE.Vector2();
+
+init();
+animate();
+
+function init() {
+  console.log("in 'init()'!");
+
+  camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
+  camera.position.set(0, 30, 90);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color( "indigo" );
+
+  rayCaster = new THREE.Raycaster();
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio( window.devicePixelRatio );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.body.appendChild( renderer.domElement );
+
+  controls = new OrbitControls( camera, renderer.domElement );
+
+  const light1 = new THREE.DirectionalLight( 0xefefff, 1.5 );
+  light1.position.set( 1, 1, 1 ).normalize();
+  scene.add( light1 );
+
+  const light2 = new THREE.DirectionalLight( 0xffefef, 1.5 );
+  light2.position.set( - 1, - 1, - 1 ).normalize();
+  scene.add( light2 );
+ 
+    // Cylinder:
+    const cylGeometry = new THREE.CylinderGeometry(8, 12, 8, 40, 40);
+    /* const cylGeometry = new THREE.CylinderGeometry(8, 12, 8, 20, 20); */
+    const cylMaterial = new THREE.MeshPhongMaterial( { color:"red", flatShading: false } );
+    let cylMesh = new THREE.Mesh(cylGeometry, cylMaterial);
+    cylMesh.position.set(0, 0, 0);
+
+    scene.add(cylMesh);
+    
+   // Make 10 "patches":
+   var patchX = 0;
+   var patches = 10;
+   var angleStep = Math.PI * 2  / patches;
+   var lookAt = new THREE.Vector3();
+   var axis = new THREE.Vector3(0, 1, 0);
+   for(var patchCount = 0; patchCount < patches; patchCount++) {
+      let patchGeometry = new THREE.PlaneBufferGeometry(2, 4, 7, 7);
+      patchGeometry.rotateY(Math.PI);
+      let patchMaterial = new THREE.MeshPhongMaterial({ color: "yellow", side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+      let patchMesh = new THREE.Mesh(patchGeometry, patchMaterial);
+
+      cylMesh.add(patchMesh);
+      
+      let angle = angleStep * patchCount;
+
+      patchMesh.position.set(
+      	Math.cos(angle),
+        0,
+        -Math.sin(angle)
+      ).multiplyScalar(11);
+      
+      let sideAngle = Math.atan2(8, 8 - 12) - Math.PI * 0.5; // (height, top - bottom)
+      //console.log(THREE.MathUtils.radToDeg(sideAngle));
+      let lookY = 11 * - Math.tan(sideAngle);
+      
+      patchMesh.lookAt(0, lookY, 0);
+
+    }  
+
+  window.addEventListener( 'resize', onWindowResize );
+
+}
+
+function generateRandomColor() {
+    const colorsArray = ["blue", "red", "green", "yellow", "purple", "orange", "violet", "thistle", "coral", "darkorange", "pink", "deeppink", "fuchsia", "lightblue", "blueviolet", "crimson", "dodgerblue"];
+    
+    // Randomly pick a COLOR from the colorsArray:
+    let randy = Math.floor(Math.random() * colorsArray.length);
+    let colorString = colorsArray[randy];
+    /* console.log("colorString = " + colorString); */
+
+    return colorString;
+}
+
+function buildHelperGrid() {
+  var gridColor = new THREE.Color("skyblue");
+  let helperGrid = new THREE.GridHelper(600, 30, "yellow", gridColor);
+  //helperGrid.setColors( new THREE.Color(0xff0000), new THREE.Color(0xffffff) );
+  scene.add(helperGrid);
+
+  helperGrid.position.set(0, 0, 0);
+  helperGrid.visible = true;
+  // helperGrid.visible = !helperGrid.visible;
+}
+
+buildHelperGrid();
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+//
+
+function animate() {
+	/* console.log("animating!"); */
+  requestAnimationFrame(animate);
+   
+  render();
+}
+
+function render() {
+  /* 	theta += 0.1;
+  const time = Date.now(); */
+  renderer.render( scene, camera );
+}
+
+</script>
+</html>

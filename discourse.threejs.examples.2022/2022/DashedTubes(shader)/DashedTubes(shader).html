@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/energy-wave-shader/44620/3 -->
+<!-- https://codepen.io/prisoner849/pen/zYawQoy -->
+<head>
+  <title> DashedTubes(shader) </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+import { mergeBufferGeometries } from '../jsm/BufferGeometryUtils.136.js';
+
+console.clear();
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(
+  60,
+  innerWidth / innerHeight,
+  0.1,
+  1000
+);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+
+let gu = {
+  time: { value: 0 }
+};
+
+let light = new THREE.DirectionalLight(0xffffff, 0.2);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.8));
+
+let mess = makeAMess();
+scene.add(mess);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  let t = clock.getElapsedTime();
+  gu.time.value = t;
+  renderer.render(scene, camera);
+});
+
+function makeAMess() {
+  let color = new THREE.Color();
+  let crv = new THREE.CatmullRomCurve3(
+    new Array(5).fill().map((p) => {
+      return new THREE.Vector3();
+    })
+  );
+  let gs = new Array(5).fill().map((c) => {
+    crv.points.forEach((p) => {
+      p.random().subScalar(0.5).multiplyScalar(10);
+    });
+    crv.closed = Math.random() < 0.25;
+    crv.updateArcLengths();
+    let crvLen = crv.getLength();
+    let geom = new THREE.TubeGeometry(crv, 512, 0.05, 8);
+    console.log(crvLen);
+    fillWithData(geom, color.setHSL(Math.random(), 1, 0.75), crvLen);
+    return geom;
+  });
+
+  let g = mergeBufferGeometries(gs);
+
+  let m = new THREE.MeshLambertMaterial({
+    side: THREE.DoubleSide,
+    vertexColors: true,
+    onBeforeCompile: (shader) => {
+      shader.uniforms.time = gu.time;
+      shader.vertexShader = `
+        attribute float crvLen;
+        varying float vCrvLen;
+        ${shader.vertexShader}
+      `.replace(
+        `#include <begin_vertex>`,
+        `#include <begin_vertex>
+        vCrvLen = crvLen;
+        `
+      );
+      //console.log(shader.vertexShader);
+      shader.fragmentShader = `
+        uniform float time;
+        varying float vCrvLen;
+        ${shader.fragmentShader}
+      `.replace(
+        `#include <clipping_planes_fragment>`,
+        `#include <clipping_planes_fragment>
+          vec2 cUv = fract((vUv * vec2(floor(vCrvLen), 1.)) + vec2(time, 0.));
+          if (cUv.x > 0.75) discard;
+        `
+      );
+      //console.log(shader.fragmentShader);
+    }
+  });
+  m.defines = { USE_UV: "" };
+
+  let tubes = new THREE.Mesh(g, m);
+  return tubes;
+
+  function fillWithData(g, color, cl) {
+    let clr = new Float32Array(g.attributes.position.count * 3);
+    let crvLen = new Float32Array(g.attributes.position.count); // approximate length of the current curve
+    for (let i = 0; i < g.attributes.position.count; i++) {
+      color.toArray(clr, i * 3);
+      crvLen[i] = cl;
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(clr, 3));
+    g.setAttribute("crvLen", new THREE.BufferAttribute(crvLen, 1));
+  }
+}
+
+</script>
+</html>

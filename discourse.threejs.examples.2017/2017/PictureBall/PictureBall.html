@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- https://discourse.threejs.org/t/add-marker-to-rotating-globe-object-help/1116/3 -->
+<!-- http://threejs.hofk.de/knoten/pinned.html -->
+<head>
+	<title> PictureBall </title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+</head>
+<body>
+
+	<script src="../js/three.min.87.js"></script>
+	<script src="../js/OrbitControls.js"></script>
+	<script src="../js/THREEx.WindowResize.js"></script>
+	<div id="threejs" style="position: absolute; left:0px; top:0px"></div>
+	
+</body>
+
+<script>
+
+// @author hofk
+
+var boards = []; 
+var texture = []; 
+var matTexture = [];
+
+init();
+animate();
+
+//...........................
+
+function init() {	
+
+	scene  = new THREE.Scene();
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth/ window.innerHeight,1, 300000 );
+	scene.add( camera );
+	camera.position.set( 0, 1500, 5000 );	
+	renderer = new THREE.WebGLRenderer( { antialias:true } );	
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.setClearColor( 0xeeeeee );
+	container = document.getElementById( 'threejs' );
+	container.appendChild( renderer.domElement );
+	THREEx.WindowResize( renderer, camera );
+	controls = new THREE.OrbitControls( camera, renderer.domElement );
+	
+	texture[0] = new THREE.TextureLoader().load( "waterlily.png" );
+	texture[1] = new THREE.TextureLoader().load( "dahlia.jpg" ); 
+	texture[2] = new THREE.TextureLoader().load( "petunia.jpg" );
+	texture[3] = new THREE.TextureLoader().load( "frog.jpg" );
+	
+	for (var z = 0; z < 4; z++) { 
+	
+		matTexture[z] = new THREE.MeshBasicMaterial( { color:0xffdd99, map: texture[z], transparent:true, opacity:0.8, wireframe:false} ); 	
+  	}
+	
+	// ball
+	materialSph = new THREE.MeshBasicMaterial( { color: 0x0099dd, transparent: true, opacity: 0.8, wireframe:false } );
+	sphGeo  = new THREE.SphereGeometry(1200, 8, 8);             
+	sphere = new THREE.Mesh( sphGeo, materialSph );	 
+	scene.add( sphere );
+ 	
+	// board for some things	
+	materialBoard   = new THREE.MeshBasicMaterial({color:0xdddddd, transparent:true, opacity:0.4, wireframe: true });
+	boardGeo  = new THREE.PlaneGeometry(500,500);
+	
+	picGeo = new THREE.PlaneGeometry( 200, 200 );
+	  
+	for (var i = 0; i < sphGeo.vertices.length; i++)	{ 	
+	
+		board = new THREE.Mesh( boardGeo, materialBoard );  		// board for pictures etc.  
+		
+		pic = new THREE.Mesh( picGeo, matTexture[ i % 4 ] );
+		
+		board.add( pic ) ;                                      		//  add picture to the board
+		
+		pic.position.x = -70;										// position on the board
+		pic.position.y = 120;
+		
+		boards.push( board );	                               				
+		scene.add( boards[ i ] );                           		
+		
+		boards[ i ].position.set( 1.3 * sphGeo.vertices[ i ].x , 1.3 * sphGeo.vertices[ i ].y, 1.3 * sphGeo.vertices[ i ].z ); 
+		
+	}	
+	
+} 
+
+function animate() {
+
+    requestAnimationFrame( animate );
+	
+	 for( var n = 0; n < boards.length; n ++ ) {
+		
+		boards[ n ].lookAt( camera.position );
+		// or see https://discourse.threejs.org/t/add-marker-to-rotating-globe-object-help/1116/6
+	 	// boards[ n ].quaternion.copy( camera.quaternion );
+	 }	
+	 
+	renderer.render( scene, camera );	
+	
+	controls.update();
+}
+</script>
+</html>

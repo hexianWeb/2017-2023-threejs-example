@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/performance-problem-when-using-raycaster/5314/4 -->
+<!-- http://jsfiddle.net/vasilii/ato7rh2j/124/ -->
+
+<!-- see https://jsfiddle.net/rgpno81k/1/ Mugen87 updated -->
+
+<head>
+  <title> LabelsOnSphere </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		background-color: #000;
+		margin: 0px;
+		overflow: hidden;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.99.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script> 
+
+// @ author vasilii helped by Mugen87
+
+var mesh, renderer, scene, camera, controls;
+
+var raycaster = new THREE.Raycaster();
+var targetList = [];
+var arrLabels = []
+
+init();
+addClick();
+animate();
+
+function init() {
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set( 20, 20, 20 );
+    controls = new THREE.OrbitControls( camera );
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    var light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20, 20, 0 );
+    scene.add( light );
+    scene.add( new THREE.AxisHelper( 20 ) );
+
+    var geometry = new THREE.SphereGeometry( 10, 50, 50 );  //COUNT OF POLIGONS OF MESH
+    var material = new THREE.MeshPhongMaterial( {
+        color: 0x00ffff, 
+        shading: THREE.FlatShading,
+        transparent: true,
+        opacity: 0.7,
+    } );
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+    
+    targetList.push(mesh);
+}
+
+function animate() {
+    updateLabels();
+    renderer.render( scene, camera );
+    requestAnimationFrame( animate );
+}
+
+
+/**************************************************************************/
+
+function addClick() {
+  renderer.domElement.addEventListener( 'click', (e) => { 
+    let x = e.offsetX === undefined ? e.layerX : e.offsetX;
+    let y = e.offsetY === undefined ? e.layerY : e.offsetY;
+    
+    let coords3dClick = getClickIntersetion({x: x, y: y}, e.target);
+    if (!coords3dClick) {
+      return
+    }
+    let sp = new THREE.Sprite( new THREE.SpriteMaterial({color: 0xff0000}))
+    let pos = getPointInBetweenByPerc( camera.position, coords3dClick,  0.99 )
+    sp.position.set( pos.x,pos.y,pos.z )
+    scene.add( sp )
+    let domLabel = createDomLabel(x, y, e.target)
+    let labelData = {
+      sp: sp,
+      domElem: domLabel 
+    }
+    arrLabels.push(labelData)  
+  });
+}
+
+function getClickIntersetion(mouse, canvas) {
+    mouse.x = (mouse.x / canvas.width) * 2 - 1;
+    mouse.y = -(mouse.y / canvas.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    let intersects = raycaster.intersectObjects(targetList);
+    if ( intersects.length == 0 ) {
+      return null
+    } 
+    return intersects[0].point  
+} 
+
+function getPointInBetweenByPerc(pointA, pointB, percentage) {
+    let dir = pointB.clone().sub(pointA);
+    let len = dir.length();
+    dir = dir.normalize().multiplyScalar(len * percentage);
+    return pointA.clone().add(dir);
+}
+
+function createDomLabel(x,y, domElem) {
+  let elem = document.createElement('div');
+  elem.style.width = '50px';
+  elem.style.height = '30px';
+  elem.style.position = 'absolute';
+  elem.style.zIndex = '3000';
+  elem.style.backgroundColor = '#fff';
+  elem.style.left = x + 'px';
+  elem.style.top = y + 'px';
+  elem.innerHTML = "label";
+  document.body.appendChild(elem);
+  return elem
+}
+
+/**************************************************************************/
+/*** HELP HERE !!!!!!!!!!!!! **********************************************/
+/**************************************************************************/
+
+function updateLabels() {
+  arrLabels.forEach( (elem, index) => { 
+  
+  
+    // WITHOUT CHECK VISIBILITI:-----------------------/ 
+    
+    /*
+    let canvasCoords = getCanvasCoordsOfMesh(elem.sp)
+    elem.domElem.style.left = canvasCoords.x + "px";
+    elem.domElem.style.top = canvasCoords.y + "px";
+    */
+    
+    //-------------------------------------------------/
+    
+    
+    // WITH CHECK VISIBILITI:--------------------------/ 
+   
+   let isVisible = checkPointVisible(elem.sp.position)
+    !isVisible ? 
+      elem.domElem.style.display = "none" : 
+      elem.domElem.style.display = "block";
+    if( ! isVisible ) {
+      return
+    }
+    let canvasCoords = getCanvasCoordsOfMesh(elem.sp)
+    elem.domElem.style.left = canvasCoords.x + "px";
+    elem.domElem.style.top = canvasCoords.y + "px";
+    
+    //---------------------------------------------------/
+  } )
+}
+
+function checkPointVisible(point) //HOW TO OPTIMIZE THIS FUNCTION ??????
+{
+   let posLabel = point.clone();
+   let posCam = camera.position.clone();
+   let lenToLabel = posLabel.sub(posCam).length();
+   raycaster.set(posCam, posLabel.normalize());
+   let intersects = raycaster.intersectObjects(targetList, false);
+   if ( intersects.length > 0 ) {
+     if( intersects[0].distance < lenToLabel ) {
+        return false;
+      }
+    }
+    return true
+}
+
+function getCanvasCoordsOfMesh(mesh) {
+    let vector = new THREE.Vector3();
+    vector.setFromMatrixPosition(mesh.matrixWorld);
+    vector.project(camera);
+    const width = renderer.domElement.width;
+    const height = renderer.domElement.height;
+    const widthHalf = width / 2;
+    const  heightHalf = height / 2;
+    vector.x = vector.x * widthHalf + widthHalf;
+    vector.y = -(vector.y * heightHalf) + heightHalf;
+    return vector
+}
+
+</script>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-morph-plane-to-sphere-and-vice-versa/13260/2 -->
+<!-- https://jsfiddle.net/prisoner849/2mje4c93/ -->
+<head>
+  <title> MorphPlaneSpherePlane </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.114.js"></script>
+<script src="../js/OrbitControls.114.js"></script>
+<script>
+
+ // @author prisoner849
+ 
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+var renderer = new THREE.WebGLRenderer();
+renderer.setClearColor(0x404040);
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var planeGeom = new THREE.PlaneBufferGeometry(Math.PI * 5, Math.PI * 2.5, 36, 18);
+planeGeom.morphAttributes.position = [];
+
+var sphereFormation = [];
+var uvs = planeGeom.attributes.uv;
+var uv = new THREE.Vector2();
+var t = new THREE.Vector3();
+for (let i = 0; i < uvs.count; i++) {
+  uv.fromBufferAttribute(uvs, i);
+  //console.log(uv.clone())
+  t.setFromSphericalCoords(
+    2.5,
+    Math.PI * (1 - uv.y),
+    Math.PI * (uv.x - 0.5) * 2
+  )
+  sphereFormation.push(t.x, t.y, t.z);
+}
+planeGeom.morphAttributes.position[0] = new THREE.Float32BufferAttribute(sphereFormation, 3);
+
+// https://threejs.org/examples/textures/uv_grid_opengl.jpg
+var planeMat = new THREE.MeshBasicMaterial({
+  map: new THREE.TextureLoader().load("uv_grid_opengl.jpg"),
+  morphTargets: true,
+  side: THREE.DoubleSide
+});
+var spherePlane = new THREE.Mesh(planeGeom, planeMat);
+scene.add(spherePlane);
+spherePlane.morphTargetInfluences[0] = 0;
+
+var clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  spherePlane.morphTargetInfluences[0] = Math.sin(clock.getElapsedTime()) * 0.5 + 0.5;
+  renderer.render(scene, camera)
+}); 
+ 
+</script>
+</html>

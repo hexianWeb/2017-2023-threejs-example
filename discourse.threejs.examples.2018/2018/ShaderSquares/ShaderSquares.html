@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/responsive-renderer-with-limits/4401/16 -->
+<!-- https://jsfiddle.net/pailhead/qt5j2fbz/ -->
+<head>
+  <title> ShaderSquares </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		background-color: #000;
+		margin: 0px;
+		overflow: hidden;
+	}
+  </style>
+</head>
+
+<body>
+
+</body>
+<script src="../js/three.min.96.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author pailhead 
+	
+// Simple three.js example
+
+var mesh, renderer, scene, camera, controls;
+const myFov = 90
+const viewWidth = 100
+const viewHeight = 50
+
+init();
+animate();
+
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( myFov, window.innerWidth / window.innerHeight, 1, 10000 );
+    //camera.position.set( 20, 20, 20 );
+    camera.position.z = 50 / 2 / Math.tan(THREE.Math.degToRad(myFov/2))
+
+    // controls
+    controls = new THREE.OrbitControls( camera );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    
+    // light
+    var light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20, 20, 0 );
+    scene.add( light );
+    
+    // axes
+    scene.add( new THREE.AxesHelper( 20 ) );
+
+    // geometry
+		var geometry = new THREE.PlaneGeometry(viewWidth,viewHeight);
+		var material = new THREE.MeshBasicMaterial( { map: new THREE.Texture(), 
+    color: 0x00ff00} )
+    
+    const uniform = { value : 0 }
+    
+    material.onBeforeCompile = shader=>{ 
+    
+    shader.uniforms.uSpecial = uniform
+    
+    shader.fragmentShader = `uniform int uSpecial;
+    ${shader.fragmentShader.replace(/}$/gm,`
+       
+      gl_FragColor = vec4(fract(vUv*vec2(10.,5.)),float(uSpecial),1.);
+    }
+    `)
+    }
+    `
+    }
+    // mesh
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+     
+    window.addEventListener('resize',()=>{
+			  renderer.setSize( window.innerWidth, window.innerHeight );
+        camera.aspect = window.innerWidth / window.innerHeight
+        const viewAspect = viewWidth / viewHeight 
+        const special = camera.aspect > viewAspect
+        uniform.value = special ? 1 : 0
+
+				if(special){
+          const camH = Math.tan(THREE.Math.degToRad(myFov/2))
+          const ratio = camera.aspect / viewAspect
+          const newH = camH / ratio
+          const newFov = THREE.Math.radToDeg(Math.atan(newH)) * 2
+          camera.fov = newFov
+        } else {
+          camera.fov = myFov
+        }
+        camera.updateProjectionMatrix()
+    })
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    
+    controls.update();
+
+    renderer.render( scene, camera );
+
+}
+</script>
+
+</html>

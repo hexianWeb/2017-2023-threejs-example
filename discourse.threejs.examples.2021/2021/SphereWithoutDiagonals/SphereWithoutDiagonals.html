@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sphere-geometry-just-wireframe-but-without-diagonal-lines/4027/7 -->
+<!-- https://jsfiddle.net/prisoner849/so70a51h/ -->
+<head>
+  <title> SphereWithoutDiagonals </title>
+  <meta charset="utf-8" />
+<style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+  </style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.125.js";
+import { OrbitControls } from "../jsm/OrbitControls.125.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.995, 36, 18), new THREE.MeshBasicMaterial({color: 0x000000})));
+
+let g = new THREE.SphereGeometry(2, 36, 18);
+SphereToQuads(g);
+console.log(g);
+let m = new THREE.LineBasicMaterial({color: "magenta"});
+let o = new THREE.LineSegments(g, m);
+scene.add(o);
+
+renderer.setAnimationLoop( _ => {
+	renderer.render(scene, camera);
+})
+
+function SphereToQuads(g) {
+  let p = g.parameters;
+  let segmentsX = p.widthSegments;
+  let segmentsY = p.heightSegments-2;
+  let mainShift = segmentsX + 1;
+  let indices = [];
+  for (let i = 0; i < segmentsY + 1; i++) {
+    let index11 = 0;
+    let index12 = 0;
+    for (let j = 0; j < segmentsX; j++) {
+      index11 = (segmentsX + 1) * i + j;
+      index12 = index11 + 1;
+      let index21 = index11;
+      let index22 = index11 + (segmentsX + 1);
+      indices.push(index11 + mainShift, index12 + mainShift);
+      if (index22 < ((segmentsX + 1) * (segmentsY + 1) - 1)) {
+        indices.push(index21 + mainShift, index22 + mainShift);
+      }
+    }
+    if ((index12 + segmentsX + 1) <= ((segmentsX + 1) * (segmentsY + 1) - 1)) {
+      indices.push(index12 + mainShift, index12 + segmentsX + 1 + mainShift);
+    }
+  }
+  
+  let lastIdx = indices[indices.length - 1] + 2;
+  
+  // poles
+  for(let i = 0; i < segmentsX; i++){
+  	//top
+    indices.push(i, i + mainShift, i, i + mainShift + 1);
+    
+    // bottom
+    let idx = lastIdx + i;
+    let backShift = mainShift + 1;
+    indices.push(idx, idx - backShift, idx, idx - backShift + 1);
+  }
+  
+  g.setIndex(indices);
+}
+
+</script>
+</html>

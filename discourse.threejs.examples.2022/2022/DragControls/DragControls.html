@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/regarding-movement-of-line-from-one-point-to-another/45088 -->
+<!-- https://jsfiddle.net/tfoller/aw2L91rj/ -->
+<head>
+  <title> DragControls </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+	margin: 0px;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author tfoller 
+
+import * as THREE from '../jsm/three.module.136.js';
+import { DragControls } from '../jsm/DragControls.136.js';
+
+// INIT
+const [w, h] = [window.innerWidth - 100,  window.innerHeight - 100];
+const canvas = document.getElementById('bg');
+const scene = new THREE.Scene();
+const [near, far] = [0.1, 10];
+const mid = -0.5 * (near + far);
+const camera = new THREE.PerspectiveCamera(45, w/h, near, far);
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: false,
+  canvas: canvas
+});
+
+renderer.setSize(w, h);
+
+// CONTROLS
+const ctrlGeo = new THREE.SphereGeometry(0.2);
+const ctrlMatStart = new THREE.MeshBasicMaterial({color: 'green'});
+const ctrlMatEnd = new THREE.MeshBasicMaterial({color: 'red'});
+
+const ctrlStart = new THREE.Mesh(ctrlGeo, ctrlMatStart);
+const ctrlEnd = new THREE.Mesh(ctrlGeo, ctrlMatEnd);
+
+ctrlStart.position.set(1, 1, mid);
+ctrlEnd.position.set(-1, -1, mid);
+
+scene.add(ctrlStart, ctrlEnd);
+
+// LINE
+const points = [
+	new THREE.Vector3().copy(ctrlStart.position),
+  new THREE.Vector3().copy(ctrlEnd.position),
+];
+const lineGeo = new THREE.BufferGeometry().setFromPoints( points );
+const lineMat = new THREE.LineBasicMaterial({color: 0x0000ff});
+const line = new THREE.Line( lineGeo, lineMat );
+scene.add(line);
+
+const controls = new DragControls([ctrlStart, ctrlEnd], camera, canvas);
+
+const render = () => { renderer.render(scene, camera) };
+
+controls.addEventListener('drag', function(event) { 
+	const setLinePoint = (mesh, line, offset) => {
+  	const meshPos = mesh.position;
+  	const linePos = line.geometry.attributes.position;
+  	const arr = linePos.array;
+  	arr[offset + 0] = meshPos.x;
+    arr[offset + 1] = meshPos.y;
+    arr[offset + 2] = meshPos.z;
+  };
+	setLinePoint(ctrlStart, line, 0);
+  setLinePoint(ctrlEnd, line, 3);
+  line.geometry.attributes.position.needsUpdate = true;  
+});
+
+animate();
+
+function animate() {
+  requestAnimationFrame(animate);
+  render();
+}
+
+</script>
+</html>

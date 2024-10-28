@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/get-orbitcontrols-azimuth-angle/25945 -->
+<!-- https://jsfiddle.net/prisoner849/4yckxLmd/ -->
+<head>
+  <title> IsCameraBehindWall? </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+	body {
+		overflow: hidden;
+		margin: 0;
+	}
+</style>
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.128.js";
+import { OrbitControls } from "../jsm/OrbitControls.128.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1000);
+camera.position.set(0, 0, 20);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x7f7f7f);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1.25);
+light.position.set(1, 2, 3);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.75));
+
+let walls = [
+  createSide(0xff0000, new THREE.Vector3(5, 0, 0), new THREE.Euler(0, -Math.PI * 0.5, 0)),
+  createSide(0xff00ff, new THREE.Vector3(-5, 0, 0), new THREE.Euler(0, Math.PI * 0.5, 0)),
+  createSide(0x00ff00, new THREE.Vector3(0, 5, 0), new THREE.Euler(Math.PI * 0.5, 0, 0)),
+  createSide(0xffff00, new THREE.Vector3(0, -5, 0), new THREE.Euler(-Math.PI * 0.5, 0, 0)),
+  createSide(0x0000ff, new THREE.Vector3(0, 0, 5), new THREE.Euler(0, Math.PI, 0)),
+  createSide(0x00ffff, new THREE.Vector3(0, 0, -5), new THREE.Euler(0, 0, 0)),
+];
+
+let localN = new THREE.Vector3();
+
+renderer.setAnimationLoop( _ => {
+
+    walls.forEach( w => {
+    localN.copy(camera.position);
+    w.worldToLocal(localN);
+    localN.normalize();
+    let isInFront = w.userData.normal.dot(localN) > 0;
+    w.children[0].visible = isInFront;
+  });
+  
+  renderer.render(scene, camera);
+})
+
+function createSide(color, pos, rot){
+	
+  let rRatio = Math.sqrt(2);
+  let rMain = 10 / rRatio;
+  let thickness = 1;
+  let halfThickness = thickness * 0.5;
+  let r1 = rMain - (halfThickness * rRatio);
+  let r2 = rMain + (halfThickness * rRatio);
+	
+  let g = new THREE.CylinderGeometry(r1, r2, thickness, 4);
+  g.rotateX(Math.PI * 0.5);
+  g.rotateZ(Math.PI * 0.25);
+  let m = new THREE.MeshLambertMaterial({color: color});
+  let o = new THREE.Mesh(g, m);
+  
+  let gw = new THREE.EdgesGeometry(g);
+  let mw = new THREE.LineBasicMaterial({color: "black"});
+  let w = new THREE.LineSegments(gw, mw);
+  w.add(o);
+  w.position.copy(pos);
+  w.rotation.copy(rot);
+  w.userData = {
+  normal: new THREE.Vector3(0, 0, 1)
+  }
+  
+  scene.add(w);
+  
+  return w;
+  
+}
+
+</script>
+</html>

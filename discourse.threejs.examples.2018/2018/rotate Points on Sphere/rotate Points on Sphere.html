@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/rotate-points-on-sphere/2110/5 -->
+<!-- https://jsfiddle.net/prisoner849/ryppc2xe/ -->
+<head>
+  <title> rotate Points on Sphere </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		margin: 0;
+		overflow: hidden;
+	}
+  </style>
+</head>
+<body> </body>
+<script src="../js/three.min.91.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var camera, scene, renderer;
+var geometry, material, container, pointsHolder, controls;
+var radius = 0.3;
+
+init();
+initSpheresGrid();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.set(0, 0.5, 0.5);
+
+    scene = new THREE.Scene();
+    
+    var light = new THREE.DirectionalLight( 0xffffff );
+		light.position.set( 0, 1, 1 ).normalize();
+		scene.add(light);
+    
+    
+    container = new THREE.Object3D();
+    scene.add(container);
+
+    geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
+    material = new THREE.MeshNormalMaterial();
+
+    var mesh = new THREE.Mesh( geometry, material );
+   // container.add( mesh );
+
+	 // add wireframe layer
+  	var wireMaterial  = new THREE.MeshPhongMaterial({wireframe: true, color: 0xdddddd, transparent: false});
+  	var wireFrame = new THREE.Mesh(new THREE.SphereGeometry(radius-0.01, 50, 50), wireMaterial);
+    container.add( wireFrame );
+    
+    pointsHolder = new THREE.Group();
+    container.add(pointsHolder);
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+    
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+}
+
+
+function initSpheresGrid () {
+		
+    var phi, theta, gridPosition, sphere;
+		var sphereMaterial = new THREE.MeshBasicMaterial({color:0x00ff00});
+    var sphereGeometry = new THREE.SphereGeometry(0.002);
+
+		var latitude = 0; // x 
+		var longitude = 0; // y
+
+    while (longitude < 360) {
+    
+    	phi = (latitude/180) * Math.PI;
+			theta = (longitude/180) * Math.PI;
+   
+      gridPosition = {
+
+					x:radius * Math.cos(theta) * Math.sin(phi),
+					y:radius * Math.cos(phi),
+					z:radius * Math.sin(theta) * Math.sin(phi)
+
+			};
+      
+      sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+  		sphere.position.set(gridPosition.x, gridPosition.y, gridPosition.z);
+    	pointsHolder.add( sphere );
+    
+  		latitude += 10;
+      if (latitude > 360) {
+      	latitude = 0;
+      	longitude += 10;
+      }
+  	
+    }
+
+}
+
+function animate() {
+		
+    requestAnimationFrame( animate );
+    let time = Date.now() * 0.001;
+    pointsHolder.rotation.z = THREE.Math.degToRad(Math.sin(time) * 23);
+    renderer.render( scene, camera );
+
+}
+</script>
+</html>

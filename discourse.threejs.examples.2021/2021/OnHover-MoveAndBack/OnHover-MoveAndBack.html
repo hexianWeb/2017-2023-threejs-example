@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/raycaster-issue-get-back-to-initial-position/27874 -->
+<!-- https://jsfiddle.net/w45scuen/2/ -->
+<head>
+  <title> OnHover-MoveAndBack </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin: 0;
+	}
+ </style>
+</head>
+
+<script src="../js/three.min.130.js"></script>
+<script src="../js/DragControls.130.js"></script>
+<script src="../js/gsap.min.js"></script>
+
+<body> </body>
+
+<script>
+
+// @author lolia + Mugen87
+
+// Scene
+const scene = new THREE.Scene()
+
+/**
+ * Objects
+ */
+const object1 = new THREE.Mesh(
+  new THREE.SphereGeometry(0.5, 16, 16),
+  new THREE.MeshBasicMaterial({
+    color: '#ff0000'
+  })
+)
+object1.position.x = -2
+
+const object2 = new THREE.Mesh(
+  new THREE.SphereGeometry(0.5, 16, 16),
+  new THREE.MeshBasicMaterial({
+    color: '#ff0000'
+  })
+)
+
+const object3 = new THREE.Mesh(
+  new THREE.SphereGeometry(0.5, 16, 16),
+  new THREE.MeshBasicMaterial({
+    color: '#ff0000'
+  })
+)
+object3.position.x = 2
+
+scene.add(object1, object2, object3)
+
+/**
+ * Raycaster
+ */
+const raycaster = new THREE.Raycaster()
+let currentObject = null
+const rayOrigin = new THREE.Vector3(-3, 0, 0)
+const rayDirection = new THREE.Vector3(10, 0, 0)
+rayDirection.normalize()
+
+// raycaster.set(rayOrigin, rayDirection)
+
+/**
+ * Sizes
+ */
+const sizes = {
+  width: window.innerWidth,
+  height: window.innerHeight
+}
+
+window.addEventListener('resize', () => {
+  // Update sizes
+  sizes.width = window.innerWidth
+  sizes.height = window.innerHeight
+
+  // Update camera
+  camera.aspect = sizes.width / sizes.height
+  camera.updateProjectionMatrix()
+
+  // Update renderer
+  renderer.setSize(sizes.width, sizes.height)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+})
+
+/**
+ * Mouse
+ */
+const mouse = new THREE.Vector2()
+
+window.addEventListener('mousemove', (event) => {
+  mouse.x = event.clientX / sizes.width * 2 - 1
+  mouse.y = -(event.clientY / sizes.height) * 2 + 1
+
+  raycaster.setFromCamera(mouse, camera)
+
+  const objectsToTest = [object1, object2, object3]
+
+  const intersects = raycaster.intersectObjects(objectsToTest)
+
+  if (intersects.length > 0) {
+    if (currentObject !== intersects[0].object) {
+      console.log('mouse enter')
+			currentObject = intersects[0].object;
+
+      switch (currentObject) {
+        case object1:
+          gsap.to(object1.position, {
+            duration: 1,
+            y: 0.6
+          });
+          break
+
+        case object2:
+          gsap.to(object2.position, {
+            duration: 1,
+            y: 0.6
+          });
+          break
+
+        case object3:
+          gsap.to(object3.position, {
+            duration: 1,
+            y: 0.6
+          });
+          break
+      }
+    }
+
+  } else {
+    if (currentObject !== null) {
+      console.log('mouse leave')
+			
+			switch (currentObject) {
+        case object1:
+          gsap.to(object1.position, {
+            duration: 1,
+            y: 0
+          });
+          break
+
+        case object2:
+          gsap.to(object2.position, {
+            duration: 1,
+            y: 0
+          });
+          break
+
+        case object3:
+          gsap.to(object3.position, {
+            duration: 1,
+            y: 0
+          });
+          break
+      }
+			
+			currentObject = null;
+    }
+
+  }
+
+})
+
+
+/**
+ * Camera
+ */
+
+// Base camera
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+camera.position.z = 3
+scene.add(camera)
+
+
+
+/**
+ * Renderer
+ */
+const renderer = new THREE.WebGLRenderer()
+renderer.setSize(sizes.width, sizes.height)
+renderer.setPixelRatio(window.devicePixelRatio)
+document.body.appendChild(renderer.domElement)
+
+/**
+ * Animate
+ */
+const tick = () => {
+
+  // Render
+  renderer.render(scene, camera)
+
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick)
+}
+
+tick()
+
+</script>
+</html>

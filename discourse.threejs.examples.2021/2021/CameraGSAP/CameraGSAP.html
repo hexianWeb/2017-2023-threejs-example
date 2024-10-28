@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/rotate-camera-on-click-event/26790/9 -->
+<!-- https://jsfiddle.net/8j4dfvx9/1/ -->
+<head>
+  <title> CameraGSAP </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+	background-color: #000;
+	margin: 0px;
+	overflow: hidden;
+}
+
+</style>
+<body> </body>
+
+<script src="gsap 3.4.0/gsap.min.js"></script>
+
+<script type="module">
+
+// @author Mugen87
+
+import * as THREE from "../jsm/three.module.128.js";
+import { OrbitControls } from "../jsm/OrbitControls.128.js";
+
+var mesh, renderer, scene, camera, controls;
+
+init();
+animate();
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set( 50, 20, 50 );
+
+    // controls
+    controls = new OrbitControls( camera, renderer.domElement );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    
+    // light
+    var light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20,20, 0 );
+    scene.add( light );
+    
+    // axes
+    scene.add( new THREE.AxesHelper( 20 ) );
+
+    // geometry
+    var geometry = new THREE.SphereGeometry( 5, 12, 8 );
+    
+    // material
+    var material = new THREE.MeshPhongMaterial( {
+        color: 0x00ffff, 
+        flatShading: true,
+        transparent: true,
+        opacity: 0.7,
+    } );
+    
+    // mesh
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+		gsap.to( camera.position, {
+			duration: 2,
+			x: 0,
+			y: 5,
+			z: 10,
+			onUpdate: function() {
+				camera.lookAt( mesh.position );
+			}
+		} );
+    
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

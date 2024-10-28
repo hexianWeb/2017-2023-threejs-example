@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/movement-lines-dashed-animation/4101 -->
+<!-- https://jsfiddle.net/prisoner849/ofcdgtz8/ -->
+<head>
+  <title> MovementLinesDashed </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+  	margin: 0;
+	}
+  </style> 
+</head>
+
+<body> </body>
+<script src="../js/three.min.96.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+	// @author prisoner849
+
+  var lineVertShader = `
+  attribute float lineDistance;
+  varying float vLineDistance;
+  
+  void main() {
+    vLineDistance = lineDistance;
+    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+    gl_Position = projectionMatrix * mvPosition;
+  }
+  `;
+
+  var lineFragShader = `
+  uniform vec3 diffuse;
+  uniform float opacity;
+  uniform float time; // added time uniform
+
+  uniform float dashSize;
+  uniform float gapSize;
+  uniform float dotSize;
+  varying float vLineDistance;
+  
+  void main() {
+		float totalSize = dashSize + gapSize;
+		float modulo = mod( vLineDistance + time, totalSize ); // time added to vLineDistance
+    float dotDistance = dashSize + (gapSize * .5) - (dotSize * .5);
+    
+    if ( modulo > dashSize && mod(modulo, dotDistance) > dotSize ) {
+      discard;
+    }
+
+    gl_FragColor = vec4( diffuse, opacity );
+  }
+  `;
+
+</script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
+camera.position.set(0, 0, 10);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var points = [];
+for (let i = 0; i < 10; i++) {
+  points.push(new THREE.Vector3(
+    THREE.Math.randInt(-5, 5),
+    THREE.Math.randInt(-5, 5),
+    THREE.Math.randInt(-5, 5)
+  ))
+}
+
+var lineDistances = [];
+var d = 0;
+for (let i = 0; i < points.length; i++) {
+  if (i > 0) {
+    d += points[i].distanceTo(points[i - 1]);
+  }
+  lineDistances[i] = d;
+}
+
+var lineGeom = new THREE.BufferGeometry().setFromPoints(points);
+lineGeom.addAttribute('lineDistance', new THREE.BufferAttribute(new Float32Array(lineDistances), 1));
+var lineMat = new THREE.ShaderMaterial({
+  uniforms: {
+		diffuse: {value: new THREE.Color("yellow")},
+    dashSize: {value: 1},
+    gapSize: {value: 1},
+    dotSize: {value: 0.1},
+    opacity: {value: 1.0},
+    time: {value: 0} // added uniform
+  },
+  vertexShader: lineVertShader,
+  fragmentShader: lineFragShader,
+  transparent: true
+});
+
+var line = new THREE.Line(lineGeom, lineMat);
+scene.add(line);
+
+var clock = new THREE.Clock();
+var time = 0;
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  time += clock.getDelta();
+  lineMat.uniforms.time.value = time; // using of the time uniform
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

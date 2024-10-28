@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-place-randomly-a-box-on-a-sphere/4280/3 -->
+<!-- https://jsfiddle.net/prisoner849/twuLpb56/-->
+<!-- https://discourse.threejs.org/t/how-to-place-randomly-a-box-on-a-sphere/4280/7 -->
+<!-- https://jsfiddle.net/prisoner849/1bar6eg5/ -->
+<head>
+  <title> </title>
+  <meta charset="utf-8" />
+   <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.97.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<!-- 
+<script src="https://threejs.org/examples/js/libs/tween.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.20.4/TweenMax.min.js"></script>
+<button id="btnMove" style="position: absolute;">
+ Move
+</button>
+-->
+<script>
+
+// @author prisoner849, espace3d
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
+camera.position.set(0, 0, 5);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var radius = 1;
+
+var Tree = function(){
+	//modèle 3d
+	this.mesh = new THREE.Object3D();
+	this.mesh.name = "tree";
+
+	// tronc
+	var geomTronc = new THREE.CubeGeometry(0.020, 0.02, 0.020);
+	var matTronc = new THREE.MeshBasicMaterial({color: "white", wireframe: true});
+	var tronc = new THREE.Mesh(geomTronc, matTronc);
+	tronc.position.set(0,0,0);
+  tronc.rotation.x = -Math.PI * 0.5;
+	tronc.castShadow = true;
+	tronc.receiveShadow = true;
+	this.mesh.add(tronc);
+
+	// arbre
+	var geomArbre = new THREE.CubeGeometry(.050,.050,.050);
+	var matArbre = new THREE.MeshBasicMaterial({color: "red", wireframe: true});
+	var arbre = new THREE.Mesh(geomArbre, matArbre);
+	arbre.position.set(0,.030,0);
+	tronc.add(arbre);
+
+}
+
+
+
+var sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 24), new THREE.MeshBasicMaterial({color: "gray", wireframe: true}));
+scene.add(sphere);
+
+function createTree(){
+	tree=[]
+	for (var i = 0; i < 30; i++){
+		tree[i]=new Tree();
+    let rx=Math.random() * Math.PI * 2;
+		let ry=Math.random() * Math.PI;
+		tree[i].mesh.position.setFromSphericalCoords(1 + .010, ry, rx);
+		tree[i].mesh.lookAt(sphere.position);
+		//don't works
+    //tree[i].mesh.rotation.x=-Math.PI/2 
+	
+    //scene.add(tree[i].mesh);
+	sphere.add(tree[i].mesh);
+
+	}
+}
+
+//at the center of the sphere to illustrate what the object looks like
+var singletree;
+singleTree= new Tree()
+scene.add(singleTree.mesh)
+
+var box = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshBasicMaterial({color: "red", wireframe: true}));
+box.position.setFromSphericalCoords(radius + 0.1, THREE.Math.degToRad(23), THREE.Math.degToRad(23));
+box.lookAt(sphere.position);
+scene.add(box);
+
+createTree();
+
+
+render();
+function render(){
+
+ sphere.rotation.y += 0.01;
+
+  requestAnimationFrame(render);
+  //TWEEN.update();
+  renderer.render(scene, camera);
+}
+</script>
+</html>

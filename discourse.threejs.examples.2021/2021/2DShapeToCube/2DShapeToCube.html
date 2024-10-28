@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/2d-shape-to-cube/22921/5 -->
+<!-- https://jsfiddle.net/prisoner849/fyejc93d/ -->
+<head>
+  <title> 2DShapeToCube </title>
+  <meta charset="utf-8" />
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body>
+<button id="btnSetter" style="position: absolute; margin: 10px;">
+Set points
+</button>
+</body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.124.js"; 
+import {  OrbitControls } from "../jsm/OrbitControls.124.js";
+ 
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let helper = new THREE.GridHelper();
+helper.rotation.x = Math.PI * 0.5;
+scene.add(helper);
+
+let height = 2.5;
+
+let basePts = [
+	new THREE.Vector2(),
+  new THREE.Vector2(),
+  new THREE.Vector2(),
+  new THREE.Vector2()
+];
+
+let clr = [];
+let c = new THREE.Color();
+let g = new THREE.BufferGeometry().setFromPoints([1, 2, 3, 4, 5, 6, 7, 8].map( _=>{
+c.set(Math.random() * 0x7f7f7f + 0x7f7f7f);
+clr.push(c.r, c.g, c.b);
+return new THREE.Vector3();
+}));
+console.log(g);
+let idx = [
+	1, 2, 0,
+  2, 3, 0,
+  4, 7, 5,
+  7, 6, 5
+  ];
+for(let i = 0; i < 4; i++){
+	
+  let i0 = i;
+  let i1 = i+1 == 4 ? 0 : i + 1;
+  let i2 = i+4;
+  let i3 = i1 + 4;
+  
+  idx.push(
+  	i3, i1, i2,
+    i1, i0, i2
+  )
+}
+g.setIndex(idx);
+g.setAttribute("color", new THREE.Float32BufferAttribute(clr, 3));
+
+let m = new THREE.MeshBasicMaterial({vertexColors: true, wireframe: false});
+
+let o = new THREE.Mesh(g, m);
+
+scene.add(o);
+
+btnSetter.addEventListener("click", event => {
+	basePts[0].set(-2,  2);
+  basePts[1].set( 2,  2);
+  basePts[2].set( 2, -2);
+  basePts[3].set(-2, -2);
+  let v = new THREE.Vector2();
+  basePts.forEach(p => {
+  	v.copy(p).normalize().setLength((Math.random() - 0.5) * 2);
+    p.add(v);
+  });
+	setVertices(g, basePts, height);
+})
+
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+function setVertices(g, pts, h){
+	let pos = g.attributes.position;
+  pts.forEach( (p, i) => {
+  	pos.setXYZ(i, p.x, p.y, 0);
+    pos.setXYZ(i + 4, p.x, p.y, h);
+  });
+  pos.needsUpdate = true;
+}
+
+</script>
+</html>

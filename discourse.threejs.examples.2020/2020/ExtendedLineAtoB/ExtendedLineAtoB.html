@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/draw-a-line-connecting-two-objects-and-extend-it/22034 -->
+<!-- https://jsfiddle.net/prisoner849/8u560zsy/ -->
+<head>
+  <title> ExtendedLineAtoB </title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.123.js"; 
+import { OrbitControls } from "../jsm/OrbitControls.123.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 10, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper());
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+let tG = new THREE.BufferGeometry().setFromPoints([
+	new THREE.Vector3(),
+  new THREE.Vector3()
+]);
+let tM = new THREE.LineBasicMaterial({color: "yellow"});
+let tracker = new THREE.Line(tG, tM);
+scene.add(tracker);
+let tV = new THREE.Vector3(); // temp vector for re-use
+
+let observer = new THREE.Mesh(new THREE.SphereBufferGeometry(0.25, 16, 8), new THREE.MeshBasicMaterial({color: "red", wireframe: true}));
+let target = new THREE.Mesh(new THREE.SphereBufferGeometry(0.25, 16, 8), new THREE.MeshBasicMaterial({color: "blue", wireframe: true}));
+scene.add(observer, target);
+
+renderer.setAnimationLoop(() => {
+	var timer = 0.0005 * Date.now();
+  observer.position.x = Math.sin(timer * 3) * 6;
+  observer.position.z = Math.cos(timer * 3) * 6;
+  //observer.rotation.y  += 0.1
+
+  target.position.x = Math.sin(timer * 2) * 10;
+  target.position.z = Math.cos(timer * 2) * 10;
+  //target.rotation.y  += 0.1
+  
+  updateTracker(observer, target);
+  
+  renderer.render(scene, camera);
+})
+
+function updateTracker(o, t){
+
+	let oP = observer.position;
+  let tP = target.position;
+  let d = oP.distanceTo(tP);
+  tV.subVectors(tP, oP).normalize().multiplyScalar(d + 10).add(oP);
+  
+  tracker.geometry.attributes.position.setXYZ(0, oP.x, oP.y, oP.z);
+  tracker.geometry.attributes.position.setXYZ(1, tV.x, tV.y, tV.z);
+  tracker.geometry.attributes.position.needsUpdate = true;
+
+}
+
+</script>
+</html>

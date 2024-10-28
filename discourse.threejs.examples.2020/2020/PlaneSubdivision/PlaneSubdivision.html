@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/dividing-plane-geometry-into-definite-number-of-small-planes-like-cells-in-excel-sheet/19550/3 -->
+<!-- https://codepen.io/mjurczyk/pen/GRqRbvG  -->
+<head>
+  <title> PlaneSubdivision </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+	margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script src="../js/three.min.121.js"></script>	
+ 
+<script>
+
+//@author mjurczyk
+
+// Question Reference: https://discourse.threejs.org/t/dividing-plane-geometry-into-definite-number-of-small-planes-like-cells-in-excel-sheet/19550
+
+let camera, scene, renderer, mesh;
+
+function createWorld() {
+  // Big plane
+  const planeSize = 10;
+  const plane = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(planeSize, planeSize),
+    new THREE.MeshStandardMaterial({ color: 0x999999 })
+  );
+  plane.rotation.x -= Math.PI / 2;
+  plane.position.y -= 1.1;
+  
+  scene.add(plane);
+  
+  camera.lookAt(plane.position);
+  
+  // Subdivided plane
+  const subdivisions = 10;
+  const subdivisionSize = planeSize / subdivisions;
+  const subdividedPlane = new THREE.Group();
+  
+  const subdivisionPlaneShift = 0.5 * subdivisions * subdivisionSize;
+  const subdivisionShift = 0.5 * subdivisionSize;
+  
+  for (let y = 0; y < subdivisions; y++) {
+    for (let x = 0; x < subdivisions; x++) {
+      const subplane = new THREE.Mesh(
+        new THREE.PlaneBufferGeometry(subdivisionSize, subdivisionSize),
+        new THREE.MeshStandardMaterial({ color: Math.random() * 0x999999, wireframe: true })
+      );
+      subplane.position.set(
+        subdivisionShift + x * subdivisionSize - subdivisionPlaneShift,
+        subdivisionShift + y * subdivisionSize - subdivisionPlaneShift,
+        0
+      );
+      
+      subdividedPlane.add(subplane);
+    }
+  }
+  
+  scene.add(subdividedPlane);
+
+  subdividedPlane.rotation.copy(plane.rotation);
+  subdividedPlane.position.copy(plane.position).add(new THREE.Vector3(0, 0.1, 0));
+  
+  mesh = [ plane, subdividedPlane ];
+}
+
+function init() {
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000.0);
+  camera.position.set(-5, 5, 7);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x333333);
+
+  scene.add(new THREE.HemisphereLight(0xffffcc, 0x19bbdc, 1));
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  document.body.appendChild(renderer.domElement);
+  
+  createWorld();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  renderer.render(scene, camera);
+  
+  const [ plane, subdividedPlane ] = mesh || [];
+  
+  plane.rotateX(-0.01);
+  plane.rotateY(-0.01);
+  plane.rotateZ(-0.01);
+  
+  subdividedPlane.rotation.copy(plane.rotation);
+  subdividedPlane.position.copy(plane.position).add(new THREE.Vector3(0, 0.1, 0));
+}
+
+init();
+animate();
+
+</script>
+</html>

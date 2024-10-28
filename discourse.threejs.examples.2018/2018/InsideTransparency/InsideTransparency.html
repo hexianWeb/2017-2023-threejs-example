@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/transparency-in-object-contained-inside-other-png-textures/1614/2 -->
+<!-- https://jsfiddle.net/prisoner849/6o1a1yk5/ -->
+<head>
+  <title> InsideTransparency </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+  	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.89.js"></script>
+
+<script>
+
+// @author prisoner849
+
+        var textureLoader = new THREE.TextureLoader();
+
+        var texture = textureLoader.load('https://farm5.static.flickr.com/4071/4518701887_96b504cff8_b.jpg'); //, function(texture){}
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x909090);
+        document.body.appendChild(renderer.domElement);
+        camera.position.z = 200;
+
+        var mesh = new THREE.Mesh(new THREE.SphereBufferGeometry(300, 120, 80), new THREE.MeshBasicMaterial({
+          map: texture
+        }));
+        mesh.scale.x = -1;
+        scene.add(mesh);
+
+        obb = new obj("cube", "sphere");
+        obb.position.x = 0;
+        obb.position.y = 0;
+        scene.add(obb);
+
+
+        var animate = function() {
+          requestAnimationFrame(animate);
+
+          obb.rotation.x += 0.01;
+          obb.rotation.y += 0.01;
+
+          renderer.render(scene, camera);
+        };
+
+        animate();
+
+
+
+        function obj(to, ti, mo, mi, s, gap, rx, ry, rz) {
+          var loader = new THREE.TextureLoader();
+          var geosheld, geocore;
+          if (to != undefined) this.to = to;
+          else {
+            this.to = "sphere";
+          }
+          if (ti != undefined) this.ti = ti;
+          else {
+            this.ti = "cube";
+          }
+          if (mo != undefined) this.mo = mo;
+          else {
+            this.mo = new THREE.MeshBasicMaterial({
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 1,
+              map: loader.load('https://lh3.googleusercontent.com/Mbtkbx4bMlKA_ztjEk6tbum9lwg6eH7mQgJDFO_8Wp2DCrhR9Cnf3b7p6DJy3kn4PA=w300')
+            });
+          }
+
+          if (mi != undefined) this.mi = mi;
+          else {
+            this.mi = new THREE.MeshBasicMaterial({
+
+              /*
+    If I apply transparency to the inner object doesn't show it, if I take it out the png image appear black background
+*/
+
+              transparent:true,opacity:1,
+              map: loader.load('https://opened-resource-uploads.s3.amazonaws.com/lorigranniss/44530a17e19096f3653ad0a69d24ee87.png')
+            });
+          }
+
+
+          if (s != undefined) this.s = s;
+          else {
+            this.s = 100
+          }
+          if (gap != undefined) this.gap = gap;
+          else {
+            this.gap = 30
+          }
+          if (rx != undefined) this.rx = rx;
+          else {
+            this.rx = 0
+          }
+          if (ry != undefined) this.ry = ry;
+          else {
+            this.ry = 0
+          }
+          if (rz != undefined) this.rz = rz;
+          else {
+            this.rz = 0
+          }
+
+          if (this.to === "sphere") geosheld = new THREE.SphereBufferGeometry(this.s, 100, 100);
+          else geosheld = new THREE.BoxBufferGeometry(this.s, this.s, this.s);
+          if (this.ti === "sphere") geocore = new THREE.SphereBufferGeometry(this.s / 2 - this.gap, 100, 100);
+          else geocore = new THREE.BoxBufferGeometry(this.s - this.gap, this.s - this.gap, this.s - this.gap);
+
+          var gr = new THREE.Group();
+          var core = new THREE.Mesh(geocore, this.mi);
+          gr.add(core);
+          var sheld = new THREE.Mesh(geosheld, this.mo);
+          gr.add(sheld);
+          
+
+          //alert(this.txo);
+
+          return gr;
+          /*
+           */
+        }
+
+
+</script>
+</html>

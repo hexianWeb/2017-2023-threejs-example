@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-setup-shader-to-make-waves/5851/8 -->
+<!-- https://jsfiddle.net/prisoner849/ygxvndpu/ -->
+<head>
+  <title> SimpleShaderWaves </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+  
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.100.js"></script>
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+var renderer = new THREE.WebGLRenderer();
+renderer.setClearColor(0x808080);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var geom = new THREE.PlaneBufferGeometry(10, 10);
+
+var material = new THREE.ShaderMaterial({
+  uniforms: {
+    texture: {
+      value: new THREE.TextureLoader().load("UV_Grid_Sm.jpg") // https://threejs.org/examples/textures/UV_Grid_Sm.jpg
+    },
+    time: {
+      value: 0
+    }
+  },
+  vertexShader: `
+  	varying vec2 vUv;
+    
+  	void main() {
+			vUv = uv;        
+      vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: `
+  	#define PI 3.1415926
+    
+  	uniform sampler2D texture;
+    uniform float time;
+    
+  	varying vec2 vUv;
+    
+    void main() {
+    	vec2 uv = vUv;
+      uv.y += sin(uv.x * PI * 10. + time) * .05;
+    	gl_FragColor = texture2D( texture, uv );
+    }
+  `
+});
+
+var mesh = new THREE.Mesh(geom, material);
+scene.add(mesh);
+
+var clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  mesh.material.uniforms.time.value = clock.getElapsedTime();
+  renderer.render(scene, camera)
+});
+
+
+</script>
+
+</html>

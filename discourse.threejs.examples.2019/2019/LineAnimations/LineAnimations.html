@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/line-animations/6279/8 -->
+<!-- http://jsfiddle.net/prisoner849/kqp7x5cr/ -->
+			<!-- see http://jsfiddle.net/6nwvmf7u/3/ https://jsfiddle.net/TheDarkNord/5t3n8v47/5/ -->
+<head>
+  <title> LineAnimations </title>
+  <meta charset="utf-8" />
+    <style>
+	body {
+		background-color: #000;
+		margin: 0px;
+		overflow: hidden;
+	}
+	</style>  
+</head>
+
+<body> </body>
+<script src="../js/three.min.101.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var renderer, scene, camera, controls;
+var mainLogo, logoMaterial;
+var fraction = 0;
+var maxLength;
+
+init();
+animate();
+
+function init() {
+
+	// renderer
+	renderer = new THREE.WebGLRenderer();
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	document.body.appendChild( renderer.domElement );
+
+	// scene
+	scene = new THREE.Scene();
+
+	// camera
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+	camera.position.set( 0, 100, 500 );
+  
+  // controls
+  controls = new THREE.OrbitControls(camera, renderer.domElememnt);
+	controls.target.y = 200
+
+  var logoGeometry = new THREE.BufferGeometry();
+  var logoVertices = new Float32Array( [
+      -180, 90, 0,
+      -180, 350, 0,
+      -180, 350, 0,
+      -135, 350, 0,
+      -135, 350, 0,
+      -30, 140, 0,
+      -30, 140, 0,
+      -30, 350, 0,
+      -30, 350, 0,
+      0, 350, 0,
+      0, 350, 0,
+      0, 230, 0,
+      0, 230, 0,
+      100, 230, 0,
+      100, 230, 0,
+      100, 350, 0,
+      100, 350, 0,
+      130, 350, 0,
+      130, 350, 0,
+      130, 90, 0,
+      130, 90, 0,
+      100, 90, 0,
+      100, 90, 0,
+      100, 200, 0,
+      100, 200, 0,
+      0, 200, 0,
+      0, 200, 0,
+      0, 90, 0,
+      0, 90, 0,
+      -30, 90, 0,
+      -30, 90, 0,
+      -150, 320, 0,
+      -150, 320, 0,
+      -150, 90, 0,
+      -150, 90, 0,
+      -180, 90, 0
+      ] );
+   logoGeometry.addAttribute( 'position', new THREE.BufferAttribute( logoVertices, 3) );
+   
+   logoMaterial = new THREE.LineDashedMaterial( {
+   
+      dashSize: 1, // to be updated in the render loop
+      gapSize: 100000 // a big number, so only one dash is rendered
+
+    } );
+  
+   mainLogo = new THREE.Line( logoGeometry, logoMaterial );
+   
+   mainLogo.computeLineDistances();
+   maxLength = 0;
+   var dist = mainLogo.geometry.attributes.lineDistance;
+   for (let i = 0; i < dist.count-1; i+=2){
+   		let val0 = dist.getX(i);
+      let val1 = dist.getX(i + 1);
+      let diff = val1 - val0;
+      maxLength = Math.max(maxLength, diff);
+     	dist.setX(i, 0);
+      dist.setX(i + 1, diff);
+   }
+   dist.needsUpdate = true;
+   
+   scene.add(mainLogo);
+   
+
+}
+
+// render
+function render() {
+
+	renderer.render( scene, camera );
+
+}
+
+// animate
+function animate() {
+
+  requestAnimationFrame( animate );
+  
+  if ( fraction < 1 ) fraction += 0.01;
+  else fraction = 1;
+
+  logoMaterial.dashSize = fraction * maxLength;
+
+  controls.update();
+  
+  render();
+
+}
+
+</script>
+
+</html>

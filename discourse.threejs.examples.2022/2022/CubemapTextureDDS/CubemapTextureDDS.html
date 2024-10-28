@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/pmrem-and-shadermaterial/9020/5 -->
+<!-- https://codepen.io/lablr/pen/rNpVLeK -->
+<head>
+  <title> CubemapTextureDDS </title>
+  <meta charset="utf-8" />
+    <style>	
+    .world {
+    background: linear-gradient(#652e37, #652e37);
+    position:absolute;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    }
+    </style> 
+</head>
+
+<body>
+    <div id='world'></div>
+</body>
+<script src='../js/three.139.js'></script>
+<script src='../js/OrbitControls.139.js'></script>
+<script src='../js/DDSLoader.139.js'></script>
+
+<!-- @author sinokgr + win -->
+
+<script id="vertexShader" type="x-shader/x-vertex">
+    precision highp float;
+    precision highp int;
+
+    uniform mat4 modelMatrix;
+    uniform mat4 modelViewMatrix;
+    uniform mat4 projectionMatrix;
+    uniform mat4 viewMatrix;
+    uniform mat3 normalMatrix;
+    uniform vec3 cameraPosition;
+    attribute vec3 position;
+    attribute vec3 normal;
+    attribute vec2 uv;
+
+    // varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+
+    void main() {
+
+        ////////////
+        // uv_vertex
+        // vUv = uv;
+
+        /////////////////////
+        // beginnormal_vertex
+        vec3 objectNormal = vec3( normal );
+
+        ///////////////////////
+        // defaultnormal_vertex
+        vNormal = normalMatrix * objectNormal;
+
+        ///////////////
+        // begin_vertex
+        vec3 transformed = vec3( position );
+        vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
+
+        vViewPosition = - mvPosition.xyz;
+
+        /////////////////
+        // project_vertex
+        gl_Position = projectionMatrix * mvPosition;
+
+    }
+</script>
+
+<script id="fragmentShader" type="x-shader/x-vertex">
+		// #extension GL_EXT_shader_texture_lod : enable
+    precision highp float;
+    precision highp int;
+
+    uniform mat4 viewMatrix;
+
+    uniform samplerCube envMap;
+    uniform float lod;
+
+    // varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+
+    #define NORMAL
+
+    // http://en.wikibooks.org/wiki/GLSL_Programming/Applying_Matrix_Transformations
+    vec3 inverseTransformDirection( in vec3 dir, in mat4 matrix ) {
+      return normalize( ( vec4( dir, 0.0 ) * matrix ).xyz );
+    }
+
+    void main() {
+
+        vec3 reflectedDirection = normalize( reflect( vViewPosition, normalize( vNormal ) ) );
+        // reflectedDirection.y = -reflectedDirection.y;
+
+        reflectedDirection = inverseTransformDirection( -reflectedDirection, viewMatrix );
+
+        vec4 color = textureCube( envMap, reflectedDirection, lod );
+
+        gl_FragColor = vec4( color );
+
+    }
+</script>
+
+<script>
+var container;
+var camera, controls, scene, renderer;
+var material = [];
+
+init();
+animate();
+
+function init() {
+
+    // renderer
+
+    renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha:  false,
+      precision:  "highp"
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.autoClear = true;
+    renderer.setClearColor(0x777777, 1);
+    var gl = renderer.getContext();
+  
+    container = document.getElementById('world');
+    container.appendChild(renderer.domElement);
+  
+    camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.position.z = 1000;
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    controls.rotateSpeed = 1.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+    controls.minDistance = 100;
+    controls.maxDistance = 4000;
+
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.2;
+
+    controls.keys = [65, 83, 68]; 
+
+    // world
+
+    scene = new THREE.Scene();
+
+    var loader = new THREE.DDSLoader();
+    var src =  'Mountains_argb_mip.dds'; // 'https://threejs.org/examples/textures/compressed/Mountains_argb_mip.dds'
+    loader.load( src, function( texture ) {
+
+      //texture.minFilter = THREE.LinearMipMapLinearFilter;
+      //texture.magFilter = THREE.NearestFilter;
+      var geo = new THREE.SphereGeometry( 30, 48, 48 );
+
+      for ( var i = 0; i < 8; i++ ) {
+        createSphere( i, ( -280 + ( i * 80 ) ) );
+      }
+      
+      function createSphere( index, pos ) {
+
+        var uniforms = {
+          envMap: { type: 't', value: null },
+          lod: { type: '1f', value: 0.0 }
+        };
+        
+        uniforms.envMap.value = texture;
+        uniforms.lod.value = index;
+        
+        material[ index ] = new THREE.RawShaderMaterial({
+          uniforms: uniforms,
+          vertexShader: document.getElementById( 'vertexShader' ).textContent,
+          fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+          // lights: false
+        });
+        
+        
+        material[ index ].extensions.shaderTextureLOD = true;
+
+        var Mesh = new THREE.Mesh( geo, material[ index ] );
+        Mesh.position.x = pos;
+        scene.add(Mesh);
+
+        material[ index ].needsUpdate = true;
+        
+      };
+
+    });
+
+    window.addEventListener('resize', onWindowResize, false);
+
+}
+
+function onWindowResize() {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+}
+
+function animate() {
+
+    render();
+    controls.update();
+    requestAnimationFrame(animate);
+
+}
+
+function render() {
+
+    renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

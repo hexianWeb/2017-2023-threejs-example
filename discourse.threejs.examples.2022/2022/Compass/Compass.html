@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-circle-linked-to-camera-with-rotating-radius-arrow-showing-global-negative-z-direction/45169/3 -->
+<!-- https://codepen.io/prisoner849/pen/xxzzqeM -->
+<head>
+  <title> Compass </title>
+  <meta charset="utf-8" />
+ <style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+
+svg {
+  transform-origin: center center;
+}
+  </style>
+</head>
+
+<body> 
+    <div id="compassContainer" style="position: absolute;">
+        <svg version="1.1" id="compass" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="150px" height="150px" viewBox="-10 -10 20 20">
+        <g>
+            <g>
+            <path d="M 7, 0 A 7, 7 0 1,0 0,7" stroke-width="0.5" stroke="rgba(0, 255, 255, .5)" fill="transparent">
+                <animateTransform attributeType="xml" attributeName="transform" type="rotate" from="360 0 0" to="0 0 0" dur="4s" repeatCount="indefinite" />
+            </path>
+            <path d="M 8, 0 A 8, 8 0 1,0 0,8" stroke-width="2" stroke="rgba(0, 255, 255, .25)" fill="transparent">
+                <animateTransform attributeType="xml" attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="6s" repeatCount="indefinite" />
+            </path>
+            <line x1="-10" y1="0" x2="-5" y2="0" stroke="#0ff" />
+            <line x1="10" y1="0" x2="5" y2="0" stroke="#0ff" />
+            <line x1="0" y1="-10" x2="0" y2="-5" stroke="#0ff" />
+            <line x1="0" y1="10" x2="0" y2="5" stroke="#f00" />
+            </g>
+        </g>
+        </svg>
+    </div>
+</body>
+<script src="../js/three.min.144.js"></script>
+<script src="../js/OrbitControls.144.js"></script>
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 5, 10);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var grid = new THREE.GridHelper(10, 10, "aqua", "gray");
+scene.add(grid);
+
+var dir = new THREE.Vector3();
+var sph = new THREE.Spherical();
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+  camera.getWorldDirection(dir);
+  sph.setFromVector3(dir);
+  compass.style.transform = `rotate(${THREE.MathUtils.radToDeg(sph.theta) - 180}deg)`;
+});
+
+</script>
+</html>

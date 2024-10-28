@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/how-to-draw-a-curved-circle/49082/10 -->
+ <!-- https://codepen.io/prisoner849/pen/NWLYMvx -->
+<head>
+  <title>SphericalCap</title>
+  <meta charset="utf-8" />
+    <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+console.clear();
+
+let randSpread = function(val){return Math.round((Math.random() - 0.5) * val);};
+let rand = function(val){return Math.random() * val};
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0xface8D);
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 5, 10).setLength(15);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", function(event){
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.set(3, 5, 8);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let radius = 5;
+let mainSphere = new THREE.Mesh(new THREE.SphereGeometry(5), new THREE.MeshBasicMaterial({color: "gray", wireframe: true}));
+scene.add(mainSphere);
+
+let partialSphere = new THREE.Mesh(
+  new THREE.SphereGeometry(5.1, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.1)
+  .translate(0, -5.1, 0)
+  .rotateX(-Math.PI* 0.5), 
+  new THREE.MeshBasicMaterial({color: "red", wireframe: true})
+);
+scene.add(partialSphere);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(function(){
+  let t = clock.getElapsedTime();
+  controls.update();
+  
+  let sphereT = t * 0.5;
+  partialSphere.position.setFromSphericalCoords(5.1, Math.sin(sphereT) * Math.PI * 0.5 + Math.PI * 0.5, sphereT);
+  partialSphere.lookAt(0, 0, 0);
+  
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/arc-2d-shape-from-circle-attributes/21950 -->
+<!-- https://jsfiddle.net/prisoner849/ovrf9mqL/ -->
+<head>
+  <title> BentBar </title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.123.js"; 
+import { OrbitControls } from "../jsm/OrbitControls.123.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 10, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper());
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+var R =  5;
+var r =  R - 1;
+var cx = 1;
+var cy = 2;
+var clockwise  = false;
+var sAngle = THREE.MathUtils.degToRad(30);
+var eAngle = THREE.MathUtils.degToRad(150);
+
+let shape = new THREE.Shape();
+
+shape.absarc(cx, cy, R, sAngle, eAngle);
+shape.absarc(cx, cy, r, eAngle, sAngle, true);
+
+let p = new THREE.Points(new THREE.BufferGeometry().setFromPoints(shape.getPoints()), new THREE.PointsMaterial({color: "yellow", size: 0.125}));
+scene.add(p);
+
+let g = new THREE.ExtrudeBufferGeometry(shape, {depth: 1, bevelEnabled: false});
+let m = new THREE.MeshLambertMaterial({color: "aqua", wireframe: true});
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/shadermaterial-showing-only-part-of-the-shape-but-shows-all-when-wireframe-true/32102 -->
+<!-- https://jsfiddle.net/udwzrj1f/ -->
+<head>
+  <title> DynamicWave(ShaderMaterial) </title>
+  <meta charset="utf-8" />
+</head>
+
+<body> </body>
+<script src="../js/three.min.134.js"></script>
+
+<script>
+
+// @author Mugen87
+
+let WIREFRAME = false;
+
+const waveMaterial = new THREE.ShaderMaterial( {
+	uniforms: {
+	   uTime: { value: 0.0 },
+       uFrequency: { value: 1.0 },
+       uLineWidth: { value: 0.01 },
+       uNormal: { value: new THREE.Vector3(0.0, 1.0, 0.0)}
+	},
+	vertexShader: `
+uniform vec3 uNormal;
+uniform float uFrequency;
+uniform float uLineWidth;
+uniform float uTime;
+
+#define PI 3.1415926
+
+void main() {
+    vec3 displacement = uNormal * sin(PI * normal.x * uFrequency) * cos(uTime);
+    vec2 derivative = vec2(
+        - length(uNormal) * uFrequency * PI * cos(PI * normal.x * uFrequency) * cos(uTime),
+        1.0
+    );
+
+    displacement.xy += normal.y * uLineWidth * normalize(derivative);
+    vec4 view = modelViewMatrix * vec4(displacement + position, 1.0);
+    gl_Position = projectionMatrix * view;
+}`,
+	fragmentShader: `
+    void main() {
+        gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+    }`,
+    wireframe: WIREFRAME,
+    transparent: true,
+});
+
+function getLine(num_points) {
+    let points = [];
+    let uvs = [];
+    let indices = [];
+    let normals = [];
+
+    for (let i = 0; i < num_points; i++) {
+        points.push(
+            i / (num_points - 1) - 0.5,
+            0.0,
+            0.0,
+            i / (num_points - 1) - 0.5,
+            0.0,
+            0.0
+        );
+        normals.push(i / (num_points - 1), 1.0, -10.0, i / (num_points - 1), -1.0, -10.0);
+        // uvs.push(i / (num_points - 1), 1, i / (num_points - 1), -1);
+        if (i < num_points - 1) {
+            indices.push(i*2, i*2+1, i*2+2);
+            indices.push(i*2+1, i*2+3, i*2+2);
+        }
+
+    }
+    let geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(Float32Array.from(points), 3));
+    geom.setAttribute('normal', new THREE.Float32BufferAttribute(Float32Array.from(normals), 3));
+    geom.setIndex(indices);
+    return new THREE.Mesh(geom, waveMaterial);
+}
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 100);
+camera.position.set(0, 0, 10);
+const frustumSize = 2;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, owerPreference: "high-performance", precision: "highp" });
+const resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
+renderer.setSize(resolution.x, resolution.y);
+renderer.setPixelRatio(window.devicePixelRatio);
+document.body.appendChild(renderer.domElement);
+
+
+let mesh = getLine(10);
+scene.add(mesh);
+
+
+function onWindowResize() {
+    resolution.set(window.innerWidth, window.innerHeight);
+    const w = document.body.clientWidth;
+    const h = document.body.clientHeight;
+    const aspect = resolution.x  / resolution.y;
+    camera.left   = - frustumSize * aspect / 2;
+    camera.right  =   frustumSize * aspect / 2;
+    camera.top    =   frustumSize / 2;
+    camera.bottom = - frustumSize / 2;
+    camera.updateProjectionMatrix();
+    renderer.setSize(resolution.x, resolution.y);
+}
+
+onWindowResize();
+window.addEventListener('resize', onWindowResize);
+
+let clock = new THREE.Clock();
+let delta = 0;
+let t = 0;
+function animate() {
+    requestAnimationFrame(animate);
+    delta = clock.getDelta();
+    t += 4.0 * delta / 5;
+    mesh.material.uniforms.uTime.value = t;
+	renderer.render(scene, camera);
+}
+
+animate();
+
+</script>
+</html>

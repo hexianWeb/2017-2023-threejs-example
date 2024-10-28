@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-create-a-custom-geometry-of-a-sloped-corner/49145/25 -->
+<!-- https://codepen.io/forerunrun/pen/abaGPwy -->
+<head>
+  <title>SkewedRectangularPyramid</title>
+  <meta charset="utf-8" />
+  <style>
+    html, body{
+        width: 100vw;
+    height: 100vh;
+        padding: 0;
+        margin: 0;
+        background-color: black;
+        margin: 0;
+        padding: 0;
+    }
+    
+    
+    .container{
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 100vw;
+        padding: 0;
+        margin: 0;
+        z-index: 2;
+    }
+    p{
+    padding:0;
+    margin:0;
+    }
+    .parent{
+    position:fixed;
+    top:0;
+    left:0;
+    background-color: #ffffff;
+    /*   width:200px; */
+    height:40px;
+    z-index: 3;
+    font-size:30px;
+        padding:0;
+    margin:0;
+        display: flex;
+        align-content: center;
+        align-items: center;
+    }   
+  </style>
+</head>
+
+<body>
+    <div class="container" id="container"></div>
+
+    <div class='parent'>
+    <p id='parentName'></p>
+</div>
+</body>
+
+<script type="module">
+
+// @author Lawrence3DPK = forerunrun
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+let container = document.querySelector('#container');
+let widdi = container.offsetWidth;
+let hiddi = container.offsetHeight;
+
+const parentName = document.querySelector('#parentName');
+
+let scene, camera, orbit;
+const renderer = new THREE.WebGLRenderer( { antialias: true, gammaOutput: true, alpha: true } );
+const mouse = new THREE.Vector2();
+
+init()
+
+function init(){
+  scene = new THREE.Scene()
+
+  camera = new THREE.PerspectiveCamera(50, widdi / hiddi, 0.1, 15000)
+  camera.aspect = widdi / hiddi;
+  camera.position.set(0.75,2,4)
+  
+  let ambLight = new THREE.AmbientLight(0xffffff, 0.4)
+  scene.add(ambLight)
+  
+  let dirLight = new THREE.DirectionalLight(0xffffff, 0.5)
+  scene.add(dirLight)
+  dirLight.position.set(20,30,40)
+  
+    let dirLight1 = new THREE.DirectionalLight(0xffffff, 0.5)
+  scene.add(dirLight1)
+  // dirLight1.position.set(-20,30,-40)
+  
+    renderer.setSize(widdi, hiddi)
+  renderer.setClearColor( 0x333333, 1 );
+  container.appendChild(renderer.domElement)
+  
+  orbit = new OrbitControls(camera, renderer.domElement)
+  orbit.target.set(0.75,0,0)
+  orbit.update()
+  
+  let ah = new THREE.AxesHelper()
+  scene.add(ah)
+ 
+//folded plane
+  const vertices = [
+      -0.5,-0.5,0.5,
+      0.5,0.5,-0.5,
+      -0.5,-0.5,-0.5,
+      0.5,-0.5,0.5,
+      0.5,0.5,-0.5,
+      -0.5,-0.5,0.5
+  ]
+
+  const indices = [
+      0,1,2,
+      3,4,5
+  ]
+
+  const uv = [
+      1,1,
+      0,0,
+      0,1,
+      1,0,
+      0,0,
+      1,1
+  ]
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x00ff00, 
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  const textureLoader = new THREE.TextureLoader()
+    // https://raw.githubusercontent.com/mrdoob/three.js/r150/examples/textures/terrain/grasslight-big.jpg
+  textureLoader.load('grasslight-big.jpg', t=>{
+    material.map = t
+    material.needsUpdate = true
+  })
+  
+  
+  //full geometry
+  const vertices2 = [
+      -0.5, -0.5, 0.5,
+      0.5, 0.5, -0.5,
+      -0.5, -0.5, -0.5,
+      -0.5, -0.5, -0.5,
+      0.5, -0.5, -0.5,
+      -0.5, -0.5, 0.5,
+      0.5, -0.5, 0.5,
+      0.5, -0.5, 0.5,
+      0.5, -0.5, -0.5,
+      0.5, 0.5, -0.5,
+      0.5, -0.5, 0.5,
+      0.5, 0.5, -0.5,
+      -0.5, -0.5, 0.5,
+      -0.5, -0.5, -0.5,
+      0.5, 0.5, -0.5,
+      0.5, -0.5, -0.5
+  ]
+
+  const indices2 = [
+      0,1,2,
+      3,4,5,
+      5,4,6,
+      7,8,9,
+      10,11,12,
+      13,14,15
+  ]
+
+  const uv2 = [
+    1, 1,
+    0, 0,
+    0, 1,
+    0, 1,
+    1, 1,
+    0, 0,
+    1, 0,
+    0, 1,
+    1, 1,
+    0, 0,
+    1, 0,
+    0, 0,
+    1, 1,
+    1, 0,
+    0, 0,
+    1, 1
+  ]
+  const geometry2 = new THREE.BufferGeometry();
+  geometry2.setAttribute('position', new THREE.Float32BufferAttribute(vertices2, 3));
+  geometry2.setAttribute('uv', new THREE.Float32BufferAttribute(uv2, 2));
+  geometry2.setIndex(indices2);
+  geometry2.computeVertexNormals();
+
+  const mesh2 = new THREE.Mesh(geometry2, material);
+  scene.add(mesh2);
+  mesh2.position.x = 1.5
+  
+
+
+  animate()
+  
+}
+
+window.addEventListener('resize', onWindowResize, false)
+
+function onWindowResize() {
+
+    widdi = container.offsetWidth;
+    hiddi = container.offsetHeight;
+
+    camera.aspect = widdi / hiddi;
+    camera.updateProjectionMatrix()
+
+    renderer.setSize(widdi, hiddi)
+    render()
+}
+
+
+
+function animate() {
+    window.requestAnimationFrame(animate)
+    render()
+}
+
+function render() {
+
+    renderer.render(scene, camera)
+}
+</script>
+</html>

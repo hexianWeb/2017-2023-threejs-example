@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sphere-with-up-to-6-coordinate-planes-parallel-holes/7267 -->
+
+<head>
+	<title> SphereCut </title>
+	<meta charset="utf-8" />
+	<style>
+	body {
+		margin: 0;
+	}
+    </style>
+</head>
+<body> 	</body>
+<script src="../js/three.min.104.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author hofk
+
+'use strict';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.01, 1000 );
+camera.position.set( 2, 6, 10 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor(  0xaaaaaa, 1 );	
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+const axesHelper = new THREE.AxesHelper( 2 );
+scene.add( axesHelper );
+
+const tex1 = new THREE.TextureLoader().load( 'uvgrid01.png' );
+const tex2 = new THREE.TextureLoader().load( 'dahlia.png' );
+
+const material = [
+	new THREE.MeshBasicMaterial( { map: tex1, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide, wireframe: true } ),
+	new THREE.MeshBasicMaterial( { color: 0xff00ff, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { color: 0x00ffff, side: THREE.DoubleSide, wireframe: true } ),
+	new THREE.MeshBasicMaterial( { color: 0xffff00, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { map: tex2, side: THREE.DoubleSide, wireframe: false } ),
+	new THREE.MeshBasicMaterial( { color: 0x33ff55, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { map: tex1, side: THREE.DoubleSide } )
+]
+
+const g = new THREE.BufferGeometry( );
+
+createSphereCut( g, 2, 40, [ 6, 3, 10, 11, 12, 0 ], [ 1, 1, 1, 1, 1, 0, 0, 1 ] );
+	// BufferGeometry, radius, equator,
+	//   cut[ px, nx, py, ny, pz, nz ] max. equator, non-overlapping,
+	//   parts [ 1, 1, 1, 1, 1, 0, 0, 1 ]  1 for create part, otherwise arbitrary
+
+const mesh = new THREE.Mesh( g, material );
+scene.add( mesh );
+
+const cyliGeo0 = new THREE.CylinderBufferGeometry( g.cutRadius[ 0 ], g.cutRadius[ 0 ], g.radius, g.cutSegments[ 0 ], 4, true );
+const cyli0 = new THREE.Mesh( cyliGeo0, new THREE.MeshBasicMaterial( { color: 0x0000aa, side: THREE.DoubleSide, wireframe: true } ), );
+scene.add( cyli0 );
+cyli0.rotation.z = Math.PI / 2;
+cyli0.position.x = g.radius / 2 + g.cutDistance[ 0 ];
+
+const cyliGeo2 = new THREE.CylinderBufferGeometry( g.cutRadius[2], g.cutRadius[2], g.radius, g.cutSegments[ 2 ], 4, true  );
+const cyli2 = new THREE.Mesh( cyliGeo2, new THREE.MeshBasicMaterial( { color: 0x000000, side: THREE.DoubleSide, wireframe: true } ), );
+scene.add( cyli2 );
+cyli2.position.y = g.radius / 2 + g.cutDistance[2];
+
+animate();
+
+function animate() {
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+function createSphereCut( g, radius, equator, cut, parts ) {
+
+	// BufferGeometry, radius, equator,
+	//     cut[ px, nx, py, ny, pz, nz ] max. equator, non-overlapping,
+	//     parts [ 1, 1, 1, 1, 1, 0, 0, 1 ]  1 for create part, otherwise arbitrary
+	
+	g.radius = radius;
+	g.equator = equator;
+	g.cut = cut;
+	g.parts = parts;
+	
+	const sumNN = ( n ) => ( n * ( n + 1 ) / 2 );	// Sum natural numbers
+	const sumON = ( n ) => ( n * n );				// Sum odd numbers
+	const scale = ( k ) => ( 0.84 * k * k + 0.16 * k ); // section scale
+	const rCirc = ( h ) => ( Math.sqrt( h *( 2 - h ) ) ); // radius cutting circle ( section h )
+
+	const pi = Math.PI;
+	const pi2 = pi / 2;
+	
+	let cutT, cutB, cutA; // top, left or right per part
+	let phi;
+	let iB, iA;
+	let a0, a1, b0, b1;	// indices	
+	let vOff; // vertices offset per row
+	let spin;
+	
+	let posIdx = 0;
+	let fIdx = 0;
+	let uvIdx = 0;
+	
+	let faceCount = 0;
+	let vertexCount = 0;
+	
+	let v8Idx = [ 0 ]; // start vertex index of sphere part
+	
+	const cutIdxT = [ 2, 3 ]; // cut index T top or bottom per part
+	const cutIdxB = [ 5, 5, 4, 4 ]; // cut index B left or right per part
+	const cutIdxA = [ 0, 1, 1, 0 ]; // cut index A left or right per part
+	
+	g.cutRadius = []; // calculated radius of cut circles px, nx, py, ny, pz, nz - for external use
+	g.cutDistance = []; // calculated distance of the cut circles to the center px, nx, py, ny, pz, nz - for external use
+	g.cutSegments = []; // segments of the cut circles  - for external use
+	
+	for ( let i = 0; i < 6; i ++ ) {
+		
+		g.cutSegments[ i ] = 4 * cut[ i ];
+		
+	}
+	
+	for ( let p = 0; p < 8; p ++ ) { // 8 parts of sphere
+		
+		if ( g.parts[ p ] === 1 ) {
+	
+			getCutTBA( p );
+			
+			faceCount += sumON( equator ) - sumON( cutT ) - sumON( cutB ) - sumON( cutA );	
+			vertexCount += sumNN( equator + 1 ) - sumNN( cutT ) - sumNN( cutB ) - sumNN( cutA );
+			
+		}
+		
+		v8Idx.push( vertexCount );
+		
+	}
+	
+	g.faceIndices = new Uint32Array( faceCount * 3 );
+	g.vertices = new Float32Array( vertexCount * 3 );
+	g.uvs = new Float32Array( vertexCount * 2 );
+	g.setIndex( new THREE.BufferAttribute( g.faceIndices, 1 ) );	
+	g.addAttribute( 'position', new THREE.BufferAttribute( g.vertices, 3 ) );
+	g.addAttribute( 'uv', new THREE.BufferAttribute( g.uvs, 2 ) );
+	
+	for ( let p = 0; p < 8; p ++ ) { // 8 parts of sphere
+	
+		if ( g.parts[ p ] === 1 ) {
+		
+			getCutTBA( p );
+			
+			iB = equator - cutB;  // index B
+			iA = equator - cutA;  // index A
+			
+			indicesPartSphere( p );
+			verticesPartSphere( p );
+			
+		}	
+		
+	}	
+	
+	function getCutTBA( p ) {
+	
+		cutT = g.cut[ cutIdxT[ Math.floor( p / 4 ) ] ];	
+		cutB = g.cut[ cutIdxB[ p % 4 ] ];
+		cutA = g.cut[ cutIdxA[ p % 4 ] ];
+		
+	}
+	
+	function indicesPartSphere( p ) {
+		
+		// write groups for multi material
+		g.addGroup( fIdx, ( sumON( equator ) - sumON( cutT ) - sumON( cutB ) - sumON( cutA ) ) * 3, p ); 
+		
+		a0 = v8Idx[ p ];  // start vertex index
+		
+		for ( let i = cutT; i < equator; i ++ ) {
+			
+			vOff = i - ( i > iB ? i - iB : 0 ) - ( i > iA ? i - iA : 0 );      
+				
+			a1 = a0 + 1;	
+			b0 = a0 + vOff + ( i < iB ? 1 : 0 ); // start index - below  
+			b1 = b0 + 1;
+			
+			spin = ( p === 0 || p === 2 || p === 5 || p === 7 ) ? true : false;
+				
+			// each two faces
+		
+			for ( let j = 0; j < vOff; j ++ ) {
+				
+				if ( i < iB || j > 0 ) {
+					
+					g.faceIndices[ fIdx     ] = j + a0;		// left face
+					g.faceIndices[ fIdx + 1 ] = j + ( spin ? b1 : b0 );
+					g.faceIndices[ fIdx + 2 ] = j + ( spin ? b0 : b1 );
+					
+					fIdx += 3;
+					
+				}
+					
+				g.faceIndices[ fIdx     ] = j + a0;			// right face
+				g.faceIndices[ fIdx + 1 ] = j + ( spin ? a1 : b1 );
+				g.faceIndices[ fIdx + 2 ] = j + ( spin ? b1 : a1 );	
+				
+				fIdx += 3;		
+				
+			}
+					
+			if ( i < iA ) {
+				
+				// last face in row ( like a left face )
+				
+				g.faceIndices[ fIdx     ] = vOff + a0;				
+				g.faceIndices[ fIdx + 1 ] = vOff + ( spin ? b1 : b0 );
+				g.faceIndices[ fIdx + 2 ] = vOff + ( spin ? b0 : b1 );
+				
+				fIdx += 3;	
+				
+			}
+		
+			a0 += vOff + 1; // next start index
+				
+		}
+		
+	}
+	
+	function verticesPartSphere( p ) {
+		
+		const signX = ( p === 0 || p === 3 || p === 4 || p === 7 ) ? 1 : -1; 
+		const signY = p < 4 ? 1 : -1; 
+		const signZ = ( p === 2 || p === 3 || p === 6 || p === 7 ) ? 1 : -1;
+		
+		let spin = ( p === 0 || p === 2 || p === 5 || p === 7 ) ? true : false;
+		
+		let x, y, z, x0, x1, y0, y1, z0, z1, dx, dy, dz, vCount, t, uvu;
+		
+		let yB = [];	
+		let yA = [];
+		
+		let yT = Math.sin( pi2 * ( 1 - cutT / equator ) );	// y top
+		
+		let hT = 1 - yT;		// height cap T top
+		let rT = rCirc( hT );	// is top circle radius ( or bottom for p > 3)
+		
+		let hB = 1 - Math.sin( pi2 * ( 1 - cutB / equator ) ); // height cap B  
+		let hA = 1 - Math.sin( pi2 * ( 1 - cutA / equator ) ); // height cap A  
+		
+		let rB = rCirc( hB ); // is cut circle radius  rB => height
+		let rA = rCirc( hA ); // is cut circle radius  rA => height
+		
+		// cut circle radius [ px, nx, py, ny, pz, nz ] - for external use
+		g.cutRadius[ cutIdxT[ Math.floor( p / 4 ) ] ] = rT * g.radius;
+		g.cutRadius[ cutIdxB[ p % 4 ] ] = rB * g.radius;
+		g.cutRadius[ cutIdxA[ p % 4 ] ] = rA * g.radius;
+		
+		// distance of the cut circles to the center  [ px, nx, py, ny, pz, nz ] - for external use
+		g.cutDistance[ cutIdxT[ Math.floor( p / 4 ) ] ] = ( 1 - hT ) * g.radius;
+		g.cutDistance[ cutIdxB[ p % 4 ] ] = ( 1 - hB ) * g.radius;
+		g.cutDistance[ cutIdxA[ p % 4 ] ] = ( 1 - hA ) * g.radius;
+		
+		//   edge B
+		
+		for ( let i = cutT, k = 0 ; i <= iB ; i ++ , k ++ ) {  
+			
+			yB[ i ] = yT - ( yT - rB ) * scale( k / (  iB - cutT ) );
+			
+		}
+		
+		for ( let i = iB + 1 ; i <= equator; i ++ ) { 
+			
+			yB[ i ] = rB * Math.cos( pi2 * ( i - iB ) / cutB );
+			
+		}
+		
+		//  edge A
+		
+		for ( let i = cutT, k = 0 ; i <= iA ; i ++ , k ++ ) {  
+			
+			yA[ i ] = yT - ( yT - rA ) * scale( k / (  iA - cutT ) );
+			
+		}
+		
+		for ( let i = iA + 1 ; i <= equator; i ++ ) { 
+			
+			yA[ i ] = rA * Math.cos( pi2 * ( i - iA ) / cutA );
+			
+		}
+		
+		// positions, uv's
+			
+		for ( let i = cutT; i <= equator; i ++ ) {
+		
+			if ( i === 0 && cutT === 0 ) {
+			
+				g.vertices[ posIdx     ] = 0;
+				g.vertices[ posIdx + 1 ] = signY * g.radius;
+				g.vertices[ posIdx + 2 ] = 0;
+				
+				posIdx += 3;
+				
+				g.uvs[ uvIdx ] = 0.5;
+				g.uvs[ uvIdx  + 1 ] = 1;
+				
+				uvIdx += 2;
+				
+			}
+			
+			vCount = i + 1 - ( i > iB ? i - iB : 0 ) - ( i > iA ? i - iA : 0 );		
+			
+			if ( i === cutT && cutT !== 0 ) {
+				
+				phi = 0;
+			
+				for ( let j = 0; j <= vCount - 1 ; j ++ ) {
+					
+					x = rT * Math.sin( pi2 * j / ( vCount - 1 ) );
+					y = yT;
+					z = rT * Math.cos( pi2 * j / ( vCount - 1 ) );
+					
+					g.vertices[ posIdx     ] = signX * g.radius * x;
+					g.vertices[ posIdx + 1 ] = signY * g.radius * y;
+					g.vertices[ posIdx + 2 ] = signZ * g.radius * z;
+					
+					posIdx += 3;
+					
+					phi +=  pi2 / vCount;
+									
+					x += 0.4 * x * ( 1 - Math.cos( pi2 * y ) );
+					z += 0.4 * z * ( 1 - Math.cos( pi2 * y ) );		
+					uvu = ( Math.asin( x ) + Math.acos( z ) ) / 2 / pi2;
+					
+					g.uvs[ uvIdx ] = spin ? 1 - uvu : uvu ;
+					g.uvs[ uvIdx + 1 ] = Math.asin( y ) / pi2;
+				
+					uvIdx += 2;
+							
+				}
+				
+			}
+			
+			if ( i > cutT ) { 
+					
+				//  ( 0 )
+				
+				if ( i <= iB ) {
+		
+					x0 = 0;
+					y0 = yB[ i ];
+					z0 = Math.sqrt( 1 - yB[ i ] * yB[ i ] );
+					
+				} else {
+					
+					x0 = rB * Math.sin( pi2 * ( i - iB ) / cutB  );		
+					y0 = rB * Math.cos( pi2 * ( i - iB ) / cutB ); 
+					z0 = 1 - hB;
+					
+				}
+				
+				//  ( 1 )
+				
+				if ( i <= iA ) {
+					
+					x1 = Math.sqrt( 1 - yA[ i ] * yA[ i ] );
+					y1 = yA[ i ];
+					z1 = 0;
+					
+				} else {
+					
+					x1 = 1 - hA; 
+					y1 = rA * Math.cos( pi2 * ( i - iA ) / cutA ); 
+					z1 = rA * Math.sin( pi2 * ( i - iA ) / cutA );
+							
+				}
+				
+				// row verices - not always horizontal
+				
+				dx = x1 - x0;
+				dy = y1 - y0;
+				dz = z1 - z0; 
+				
+				for ( let j = 0; j <= vCount - 1 ; j ++ ) {	
+					
+					x = x0 + j / ( vCount - 1 ) * dx;
+					y = y0 + j / ( vCount - 1 ) * dy;  
+					z = z0 + j / ( vCount - 1 ) * dz; 
+					
+					t = Math.sqrt( ( 1 - y * y ) / ( x * x + z * z ) ); // to move the point horizontally onto the sphere
+					
+					x = t * x;
+					//y = y;
+					z = t * z;
+					
+					g.vertices[ posIdx     ] = signX * g.radius * x;
+					g.vertices[ posIdx + 1 ] = signY * g.radius * y;
+					g.vertices[ posIdx + 2 ] = signZ * g.radius * z;
+					
+					posIdx += 3;
+					
+					x += 0.4 * x * ( 1 - Math.cos( pi2 * y ) );
+					z += 0.4 * z * ( 1 - Math.cos( pi2 * y ) );		
+					uvu = ( Math.asin( x ) + Math.acos( z ) ) / 2 / pi2;
+					
+					g.uvs[ uvIdx ] = spin ? 1 - uvu : uvu;
+					g.uvs[ uvIdx + 1 ] = Math.asin( y ) / pi2;
+				
+					uvIdx += 2;			
+					
+				}
+				
+			}
+			
+		}
+		
+	}
+
+}
+
+</script>
+
+</html>

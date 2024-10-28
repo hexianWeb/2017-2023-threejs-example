@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/transparent-object-issue/57882/6 -->
+<!-- https://codepen.io/boytchev/pen/KKJWvzo -->
+<head>
+  <title>ThreeNestedTransparentSpheres</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.158.js';
+import { OrbitControls } from '../jsm/OrbitControls.158.js'; 
+
+// boring stuff, scroll down to the next comment
+
+console.clear( );
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 5, 5, 15 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+
+var light = new THREE.DirectionalLight( 'white', 2 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+    controls.autoRotate = true;
+
+
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+
+// create a canvas texture
+
+var canvas = document.createElement( 'CANVAS' );
+    canvas.width = 128;
+    canvas.height = 128;
+
+var context = canvas.getContext( '2d' );
+    context.fillStyle = 'White';
+		context.globalAlpha = 0.3;
+		context.fillRect( 0, 0, 128, 128 );
+		context.globalAlpha = 1;
+    context.strokeStyle = 'White';
+    context.lineWidth = 25;
+    context.strokeRect( 0, 0, 128, 128 );
+
+var texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+		texture.repeat.set( 16, 7 );
+
+
+
+
+// this is the next comment
+
+
+var A1 = new THREE.Mesh(
+			new THREE.SphereGeometry( 3, 64, 32, 0, 2*Math.PI, 0.5, Math.PI-1 ),
+      new THREE.MeshLambertMaterial( {
+					color: 'RoyalBlue',
+          map: texture,
+          side: THREE.BackSide,
+          transparent: true,
+        } )
+    );	
+
+var A2 = new THREE.Mesh( A1.geometry, A1.material.clone() );
+		A2.material.side = THREE.FrontSide;
+
+var B1 = new THREE.Mesh( A1.geometry, A1.material.clone() );
+		B1.material.side = THREE.BackSide;
+		B1.material.color = new THREE.Color( 'Crimson' );
+		B1.scale.set( 0.6, 0.6, 0.6 );
+
+var B2 = new THREE.Mesh( B1.geometry, B1.material.clone() );
+		B2.material.side = THREE.FrontSide;
+		B2.scale.set( 0.6, 0.6, 0.6 );
+
+var C1 = new THREE.Mesh( A1.geometry, A1.material.clone() );
+		C1.material.side = THREE.BackSide;
+		C1.material.color = new THREE.Color( 'Black' );
+		C1.scale.set( 0.3, 0.3, 0.3 );
+
+var C2 = new THREE.Mesh( C1.geometry, C1.material.clone() );
+		C2.material.side = THREE.FrontSide;
+		C2.scale.set( 0.3, 0.3, 0.3 );
+
+
+A1.renderOrder = 1;
+B1.renderOrder = 2;
+C1.renderOrder = 3;
+C2.renderOrder = 4;
+B2.renderOrder = 5;
+A2.renderOrder = 6;
+
+scene.add( A1, A2 , B1, B2, C1, C1 );
+
+
+
+
+function animationLoop( t )
+{
+		A1.rotation.set( t/3000, t/3345, 0 );
+		A2.rotation.copy( A1.rotation );
+	
+		B1.rotation.set( t/2700, 0, t/2845, 0 );
+		B2.rotation.copy( B1.rotation );
+	
+		C1.rotation.set( 0, t/1700, t/1845 );
+		C2.rotation.copy( C1.rotation );
+	
+		B1.position.y = -1+2*Math.abs(Math.sin(t/700));
+		B2.position.copy( B1.position );
+	
+		C1.position.y = B1.position.y-0.7+1.4*Math.abs(Math.sin(2*t/700-0.5));
+		C2.position.copy( B1.position );
+	
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-update-a-canvastexture-used-as-the-scene-background/29596 -->
+<!-- https://jsfiddle.net/4qpw7csz/ -->
+<head>
+  <title> UpdateCanvasTextureAsSceneBackground  </title>
+  <meta charset="utf-8" />
+ <meta charset="utf-8" />
+	<style>
+	body {
+		margin: 0;
+	}
+	</style>
+</head>
+
+<body> <div id="container"></div> </body>
+
+<script type="module">
+
+// @author Mugen87
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.127.js";
+import { OrbitControls } from "../jsm/OrbitControls.127.js";
+
+let camera, scene, renderer, texture;
+let canvas;
+
+init();
+
+function drawPattern() {
+  let ctx = canvas.getContext('2d');
+  let num_squares = Math.floor(Math.random() * 64) + 8;
+
+  let color1 = '#' + new THREE.Color(`hsl(${Math.random() * 100}, 90%, 50%)`).getHexString();
+  let color2 = '#' + new THREE.Color(`hsl(${Math.random() * 100}, 90%, 50%)`).getHexString();
+
+  for (let y = 0; y < num_squares; y++) {
+    for (let x = 0; x < num_squares; x++) {
+      if ((x % 2 == 0 && y % 2 == 0) || (x % 2 != 0 && y % 2 != 0)) ctx.fillStyle = color1;
+      else ctx.fillStyle = color2;
+
+      ctx.fillRect(
+        (canvas.width * x) / num_squares,
+        (canvas.height * y) / num_squares,
+        canvas.width / num_squares,
+        canvas.height / num_squares
+      );
+    }
+  }
+}
+
+function init() {
+  const container = document.getElementById('container');
+
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1100);
+  camera.position.x = 0.01;
+
+  scene = new THREE.Scene();
+
+  canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = canvas.width;
+  drawPattern();
+
+  texture = new THREE.CanvasTexture(canvas);
+
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  texture.minFilter = texture.magFilter = THREE.LinearFilter;
+
+  const backgroundMaterial = new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.clone(THREE.ShaderLib.equirect.uniforms),
+    vertexShader: THREE.ShaderLib.equirect.vertexShader,
+    fragmentShader: THREE.ShaderLib.equirect.fragmentShader,
+    side: THREE.BackSide,
+    depthTest: false,
+    depthWrite: false,
+    fog: false
+  });
+  backgroundMaterial.uniforms.tEquirect.value = texture;
+  backgroundMaterial.map = texture;
+
+  const skyBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), backgroundMaterial);
+  scene.add(skyBox);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container.appendChild(renderer.domElement);
+
+  window.addEventListener('resize', onWindowResize, false);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.rotateSpeed = -0.5;
+  controls.addEventListener('change', render);
+  container.addEventListener('pointerdown', onPointerDown, false);
+
+  render();
+}
+
+function onPointerDown(event) {
+  const right_button = 2;
+  if (event.button == right_button) {
+    console.log('Drawing new pattern')
+    drawPattern();
+    texture.needsUpdate = true;
+    render();
+  }
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+
+</script>
+</html>

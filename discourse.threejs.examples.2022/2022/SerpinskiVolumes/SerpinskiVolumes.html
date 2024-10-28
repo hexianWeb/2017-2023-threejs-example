@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/random-points-on-surfaces/34153/3 -->
+ <!-- https://jsfiddle.net/amitlzkpa/zwkq0edb/ -->
+<!-- see also  https://jsfiddle.net/amitlzkpa/Lrhp10df/   https://jsfiddle.net/amitlzkpa/ytnb8eod/
+               https://jsfiddle.net/amitlzkpa/60cbsay5/   https://jsfiddle.net/amitlzkpa/479tg1of/
+               https://jsfiddle.net/amitlzkpa/uem7rn0p/ -->
+<head>
+  <title> SerpinskiVolumes </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+      margin: 0px;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author amitlzkpa
+
+// Simple three.js example
+// https://www.jsdelivr.com/package/npm/three
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+let renderer, scene, camera, controls;
+
+init();
+animate();
+function init() {
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 100000000 );
+    camera.position.set( 800, 800, 800 );
+    controls = new OrbitControls( camera, renderer.domElement );
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    let light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20, 20, 0 );
+    scene.add( light );
+    scene.add( new THREE.AxesHelper( 20 ) );
+    //document.addEventListener('keypress', onKeyPress, true);
+    window.addEventListener( 'resize', onWindowResize, false );
+}
+
+function animate() {
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+}
+
+function onWindowResize(){
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+
+
+// --------------------------------------
+
+
+
+
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
+
+function getPointInBetweenByT(a, b, t=0.5) {
+  let pp = new THREE.Vector3((a.x+b.x) * t, (a.y+b.y) * t, (a.z+b.z) * t);
+  return pp;
+}
+
+
+
+// --------------------------------------
+
+
+
+  
+let shape = [
+  new THREE.Vector3(0,    0,    600),
+  new THREE.Vector3(520,  0,    -300),
+  new THREE.Vector3(-520,  0,    -300),
+  new THREE.Vector3(0,    600,  0),
+];
+let t = 0.5;
+
+let size = 800;
+let focus = new THREE.Vector3(0, 200, 0);
+function getCol(pRat) {
+	return new THREE.Color(1 - pRat, 0, 1);
+}
+
+/* let particleCount = 80000; */
+let particleCount = 200000;
+let jump = size / 20;
+
+
+
+let prev = new THREE.Vector3();
+
+
+
+let R = 0.89;
+let G = 0.12;
+let B = 0.17;
+
+let particles = new THREE.BufferGeometry();
+let pMaterial = new THREE.PointsMaterial({ size: 2, vertexColors: true });
+let vertices = [];
+let colors = [];
+
+for (let p = 0; p < particleCount; p++) {
+
+
+
+      let i = getRandomInt(shape.length);
+      let pP = prev.clone();
+      let rP = shape[i].clone();
+      let np = getPointInBetweenByT(pP, rP, t);
+      let particle = new THREE.Vector3(np.x, np.y, np.z);
+      prev = np;
+      
+      
+      vertices.push(np.x, np.y, np.z);
+      
+      let pRat = particle.distanceTo(focus) / size;
+      let col = getCol(pRat);
+      colors.push(col.r, col.g, col.b);
+  
+}
+
+let v = Float32Array.from(vertices);
+particles.setAttribute("position", new THREE.BufferAttribute(v, 3));
+let c = Float32Array.from(colors);
+particles.setAttribute("color", new THREE.Float32BufferAttribute(c, 3));
+
+let particleSystem = new THREE.Points(particles, pMaterial);
+
+scene.add(particleSystem);
+
+
+</script>
+
+</html>

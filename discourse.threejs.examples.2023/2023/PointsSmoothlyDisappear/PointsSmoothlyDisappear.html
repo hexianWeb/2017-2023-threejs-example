@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-do-points-smoothly-disappear-with-increasing-distance/48152 -->
+<!-- see also https://codepen.io/prisoner849/pen/jOvPZdG -->
+<head>
+	<title>PointsSmoothlyDisappear</title>
+	<meta charset="utf-8" />
+    <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body> 
+   <section id="loading-screen">
+        <div id="loader"></div>
+    </section>
+</body>
+
+<script type="module">
+ 
+// @author hofk
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+import { GLTFLoader } from '../jsm/GLTFLoader.149.js';
+
+document.addEventListener( 'pointerdown', onPointerDown ); 
+
+const rad = α => α * Math.PI / 180;   // ° => rad 
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 10000 );
+camera.position.set( -1, 0, 8 );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede);
+document.body.appendChild( renderer.domElement );
+
+const ambientLight = new THREE.AmbientLight( 0x404040, 0.8 );
+scene.add( ambientLight );
+
+const pointLightA = new THREE.PointLight( 0xffffff, 0.6 ); 
+pointLightA.position.set( 10, 20, 10 );
+scene.add( pointLightA );
+
+const pointLightB = new THREE.PointLight( 0xffff00, 0.6 ); 
+pointLightB.position.set( -5, -20, -7 );
+scene.add( pointLightB );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const loadingManager = new THREE.LoadingManager( ( ) => {
+    
+	const loadingScreen = document.getElementById( 'loading-screen' );
+	loadingScreen.classList.add( 'fade-out' );
+	loadingScreen.addEventListener( 'transitionend', e => e.target.remove( ) );  // optional: remove loader from DOM
+	
+} );
+
+const gltfLoader = new GLTFLoader( loadingManager );
+
+const modelFiles = [ './Kelli Ray_Bee/toi uu.gltf' ];
+
+let objects = [];
+const mfl = modelFiles.length;
+
+for ( let i = 0; i < mfl; i ++ ) {
+    
+    const object= new THREE.Object3D( );
+    object.file = modelFiles[ i ];
+    
+    gltfLoader.load( object.file, gltf => {
+    
+        const box = new THREE.Box3( ).setFromObject( gltf.scene );
+        const c = box.getCenter( new THREE.Vector3( ) );
+        const size = box.getSize( new THREE.Vector3( ) );
+        gltf.scene.position.set( -c.x, size.y / 2 - c.y, -c.z ); // center the gltf scene
+        object.add( gltf.scene );
+        
+        objects[ i ] = object;
+        
+        if ( i === 0 ) {
+            
+            objects[ i ].scale.set( 0.008, 0.008, 0.008 );
+            objects[ i ].rotation.set( rad( 0 ), rad( 70 ), rad( 0 ) ); //  ° => rad  see above
+             
+        }
+        
+        scene.add( objects[ i ] );
+        
+    } );
+
+}
+
+const raycaster = new THREE.Raycaster( );
+raycaster.params.Points.threshold = 0.01;
+
+const pointer = new THREE.Vector2( );
+let objToRaycast = [];
+let intersects = [];
+
+
+const loader = new THREE.TextureLoader( );  
+const circle = loader.load( 'circle.png' );
+const PDFIcon = loader.load( 'PDF.png' );
+
+const pdfMesh = new THREE.Mesh( 
+    new THREE.PlaneGeometry( 0.5, 0.5 ),
+    new THREE.MeshBasicMaterial( { map: PDFIcon, side: THREE.DoubleSide, transparent: true } ) 
+);
+pdfMesh.name = 'document';
+pdfMesh.document = 'The honeybee.pdf';
+objToRaycast.push( pdfMesh );
+pdfMesh.position.set( 0, 1.5, 0 );
+scene.add( pdfMesh );
+
+/*   ... question: smoothly disappear with distance...
+//................................................................................
+ const aT = 0.404; // points that are strongly visible from afar
+// const aT = 0.405; // points that disappear widely abruptly from a distance
+//................................................................................
+
+const material = new THREE.PointsMaterial( {
+   map: circle, size: 0.02, color: 'yellow', sizeAttenuation: true, transparent: true, opacity: 0.8,  alphaTest: aT } );
+*/
+
+
+// ....... solution @prisoner848 / Paul https://codepen.io/prisoner849/pen/jOvPZdG  .......
+
+const smoothlyDisappear = shader => {
+
+    shader.uniforms.distanceMin = material.userData.distanceMin;
+    shader.uniforms.distanceMax = material.userData.distanceMax;
+    shader.vertexShader = `
+      varying float alphaDepth;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <fog_vertex>`,
+      `#include <fog_vertex>
+        alphaDepth = - mvPosition.z;
+      `
+    );
+    //console.log(shader.vertexShader);
+    
+    shader.fragmentShader = `
+      uniform float distanceMin;
+      uniform float distanceMax;
+      varying float alphaDepth;
+      ${shader.fragmentShader}
+    `.replace(
+      `#include <fog_fragment>`,
+      `#include <fog_fragment>
+        float aNorm = clamp(smoothstep(distanceMax, distanceMin, alphaDepth), 0., 1.);
+        gl_FragColor.a *= aNorm;
+      `
+    );
+    // console.log(shader.fragmentShader);
+    
+  }
+
+const material = new THREE.PointsMaterial({
+
+  map: circle,
+  size: 0.02,
+  color: 'yellow',
+  transparent: true,
+  opacity: 0.8,
+  alphaTest:0.3,
+  
+  onBeforeCompile: smoothlyDisappear
+  
+});
+
+
+material.userData = {
+  distanceMin: {value: 0 },
+  distanceMax: {value: 80 }
+}
+  
+// ..................................................................................
+ 
+const sphGeo =  PointsSphere( 30000, 0.2, 1.0, 0.25 ); 
+const sphere = new THREE.Points( sphGeo, material );
+
+sphere.renderOrder = 1;
+sphere.name = 'sphere';
+objToRaycast.push( sphere );
+scene.add( sphere );
+    
+animate( );
+
+function animate( ) {
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	
+}
+ function onPointerDown( e ) { 
+    
+    pointer.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+	pointer.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+    
+    raycaster.setFromCamera( pointer, camera );
+    intersects = raycaster.intersectObjects( objToRaycast );
+    
+    if ( intersects.length > 0 ) {
+    
+        const iso = intersects[0].object;
+         
+        console.log( 'obj  ' , iso.name  ) ////////////////////////////////////////////////////////////// 
+        
+        switch ( iso.name ) {
+        
+            case 'document':
+            
+                console.log( 'is document ?  ' , iso.name   ) ////////////////////////////////////////////////////////////// 
+                   
+                window.open( iso.document );
+                
+            break;
+            
+        }
+        
+         
+        console.log( intersects  )///////////////////////////////////////////////////////////////
+        
+    }
+
+}
+function PointsSphere( n, dri, r, dro ) { 
+
+  // n: points count,  dri: inner difference , r: radius main, dro: outer difference  
+  
+    const pts = [];
+   
+    for( let i = 0; i < n ; i++){
+
+            const inout = ( Math.random( ) - 0.5 ) * 2;
+            const lim = ( inout >= 0 ? dro : dri );
+            const rand = r + Math.pow( Math.random( ), 3 ) * lim * inout;
+            
+            // https://matheplanet.com/default3.html?call=viewtopic.php?topic=31865&ref=https%3A%2F%2Fwww.google.com%2F
+            
+            const θ = Math.PI * 2 * Math.random( );
+            const φ = Math.acos( 2 *  Math.random( ) - 1 );
+             
+            const ps = new THREE.Vector3( Math.cos( θ ) * Math.sin( φ ),  Math.sin( θ ) * Math.sin( φ ),  Math.cos( φ ) ); 
+            pts.push( ps.multiplyScalar( rand ) );
+   
+    }
+
+    const geometry = new THREE.BufferGeometry( ).setFromPoints( pts );
+    geometry.computeBoundingSphere( );
+    geometry.computeBoundingBox( );
+    
+    console.log( 'boundingSphere ', geometry.boundingSphere ) /////////////////////////////////////////////////////////////////////////////
+    console.log( 'boundingBox ', geometry.boundingBox ) /////////////////////////////////////////////////////////////////////////////
+    
+    return geometry;
+    
+}
+
+</script>
+
+</html>

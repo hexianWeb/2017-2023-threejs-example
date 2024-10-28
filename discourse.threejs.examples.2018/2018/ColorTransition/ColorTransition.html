@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-gradient-to-textgeometry/1603/2 -->
+<!-- https://jsfiddle.net/prisoner849/nr141fk7/ -->
+<head>
+  <title> ColorTransition  </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+  	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.89.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var geom = new THREE.TorusKnotGeometry( 2.5, .5, 100, 16 );
+geom.computeBoundingBox();
+
+var bbox = geom.boundingBox;
+var size = new THREE.Vector3().subVectors(bbox.max, bbox.min);
+
+var vertexIndices = ['a', 'b', 'c'];
+var face, vertex, normalized = new THREE.Vector3(), normalizedY = 0;
+
+var red = new THREE.Color("red"), blue = new THREE.Color("blue");
+
+for(var i = 0; i < geom.faces.length; i++){
+	face = geom.faces[i];
+  for (var v = 0; v < 3; v++){
+  	vertex = geom.vertices[face[vertexIndices[v]]];
+    normalizedY = normalized.subVectors(vertex, bbox.min).divide(size).y;
+    face.vertexColors[v] = red.clone().lerp(blue, normalizedY);
+  }
+}
+
+var mat = new THREE.MeshBasicMaterial({vertexColors: THREE.VertexColors, wireframe: true});
+var obj = new THREE.Mesh(geom, mat);
+scene.add(obj);
+
+render();
+function render(){
+  requestAnimationFrame(render);
+  obj.rotation.y += .01;
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-animate-curved-arrows-in-threejs/36808/10 -->
+	<head>
+		<title> WebglLinesFat </title>
+		<meta charset="utf-8">
+	</head>
+
+<body> </body>
+
+<script type="module">
+
+import * as THREE from '../jsm/three.module.139.js';
+import Stats from '../jsm/stats.module.139.js';
+import { OrbitControls } from '../jsm/OrbitControls.139.js';
+import { LineMaterial } from '../jsm/LineMaterial.139.js';
+// import { LineSegments2 } from '../jsm/LineSegments2.139.js';
+import { Line2 } from '../jsm/Line2.139.js';
+import { LineGeometry } from '../jsm/LineGeometry.139.js';
+
+const scene = new THREE.Scene( );
+
+const  camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.001, 10000 );
+camera.position.set( 0, 7, 30 );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setClearColor( 0xdedede, 1.0 );
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+const stats = new Stats();
+document.body.appendChild( stats.dom );
+const gridHelper = new THREE.GridHelper( 50, 10 );
+scene.add( gridHelper );
+
+const positions = [];
+const points = [];
+ 
+for ( let i = - 25; i <= 0 ; i ++ ) {
+
+   points.push( new THREE.Vector3( i / 4 * Math.sin(  i / 20 ),  i / 2, 0 ) );
+   
+}
+
+
+const head = new THREE.Mesh( new THREE.CylinderGeometry( 0, 1, 2, 16, 6 ), new THREE.MeshBasicMaterial( { color: 0xff00ff, wireframe: false } ) );
+scene.add( head );
+
+const spline = new THREE.CatmullRomCurve3( points );
+const divisions = Math.round( points.length ); 
+const point = new THREE.Vector3();
+
+for ( let i = 0, l = divisions; i < l; i ++ ) {
+
+	const t = i / l;
+
+	spline.getPoint( t, point );
+	positions.push( point.x, point.y, point.z );
+
+}
+
+const lineGeometry = new LineGeometry( );
+lineGeometry.setPositions( positions );
+ 
+
+const matLine = new LineMaterial( {
+
+	color:  0xff00ff,
+	linewidth: 0.02, // in world units with size attenuation, pixels otherwise
+	// worldUnits: true,
+    alphaToCoverage: true,
+
+} );
+
+const line = new Line2( lineGeometry, matLine );
+
+scene.add( line );
+ 
+window.addEventListener( 'resize', onWindowResize );
+
+animate( );
+
+function animate() {
+
+	requestAnimationFrame( animate );
+	stats.update( );
+    
+			//renderer.setClearColor( 0x000000, 0 );
+
+	        renderer.setViewport( 0, 0, window.innerWidth, window.innerHeight );
+
+            //matLine.resolution.set( window.innerWidth, window.innerHeight ); // resolution of the viewport
+             
+	renderer.render( scene, camera );
+    
+}
+function onWindowResize( ) {
+
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+</script>
+</html>

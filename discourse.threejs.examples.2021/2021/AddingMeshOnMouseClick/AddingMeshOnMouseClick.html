@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/adding-mesh-on-mouse-click/22922/2 -->
+<!-- https://jsfiddle.net/sfpu9Lw2/ -->
+<head>
+  <title> AddingMeshOnMouseClick </title>
+  <meta charset="utf-8" />
+<style>
+body {
+  margin: 0;
+}
+</style>
+
+<body> 
+</body>
+
+<script type="module">
+
+// @author Mugen87  
+
+import * as THREE from "../jsm/three.module.125.js";
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const geometry = new THREE.BoxGeometry();
+const material = new THREE.MeshBasicMaterial({
+  color: 0x00ff00
+});
+
+const cube = new THREE.Mesh(geometry, material);
+
+camera.position.z = 5;
+const distance = 5;
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+document.body.addEventListener('click', function(e) {
+
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+	
+	raycaster.setFromCamera(mouse,camera);
+
+  const mesh = cube.clone();
+	
+	raycaster.ray.at(distance, mesh.position );
+
+  scene.add(mesh);
+
+});
+
+animate();
+
+
+</script>
+</html>

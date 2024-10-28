@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/figuring-out-rotation-based-on-3-points/14592 -->
+<!-- https://jsfiddle.net/amitlzkpa/tkg54zbh/ -->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title> RotationBasedOn3points </title> 
+</head>
+<body>
+
+  <div id="scene">
+  </div>
+  
+  <div id="steps">
+    <p>Press enter to add the shape.</p>
+  </div>
+  
+</body>
+
+<script src="../js/three.min.115.js"></script>
+<script src="../js/OrbitControls.115.js"></script>
+ 
+<script>
+
+// @author amitlzkpa
+
+// Simple three.js example
+
+var renderer, container, scene, camera, controls;
+var width = 600;
+var height = 400;
+
+init();
+animate();
+function init() {
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize( width, height );
+  container = document.getElementById("scene");
+  container.appendChild( renderer.domElement );
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera( 40, width / height, 1, 10000 );
+  camera.position.set( 20, 20, 20 );
+  controls = new THREE.OrbitControls( camera, renderer.domElement );
+  scene.add( new THREE.AmbientLight( 0x222222 ) );
+  let light = new THREE.DirectionalLight( 0xffffff, 1 );
+  light.position.set( 20, 20, 0 );
+  scene.add( light );
+  scene.add( new THREE.AxesHelper( 20 ) );
+  document.addEventListener('keypress', onKeyPress, true);
+  container.addEventListener('mousedown', pickPoints, false);
+}
+
+function animate() {
+  requestAnimationFrame( animate );
+  renderer.render( scene, camera );
+}
+
+
+
+// --------------------------------------
+
+
+// shape to provide a picking surface; could be anything
+var geometry = new THREE.TorusKnotBufferGeometry(4, 1, 64, 16, 2, 3);
+var material = new THREE.MeshPhongMaterial( {
+  color: 0x00ffff, 
+  flatShading: true,
+  transparent: true,
+  opacity: 0.7,
+} );
+var pickingSurface = new THREE.Mesh( geometry, material );
+pickingSurface.position.set(6, 0, -8);
+scene.add( pickingSurface );
+
+
+
+
+// the shape to reposition and reorient
+var shape;
+var mesh;
+function addShape() {
+	var col = 0x00ffff;
+  var size = 3;
+  var dep = 1;
+  var arrowShape = new THREE.Shape();
+  arrowShape.moveTo(-size, -size);
+  arrowShape.lineTo(0, size*3);
+  arrowShape.lineTo(size, -size);
+  arrowShape.lineTo(-size, -size);
+  var extrudeSettings = {depth: dep, bevelEnabled: false};
+  var geometry = new THREE.ExtrudeBufferGeometry(arrowShape, extrudeSettings);
+  var material = new THREE.MeshBasicMaterial( {color: col, wireframe: true} );
+  mesh = new THREE.Mesh( geometry, material );
+  shape = new THREE.Object3D();
+  shape.add(mesh);
+  shape.add( new THREE.AxesHelper(3) );
+  shape.position.set(2, 0, 3);
+	scene.add(shape);
+  var p = document.createElement("p");
+	p.innerHTML = "Click on three points on the torus to be used as reference.";
+	document.getElementById("steps").appendChild(p);
+  cmdIdx++;
+}
+
+
+
+
+// gather reference points
+var p1, p2, p3;
+function pickPoints(event) {
+
+	// avoid unexpected triggers
+	if(!event || cmdIdx !== 1) return;
+	
+  var mousePosition = new THREE.Vector3(0, 0, 0.5);
+  mousePosition.x = 2 * (event.clientX / width) - 1;
+  mousePosition.y = 1 - 2 * (event.clientY / height);
+  mousePosition.unproject(camera);
+  var raycaster = new THREE.Raycaster(camera.position, mousePosition.sub(camera.position).normalize());
+  var intersects = raycaster.intersectObjects([pickingSurface]);
+  if (intersects[0]) {
+    var p = intersects[0].point;
+    var geometry = new THREE.SphereGeometry(0.5, 32, 32);
+    var material = new THREE.MeshBasicMaterial({color: 0xff0000});
+    var sphere = new THREE.Mesh(geometry, material);
+    scene.add(sphere);
+    sphere.position.set(p.x, p.y, p.z);
+    if (!p1) p1 = p;
+    else if (!p2) p2 = p;
+    else if (!p3) p3 = p;
+  }
+  
+  if(p1 && p2 && p3) {
+    var p = document.createElement("p");
+    p.innerHTML = `The three pts are:<br/>
+    								(${p1.x}, ${p1.y}, ${p1.z})<br/>
+    								(${p2.x}, ${p2.y}, ${p2.z})<br/>
+    								(${p3.x}, ${p3.y}, ${p3.z})<br/>
+                    Press enter.`;
+    document.getElementById("steps").appendChild(p);
+  	cmdIdx++;
+  }
+  
+}
+
+
+
+
+// set position
+function repos() {
+  shape.position.set(p1.x, p1.y, p1.z);
+  
+  var p = document.createElement("p");
+	p.innerHTML = "Position set. Next set orientation. Press enter.";
+	document.getElementById("steps").appendChild(p);
+  cmdIdx++;
+}
+
+
+
+
+
+// align the local up axis of the shape
+function orientUp() {
+	// get the object's local up axis
+  // read parent objects orientation and apply it object's up axis
+  // any other axis can also be used as a source axis here
+  var srcV = new THREE.Vector3();
+	var qt1 = new THREE.Quaternion();
+	shape.getWorldQuaternion(qt1);
+	srcV.copy(mesh.up).applyQuaternion(qt1);
+  // calculate the target orientation for the object up axis
+	var tgtV = p2.clone().sub(p1);
+  tgtV.normalize();
+  // calculate the quternion that would be required for the orientation
+  // based on the reference vectors
+  var qt2 = new THREE.Quaternion().setFromUnitVectors(srcV, tgtV);
+  // apply the rotation to the shape; that'll also align the axis helper
+  shape.applyQuaternion(qt2);
+  
+  var p = document.createElement("p");
+	p.innerHTML = "Object's vertical axis set. Next align it the plane. Press enter.";
+	document.getElementById("steps").appendChild(p);
+  cmdIdx++;
+}
+
+
+
+
+
+// align the local side axis so it falls on the plane of the 3 pts
+function orientSide() {
+  
+  // get the side axis in world space
+  var pt1 = shape.localToWorld(new THREE.Vector3(0, 0, 1));
+  var srcV = shape.position.clone().sub(pt1);
+  srcV.normalize();
+  
+  // get the normal of the plane the points lie in
+	var plane = new THREE.Plane().setFromCoplanarPoints(p1, p2, p3);
+  var tgtV = plane.normal.clone();
+  tgtV.normalize();
+  
+  // calculate the transformation and apply it
+  var qt = new THREE.Quaternion().setFromUnitVectors(srcV, tgtV);
+  shape.applyQuaternion(qt);
+  
+  var p = document.createElement("p");
+	p.innerHTML = "Object's side axis aligned with plane. Done.";
+	document.getElementById("steps").appendChild(p);
+  cmdIdx++;
+
+}
+
+
+
+
+
+// --------------------------------------
+
+
+
+var cmds = [addShape, pickPoints, repos, orientUp, orientSide];
+var cmdIdx = 0;
+
+
+function onKeyPress(e) {
+  if(cmdIdx >= cmds.lenght) return;
+  cmds[cmdIdx]();
+}
+
+
+
+
+
+</script>
+</html>

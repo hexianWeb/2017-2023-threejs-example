@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/placing-multiple-icons-on-box-geometry-front-side/17831 -->
+<!-- https://jsfiddle.net/prh802f9/ -->
+<head>
+  <title> MultipleIcons </title>
+  <meta charset="utf-8" />
+ 	<style>
+	body {
+		margin: 0px;
+	}
+	canvas {
+		display: block;
+	}
+	</style> 
+</head>
+
+<body> </body>
+ 
+<script type="module">
+
+//@author Mugen87
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+import * as THREE from "../jsm/three.module.119.js"; 
+import {OrbitControls} from "../jsm/OrbitControls.119.js";
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 2;
+
+    scene = new THREE.Scene();
+		
+		var loader = new THREE.TextureLoader();
+		// https://threejs.org/examples/textures/uv_grid_opengl.jpg
+		var map1 = loader.load( 'uv_grid_opengl.jpg' );
+		// https://threejs.org/examples/textures/sprite0.png
+		var map2 = loader.load( 'sprite0.png' );
+
+    geometry = new THREE.BoxBufferGeometry();
+		geometry.addGroup( 24, 6, 6 );
+		
+    var materials = [
+			new THREE.MeshBasicMaterial( { color: 0x0000ff } ),
+			new THREE.MeshBasicMaterial( { color: 0xffff00 } ),
+			new THREE.MeshBasicMaterial( { color: 0xffffff } ),
+			new THREE.MeshBasicMaterial( { color: 0x00ff00 } ),
+			new THREE.MeshBasicMaterial( { map: map1 } ),
+			new THREE.MeshBasicMaterial( { color: 0x00ffff } ),
+			new THREE.MeshBasicMaterial( { map: map2, alphaTest: 0.5 } )
+		];
+
+    mesh = new THREE.Mesh( geometry, materials );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		var controls = new OrbitControls( camera, renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

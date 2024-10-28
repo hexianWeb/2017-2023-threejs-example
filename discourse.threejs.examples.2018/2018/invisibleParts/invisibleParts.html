@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/in-the-orb-shaders/3286/3 -->
+<!-- https://stackoverflow.com/questions/52172224/is-it-possible-to-make-only-parts-of-a-component-invisible/52187647#52187647 -->
+<head>
+  <title> invisibleParts </title>
+  <meta charset="utf-8" />
+  	<style>
+	body {
+		overflow: hidden;
+		margin: 0;
+	}
+	</style>
+</head>
+
+<body>
+</body>
+
+<script src="../js/three.min.96.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+  var sphereRadius = {
+    value: 2.5
+  };
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(-5, 8, -8).setLength(8);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target = new THREE.Vector3(0, 2, 0);
+controls.update();
+
+var light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(-10, 10, 10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+
+scene.add(new THREE.GridHelper(4, 4, 0x404040, 0x404040));
+
+// boxes
+var boxGeom = new THREE.BoxBufferGeometry();
+boxGeom.translate(0, 0.5, 0);
+var boxMaterial = new THREE.MeshLambertMaterial({
+  color: "gray"
+});
+for (let x = 0; x <= 1; x++) {
+  for (let z = 0; z <= 1; z++) {
+    let box = new THREE.Mesh(boxGeom, boxMaterial);
+    box.position.set(x - 0.5, 0, z - 0.5).multiplyScalar(1.5);
+    box.scale.set(1, Math.abs(x) + Math.abs(z) + 1, 1);
+    scene.add(box);
+  }
+}
+
+// wrapping box
+var wrappingBoxGeom = new THREE.BoxBufferGeometry(4, 4, 4);
+
+//var wrappingBoxGeom      = 	new THREE.CylinderBufferGeometry(2, 2, 4, 32); // @hofk geometry changed
+//var wrappingBoxGeom      = 	new THREE.SphereBufferGeometry(3, 24, 24); // @hofk geometry changed
+
+wrappingBoxGeom.translate(0, 2, 0);
+var wrappingBoxMaterial = getMaterial({
+  diffuse: 0xaaaaaa,
+  inside: false
+});
+var wrappingBox = new THREE.Mesh(wrappingBoxGeom, wrappingBoxMaterial);
+scene.add(wrappingBox);
+
+
+var clock = new THREE.Clock();
+var time = 0;
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  time += clock.getDelta();
+  wrappingBoxMaterial.uniforms.clippingSphere.value.x = Math.sin(time) * 2;
+  renderer.render(scene, camera);
+}
+
+// ............................
+
+function getMaterial(params) {
+
+    var diffuse = params.diffuse === undefined ? 0xffffff : params.diffuse;
+    var diffuseBack = params.diffuseBack === undefined ? diffuse : params.diffuseBack;
+
+    var inside = params.inside === undefined ? true : params.inside;
+    inside = inside ? 1 : -1;
+
+    let lambert = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.merge([THREE.ShaderLib.lambert.uniforms, {
+        clippingSphere: {
+          value: new THREE.Vector4()
+        },
+        diffuseBack: {
+          value: new THREE.Color()
+        }
+      }]),
+
+      vertexShader: THREE.ShaderLib.lambert.vertexShader
+        .replace(/varying vec3 vLightFront;/g, 'varying vec3 vLightFront;\nvarying vec4 worldPosition;')
+        .replace(/#include <worldpos_vertex>/g, 'worldPosition = modelMatrix * vec4( transformed, 1.0 );'),
+
+      fragmentShader: THREE.ShaderLib.lambert.fragmentShader
+        .replace(/uniform float opacity;/g, 'uniform float opacity;\nuniform vec4 clippingSphere;\nuniform vec3 diffuseBack;')
+        .replace(/varying vec3 vLightFront;/g, 'varying vec3 vLightFront;\nvarying vec4 worldPosition;')
+        .replace(/#include <clipping_planes_fragment>/g, '#include <clipping_planes_fragment>\n if (distance(worldPosition.xyz, clippingSphere.xyz) * sign(clippingSphere.w) > clippingSphere.w) discard;')
+        .replace(/#include <dithering_fragment>/g, '#include <dithering_fragment>\n if (!gl_FrontFacing) gl_FragColor.xyz = diffuseBack;'),
+
+      lights: true,
+
+      side: THREE.DoubleSide
+    });
+
+    lambert.uniforms.clippingSphere.value.set(0, 3, -1, sphereRadius.value * inside);
+    lambert.uniforms.diffuse.value.set(diffuse);
+    lambert.uniforms.diffuseBack.value.set(diffuseBack);
+
+    return lambert;
+ }
+  
+</script>
+
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/point-cloud-geometry-modification-working-in-r69-but-not-r105/8859 -->
+<!-- https://jsfiddle.net/prisoner849/znw45fa1/ -->
+<head>
+  <title> PointCloudGegometryModification </title>
+  <meta charset="utf-8" />
+     	<style>
+		body {
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.106.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var renderer;
+var scene;
+var camera;
+var geom;
+var v3 = new THREE.Vector3();
+
+var paramFunction1 = function (u, v, target) {
+
+		var u = (u * 2 * Math.PI);
+    var v = (v * 2 * Math.PI) - Math.PI;
+
+    var x = 2 * Math.sin(u) * Math.sin(v);
+    var y = 2 * Math.cos(u) * Math.sin(v);
+    var z = 2 * Math.cos(v);
+
+    target.set( x, y, z );
+
+}
+
+function init() {
+
+  // create a scene, that will hold all our elements such as objects, cameras and lights.
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x092241);
+
+  // create a camera, which defines where we're looking at.
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+
+  // create a render, sets the background color and the size
+  renderer = new THREE.WebGLRenderer();
+  renderer.setClearColor(0x000000, 1.0);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  geom = new THREE.ParametricBufferGeometry(paramFunction1, 61, 61);
+  
+  var velocity = [];
+  for (let i = 0; i < geom.attributes.position.count; i++) {
+  	velocity.push(Math.random() - 0.5);
+  }
+  geom.addAttribute("velocity", new THREE.BufferAttribute(new Float32Array(velocity), 1));
+  
+  var psMat = new THREE.PointsMaterial({size: 0.1});
+
+  // Create a new particle system based on the provided geometry
+  ps = new THREE.Points(geom, psMat);
+  ps.name = 'param';
+  ps.sizeAttenuation = true;
+  ps.scale.set(40,40,40)
+
+  scene.add(ps); 	
+
+  // position and point the camera to the center of the scene
+  camera.position.x = -50;
+  camera.position.y = 150;
+  camera.position.z = 250;
+  camera.lookAt(scene.position);
+
+
+  // add the output of the renderer to the html element
+  document.body.appendChild(renderer.domElement);
+
+  // call the render function
+  render();
+
+}
+
+function explode(time) {
+
+  var scale = 0.10;
+  var dir = 1;
+  
+  var pos = geom.attributes.position;
+  var vel = geom.attributes.velocity;
+
+  if(time < 3.0) {
+
+    scene.getObjectByName('param').rotation.x += 0.02;
+    scene.getObjectByName('param').rotation.y += 0.02;
+
+  }
+
+  else if(time < 6.0) {
+  	
+    for(let i = 0; i < pos.count; i++){
+      v3.fromBufferAttribute(pos, i);
+      v3.addScaledVector(v3, vel.getX(i) * scale * dir);
+      pos.setXYZ( i, v3.x, v3.y, v3.z);
+    }
+  }
+  else if(time < 9.0){
+  
+    dir = -1.0;
+    for(let i = 0; i < pos.count; i++){
+      v3.fromBufferAttribute(pos, i);
+      v3.addScaledVector(v3, vel.getX(i) * scale * dir);
+      pos.setXYZ( i, v3.x, v3.y, v3.z);
+    }
+    
+  }
+  
+  pos.needsUpdate = true;
+
+}
+
+function render(now) {
+
+		const time = (now * 0.001) % 9;
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(render);
+    explode(time);
+
+}
+
+init();
+
+</script>
+
+</html>

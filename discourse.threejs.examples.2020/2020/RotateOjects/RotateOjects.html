@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/rotate-the-object/19626/6 -->
+<!-- https://jsfiddle.net/prisoner849/gwcyoL9x/ -->
+<head>
+  <title> RotateOjects </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.121.js"; 
+import {  OrbitControls } from "../jsm/OrbitControls.121.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(-5, 2.5, 5);
+camera.lookAt(scene.position);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let mainRadius = 2;
+let mainSphere = new THREE.Mesh(new THREE.SphereBufferGeometry(mainRadius, 72, 36), new THREE.MeshBasicMaterial({color: 0x666666, wireframe: true}));
+scene.add(mainSphere);
+
+let objects = [];
+let objRadius = 0.5;
+
+let angleStep = Math.PI * 2 / 9;
+for(let i = 0; i < 9; i++){
+	let step = angleStep * i;
+  let radius = objRadius + mainRadius;
+	let x = Math.cos(step) * radius;
+  let y = Math.sin(step) * radius;
+  let o = obj(x, y, 0, objRadius, step + Math.PI * 0.5);
+  objects.push(o);
+}
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(()=>{
+	let t = clock.getDelta();
+	tick(t);
+	renderer.render(scene, camera);
+})
+
+function tick(t){
+	objects.forEach(o => {o.update(t)})
+}
+
+function obj(x, y, z, r, a){
+	let g = new THREE.SphereBufferGeometry(r, 20, 5);
+  g.rotateZ(a);
+  let m = new THREE.MeshBasicMaterial({color: Math.random() * 0x7f7f7f + 0x7f7f7f, wireframe: true});
+  let o = new THREE.Mesh(g, m);
+  scene.add(o);
+  return {
+  	mesh: o,
+    // axis: new THREE.Vector3().random().subScalar(0.5).normalize(),
+    axis: new THREE.Vector3(0, 0, 1),
+    // speed: Math.random() * Math.PI * 0.05 + Math.PI * 0.05,
+    speed: Math.PI * 0.05,
+    position: new THREE.Vector3(x, y, z),
+    time: 0,
+    update: function(t) {
+    	this.time += t;
+    	this.mesh.position.copy(this.position).applyAxisAngle(this.axis, this.speed * this.time);
+      this.mesh.rotateOnWorldAxis(this.axis, this.speed * t);
+    }
+  }
+}
+
+</script>
+</html>

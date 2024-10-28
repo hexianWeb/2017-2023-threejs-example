@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/resetting-a-rotation-maintaining-its-orientation-but-as-if-it-were-back-to-its-original-rotation-settings/3007 -->
+<!-- https://jsfiddle.net/prisoner849/cf03f0pp/ -->
+<head>
+  <title> TweenCubesRotation </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin: 0;
+	overflow: hidden;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.93.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/Tween.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var clock = new THREE.Clock();
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(1, 2, 5);
+
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x101010);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var cubes = [];
+
+var materials = [
+	new THREE.MeshBasicMaterial({color: "red"}),
+  new THREE.MeshBasicMaterial({color: "purple"}),
+  new THREE.MeshBasicMaterial({color: "green"}),
+  new THREE.MeshBasicMaterial({color: "yellow"}),
+  new THREE.MeshBasicMaterial({color: "blue"}),
+  new THREE.MeshBasicMaterial({color: "aqua"})
+
+];
+
+for(let i = 0; i < 3; i++){
+	for(let j = 0; j < 3; j++){
+    let cube = new THREE.Mesh(new THREE.BoxGeometry(), materials);
+    cubes.push(cube);
+    cube.position.set((j - 1) * 1.5, (1-i) * 1.5, 0);
+    scene.add(cube);
+  }
+}
+
+var col1 = [
+	cubes[0], cubes[3], cubes[6]
+];
+var row1 = [
+	cubes[0], cubes[1], cubes[2]
+];
+
+var prevAngle = 0;
+var tweenC1Y = new TWEEN.Tween({val: 0}).to({val: Math.PI * 1.5}, 1500).delay(500).onUpdate(function(obj){
+	col1.forEach(c1 => {
+  	c1.geometry.rotateY(-prevAngle);
+    c1.geometry.rotateY(obj.val);
+  });
+  prevAngle = obj.val;
+}).onComplete(function(obj){prevAngle = 0; obj.val = 0;});
+
+var tweenR1Y = new TWEEN.Tween({val: 0}).to({val: Math.PI}, 1000).delay(500).onUpdate(function(obj){
+	row1.forEach(r1 => {
+  	r1.geometry.rotateY(-prevAngle);
+    r1.geometry.rotateY(obj.val);
+  });
+  prevAngle = obj.val;
+}).onComplete(function(obj){prevAngle = 0; obj.val = 0;});
+
+var tweenC1X = new TWEEN.Tween({val: 0}).to({val: Math.PI * 2}, 2000).delay(500).onUpdate(function(obj){
+	col1.forEach(c1 => {
+  	c1.geometry.rotateX(-prevAngle);
+    c1.geometry.rotateX(obj.val);
+  });
+  prevAngle = obj.val;
+}).onComplete(function(obj){prevAngle = 0; obj.val = 0;});
+
+tweenC1Y.chain(tweenR1Y);
+tweenR1Y.chain(tweenC1X);
+tweenC1X.chain(tweenC1Y);
+tweenC1Y.start();
+
+function render() {
+  requestAnimationFrame(render);
+  TWEEN.update();
+  renderer.render(scene, camera);
+}
+
+render();
+</script>
+
+</html>

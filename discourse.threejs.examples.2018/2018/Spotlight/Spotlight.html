@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/direction-of-the-spotlighthelper/4679 -->
+<!-- https://jsfiddle.net/f2Lommf5/15490/ -->
+<head>
+  <title> Spotlight </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		margin: 0;
+		}
+  </style>
+</head>
+<body> </body>
+<script src="../js/three.min.97.js"></script>	
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+ // @author hofk, Mugen87 
+
+'use strict'
+var scene  = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.01, 100 );
+camera.position.set( 10, 8, 12 );
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xcccccc );
+document.body.appendChild( renderer.domElement );
+var controls = new THREE.OrbitControls( camera, renderer.domElement );	
+var axesHelper = new THREE.AxesHelper( 20 );
+scene.add( axesHelper );
+
+var ambientLight = new THREE.AmbientLight( 0x404040, 0.9 ); 
+scene.add( ambientLight );
+
+var pointLight = new THREE.PointLight( 0x303030 );
+pointLight.position.set( 8, 80, 0 );
+scene.add( pointLight );
+
+var spotLight = new THREE.SpotLight( 0xffffff, 5, 24, 0.3, 0.25, 2 );
+spotLight.position.set( 8, 10, -2 );
+spotLight.target.position.set( 0.5, 0, 5 );
+scene.add( spotLight.target);
+var spotLightHelper = new THREE.SpotLightHelper( spotLight );
+scene.add( spotLightHelper );
+scene.add( spotLight );
+
+var floorGeo  = new THREE.PlaneBufferGeometry( 8, 8 );
+floorGeo.rotateX( 1.57 );
+floorGeo.translate( 4, 0, 0 );
+var floor = new THREE.Mesh( floorGeo, new THREE.MeshStandardMaterial( { color: 0xccccff, side: THREE.DoubleSide } ) );
+scene.add( floor );
+
+var wallGeo = new THREE.PlaneBufferGeometry( 8, 8 );
+wallGeo.rotateY( 1.57 );
+wallGeo.translate( 0, 4, 0 );
+var wallMat = new THREE.MeshPhongMaterial( { color: 0xee44ee, side: THREE.DoubleSide } );
+var wall = new THREE.Mesh( wallGeo, wallMat );
+scene.add( wall );
+
+var pictureGeo  = new THREE.PlaneBufferGeometry( 3, 3 );
+pictureGeo.rotateY( 1.57 );
+pictureGeo.translate( 0.01, 2.5, 1.5);
+var texture	= new THREE.TextureLoader().load( "dahlia.jpg" ); // "white.png"
+var pictureMat = new THREE.MeshPhongMaterial( { map: texture, side: THREE.DoubleSide } );
+// var pictureMat = new THREE.MeshPhongMaterial( { color: 0xffff00, side: THREE.DoubleSide } );
+var picture = new THREE.Mesh( pictureGeo, pictureMat );
+scene.add( picture );
+
+animate();
+
+function animate() {
+
+	requestAnimationFrame( animate );
+	spotLightHelper.update(); // important 
+	renderer.render( scene, camera );
+	
+}
+</script>
+</html>

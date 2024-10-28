@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/swinging-polygon/5509 -->
+<!-- http://threejs.hofk.de/SwingingPolygon/SwingingPolygon.html -->
+<head>
+	<title> SwingingPolygon </title>
+	<meta charset="utf-8" />
+	<style>
+	body {
+		margin: 0;
+	}
+	</style>
+</head>
+<body>
+
+</body>
+	<script src="../js/three.min.99.js"></script>
+	<script src="../js/OrbitControls.js"></script>
+	<script src="../js/THREEx.WindowResize.js"></script>
+<script>
+
+ // @author hofk
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.01, 1000 );
+camera.position.set( 0, 0, 20 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x44ff44, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+THREEx.WindowResize( renderer, camera );
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+scene.add( new THREE.AmbientLight( 0xffffff, 0.5) );
+
+var light1 = new THREE.DirectionalLight( 0xeeffee, 0.8 );
+light1.position.set( 0, 5, 9 );
+scene.add( light1 );
+
+//var material = new THREE.MeshPhongMaterial( { color: 0xff00ff, side: THREE.DoubleSide } );
+var material = new THREE.MeshBasicMaterial( { color: 0xff00ff, side: THREE.DoubleSide, wireframe: true } );
+//var material = new THREE.MeshBasicMaterial( { vertexColors: THREE.VertexColors, side: THREE.DoubleSide } );
+
+// .............. input values ....................
+
+var corners = 5; // number of polygon corners
+var detail = 20; // number of divisions of the edges
+
+var c = {}; // center point
+c.x = 2;
+c.y = 4;
+c.z= -6;
+
+var n = {};	// polygone normal
+n.x = 4;	// .x and .y not both 0, simply for convenience, see e1
+n.y = 2;
+n.z = 1;
+
+var r = 9;	// radius
+
+// ..................................................
+
+// orthogonal unit vectors e1, e2 of polygon plane ( simplified calculation )
+
+var e1 = {};
+e1.x = -n.y;
+e1.y =  n.x;
+e1.z = 0;		// see vector n
+
+var e2 = {};
+
+e2 = normalize( cross( e1, n ) ); // see also https://threejs.org/docs/index.html#api/en/math/Vector3
+e1 = normalize( e1 );
+
+var geometry = new THREE.BufferGeometry( );
+
+var cd = corners * detail;
+
+var indices = new Uint32Array( cd * 3 ); 
+var positions = new Float32Array( ( cd + 2 ) * 3 ); // + last ( = first) and center point
+//var normals = new Float32Array( cd * 3 );  
+
+
+var cors = []; // corners 
+var edgs = []; // edges
+var v = {};
+
+for( let i = 0, phi = 0; i < corners; i ++, phi += Math.PI * 2 / corners ) {
+	
+	 // equation of circle in 3D space
+	cors.push( {
+		x: c.x + r * Math.cos( phi) * e1.x + r * Math.sin( phi ) * e2.x, 
+		y: c.y + r * Math.cos( phi) * e1.y + r * Math.sin( phi ) * e2.y,
+		z: c.z + r * Math.cos( phi) * e1.z + r * Math.sin( phi ) * e2.z
+	} );
+	
+}
+
+for( let i = 0; i < corners; i ++ ) {
+		
+	let j = i < corners - 1 ?  i + 1 : 0;
+	
+	edgs.push( {
+		x: cors[ j ].x  - cors[ i ].x,
+		y: cors[ j ].y  - cors[ i ].y,
+		z: cors[ j ].z  - cors[ i ].z
+	} );
+	
+}
+
+for( let i = 0; i < corners; i ++ ) {
+	
+	for( let j = 0; j < detail; j ++ ) {
+		
+		v = {
+			x: cors[ i ].x + j / detail * edgs[ i ].x,
+			y: cors[ i ].y + j / detail * edgs[ i ].y, 
+			z: cors[ i ].z + j / detail * edgs[ i ].z
+		}
+		
+		positions[ ( i * detail + j ) * 3 ] = v.x;
+		positions[ ( i * detail + j ) * 3  + 1 ] = v.y;
+		positions[ ( i * detail + j ) * 3  + 2 ] = v.z;
+		
+	}
+
+}
+
+// last point equals first point
+positions[ cd * 3 ] = positions[ 0 ];
+positions[ cd * 3 + 1 ] = positions[ 1 ];
+positions[ cd * 3 + 2 ] = positions[ 2 ];
+
+// center point
+positions[ cd * 3 + 3 ] = c.x;
+positions[ cd * 3 + 4 ] = c.y;
+positions[ cd * 3 + 5 ] = c.z;
+
+for( let i = 0; i < corners; i ++ ) {
+	
+	for( let j = 0; j < detail; j ++ ) {
+		
+		idx1 = i * detail + j;
+		idx2 = i * detail + j + 1; 
+		
+		indices[ ( i * detail + j ) * 3 ] = cd + 1;
+		indices[ ( i * detail + j ) * 3 + 1 ] = idx1;
+		indices[ ( i * detail + j ) * 3 + 2 ] = idx2;
+		
+	}
+}
+
+var pos = [];
+
+for ( i = 0; i < positions.length; i ++ ) {
+	
+	pos[ i ] = positions[ i ];
+	
+}
+
+geometry.setIndex( new THREE.BufferAttribute( indices, 1 ) );
+geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ).setDynamic( true ) );
+
+//geometry.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ));
+geometry.computeVertexNormals( ); // from three.js core
+
+var mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+var t = 0;
+ 
+animate();
+
+function animate() {
+
+	requestAnimationFrame( animate );
+	
+	t += 0.01;
+	
+	for ( let i = 0; i < corners; i ++ ) {
+	
+		swinging( i , t );
+		
+	}
+	
+	geometry.attributes.position.needsUpdate = true;
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+function swinging( i , t ) { 
+
+	let swingX, swingY, swingZ ;
+
+	for( let j = 0; j < detail; j ++  ) {
+	
+		// ....... swinging function ....... 
+		swingX = n.x * 0.1 * Math.sin( j / detail * Math.PI * 4 + t );  
+		swingY = n.y * 0.05 * Math.cos( j / detail * Math.PI * 4 + t );
+		swingZ = n.z * 0.03 * Math.sin( j / detail * Math.PI * 4 + t );
+		// .................................
+		
+		positions[ ( i * detail + j ) * 3 ]      = pos[ ( i * detail + j ) * 3 ] + swingX;
+		positions[ ( i * detail + j ) * 3  + 1 ] = pos[ ( i * detail + j ) * 3  + 1 ] + swingY;
+		positions[ ( i * detail + j ) * 3  + 2 ] = pos[ ( i * detail + j ) * 3  + 2 ] + swingZ;
+		
+		// last point equals first point
+		positions[ cd * 3 ] = positions[ 0 ];
+		positions[ cd * 3 + 1 ] = positions[ 1 ];
+		positions[ cd * 3 + 2 ] = positions[ 2 ];
+		
+	}
+
+}
+
+function cross( v1, v2 ) {
+	
+	let v = {};
+	v.x = v1.y * v2.z - v1.z * v2.y;
+	v.y = v1.z * v2.x - v1.x * v2.z;
+	v.z = v1.x * v2.y - v1.y * v2.x;
+	
+	return v;
+
+}
+
+function normalize( v ) {
+	
+	let l = Math.sqrt( v.x * v.x + v.y * v.y + v.z * v.z );
+	
+	let vn = {};
+	vn.x = v.x / l;
+	vn.y = v.y / l;
+	vn.z = v.z / l;
+	
+	return vn;
+
+}
+
+</script>
+
+</html>

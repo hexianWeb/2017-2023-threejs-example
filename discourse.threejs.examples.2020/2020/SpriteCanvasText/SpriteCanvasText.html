@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/which-method-of-text-presentation-is-preferable/13231 -->
+<head>
+	<title>  SpriteCanvasText  </title>
+	<meta charset="utf-8" />
+	<style>
+	body {
+		overflow: hidden;
+		margin:0;
+		padding: 0;
+	}
+	</style>
+</head>
+
+<body> 
+ 
+</body>
+<script src="../js/three.min.114.js"></script>
+
+<script>
+
+
+
+ // @author hofk
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.001, 10000 );
+camera.position.set( 0, 0, 1 );
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+renderer.setClearColor( 0xffff00, 1 );
+ 
+let txt = [];
+txt.push( "α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ ς σ τ υ φ χ ψ ω ϑ ↲ ↳ ↲ ↱" ) ;
+txt.push( "-468.13‰ abcdefghijklmnopqrstuvwxyz ☺☻ 1234567890" ) ;
+txt.push( "  ⇗ ⇘ ↺ ↻   z y x w v u t s r q p o n m l k j i h g f e d c b a" );
+txt.push( "+ - * / ! $ % & () = ? ^ [] {} ∧ ∨ ∩ ∪ ∞  ∛ ∜ ± ⇐ ⇑ ⇒ ⇓ " );
+txt.push( " ◐ ◑ ◒ ◓ ♠ ♣ ♥ ♦ ♪ ♫ ♭ ♮ ♯ " );
+const canvas = document.createElement( "canvas" );
+canvas.width = 512;
+canvas.height = 512;
+
+const ctx = canvas.getContext( "2d" );
+ctx.fillStyle = "green";
+ctx.font = "32pt Courier";// LucidaSansUnicode
+ 
+ctx.textAlign = "left";
+ctx.textBaseline = "top";
+
+for ( let i = 0; i < txt.length; i ++ ) {
+	
+	ctx.fillText( txt[ i ], 0, 48 * i );
+	
+}
+
+const tex = new THREE.Texture( canvas );
+tex.needsUpdate = true;
+const spriteMat = new THREE.SpriteMaterial( { map: tex } );
+const sprite = new THREE.Sprite( spriteMat );
+
+scene.add( sprite);
+animate();
+
+function animate() {
+	
+	requestAnimationFrame(animate);
+	renderer.render(scene, camera);
+	
+}
+
+</script>
+
+</html>

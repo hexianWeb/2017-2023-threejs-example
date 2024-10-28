@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/projector-the-video/2900/5 -->
+
+<head>
+  <title> Video </title>
+  <meta charset="utf-8" />
+  
+</head>
+
+<script src="../js/three.min.93.js"></script>
+<body>
+
+<video id="video" autoplay loop crossOrigin="anonymous" webkit-playsinline style="display:none">
+  <source src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/textures/sintel.ogv" type='video/ogg; codecs="theora, vorbis"'>
+  <source src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/textures/sintel.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
+</video>
+ 
+<script> 
+
+//  @hofk - adapted from https://jsfiddle.net/f2Lommf5/6321/  @Mugen87 
+
+var camera, scene, mesh, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.set( 0, 0, 2 );
+
+    scene = new THREE.Scene();
+    
+    var video = document.getElementById( 'video' );
+    
+    var texture = new THREE.VideoTexture( video );
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.format = THREE.RGBFormat;
+    
+    var geometry = new THREE.BoxBufferGeometry( 2, 1, 0.1 );
+	
+	var material1 = new THREE.MeshBasicMaterial( { color: 0x0000ff, side: THREE.DoubleSide } );
+	var material2 = new THREE.MeshBasicMaterial( { color: 0xff00ff, side: THREE.DoubleSide } );
+	var material3 = new THREE.MeshBasicMaterial( { color: 0xffff00, side: THREE.DoubleSide } );
+	var materialTransparent =  new THREE.MeshBasicMaterial( { transparent: true, opacity: 0, wireframe: true, side: THREE.DoubleSide} );
+	
+   	var materialVideo = new THREE.MeshBasicMaterial( { map: texture , side: THREE.DoubleSide } );
+	
+	var materials = [ material1, material1, material2, material2, materialTransparent, materialVideo ]
+
+    mesh = new THREE.Mesh( geometry, materials );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+	mesh.rotation.y +=0.01;
+    renderer.render( scene, camera );
+	
+
+}
+</script>
+
+</body>
+</html>

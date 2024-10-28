@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/fog-with-three-pointsmaterial/4554  -->
+<!-- https://codepen.io/prisoner849/pen/bmvRVJ -->
+<head>
+  <title> FogPointsMaterial </title>
+  <meta charset="utf-8" />
+  <style>
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.97.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var fog = new THREE.Fog(0x404040, 10, 40);
+scene.fog = fog;
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.set(0, 0, 20);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setClearColor(0x404040);
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var geom = new THREE.SphereBufferGeometry(10, 36, 18);
+var mat = new THREE.PointsMaterial({color: "white", size: 1, fog: true});
+var points = new THREE.Points(geom, mat);
+scene.add(points);
+
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+</script>
+</html>

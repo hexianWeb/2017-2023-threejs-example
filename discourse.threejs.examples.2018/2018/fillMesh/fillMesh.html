@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-fill-a-loaded-stl-mesh-not-simple-shapes-like-cube-etc-with-random-particles-and-animate-with-this-geometry-bound-in-three-js/4702/4 -->
+<!-- https://codepen.io/prisoner849/pen/LgabWZ -->
+<head>
+  <title> fillMesh </title>
+  <meta charset="utf-8" />
+  <style> 
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+  </style> 
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.97.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+  function fillWithPoints(geometry, count) {  // @author prisoner 849
+    
+    var ray = new THREE.Ray()
+    
+    var size = new THREE.Vector3();
+    geometry.computeBoundingBox();
+    let bbox = geometry.boundingBox;
+    
+    let points = [];
+    
+    var dir = new THREE.Vector3(1, 1, 1).normalize();
+    for (let i = 0; i < count; i++) {
+      let p = setRandomVector(bbox.min, bbox.max);
+      points.push(p);
+    }
+    
+    function setRandomVector(min, max){
+      let v = new THREE.Vector3(
+        THREE.Math.randFloat(min.x, max.x),
+        THREE.Math.randFloat(min.y, max.y),
+        THREE.Math.randFloat(min.z, max.z)
+      );
+      if (!isInside(v)){return setRandomVector(min, max);}
+      return v;
+    }
+    
+    function isInside(v){
+      
+      ray.set(v, dir);
+      let counter = 0;
+      
+      let pos = geometry.attributes.position;
+      let faces = pos.count / 3;
+      console.log(faces);
+      let vA = new THREE.Vector3(), vB = new THREE.Vector3(), vC = new THREE.Vector3();
+      for(let i = 0; i < faces; i++){
+        vA.fromBufferAttribute(pos, i * 3 + 0);
+        vB.fromBufferAttribute(pos, i * 3 + 1);
+        vC.fromBufferAttribute(pos, i * 3 + 2);
+        if (ray.intersectTriangle(vA, vB, vC)) counter++;
+      }
+      
+      return counter % 2 == 1;
+    }
+    
+    return new THREE.BufferGeometry().setFromPoints(points);
+  }
+</script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.setScalar(25);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, canvas);
+
+var geometry = new THREE.TorusBufferGeometry( 10, 3, 16, 18 ).toNonIndexed();
+console.log(geometry);
+var material = new THREE.MeshBasicMaterial( { color: 0x404040, wireframe: true } );
+var torus = new THREE.Mesh( geometry, material );
+scene.add( torus );
+
+var pointsGeom = fillWithPoints(geometry, 10000);
+console.log(pointsGeom);
+var pointsMat = new THREE.PointsMaterial({color: "aqua", size: 0.1});
+var points = new THREE.Points(pointsGeom, pointsMat);
+torus.add(points);
+
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+</script>
+</html>

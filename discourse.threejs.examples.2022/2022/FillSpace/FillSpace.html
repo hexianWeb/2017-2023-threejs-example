@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/fill-space-between-cubic-bezier-curves-and-straight-lines/34598/5 -->
+<!-- https://codepen.io/prisoner849/pen/qBVRjKg -->
+<head>
+  <title> FillSpace </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 4);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let gapWidth = 1;
+let layer1 = drawLayer(2.1, 1.7, gapWidth, 0x00ffff);
+let layer2 = drawLayer(1.5, 1.1, gapWidth, 0xffff00);
+let layer3 = drawLayer(0.9, 0.5, gapWidth, 0xff00ff);
+scene.add(layer1, layer2, layer3);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+
+function drawLayer(rMax, rMin, gapWidth, color){
+  
+  let halfGap = gapWidth * 0.5;
+  
+  let shape = new THREE.Shape();
+  let aMax = getAngle(rMax, halfGap);
+  let aMin = getAngle(rMin, halfGap);
+  
+  //console.log(rMax, rMin, halfGap, aMax, aMin)
+  shape.absarc(0, 0, rMax, aMax, Math.PI * 2 - aMax);
+  shape.absarc(0, 0, rMin, Math.PI * 2 - aMin, aMin, true);
+  
+  let g = new THREE.ShapeGeometry(shape, 50);
+  g.rotateZ(-Math.PI * 0.5);
+  let m = new THREE.MeshBasicMaterial({color: color});
+  
+  function getAngle(r, halfGap){
+    return Math.asin(halfGap / r);
+  }
+  
+  return new THREE.Mesh(g, m);
+}
+
+</script>
+</html>

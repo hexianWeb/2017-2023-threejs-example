@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/group-and-animate-meshes/22003 -->
+<!-- https://jsfiddle.net/prisoner849/jan1zxvd/ -->
+<head>
+  <title> SlicedConeMergedGeometry </title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.123.js"; 
+import { OrbitControls } from "../jsm/OrbitControls.123.js";
+import {BufferGeometryUtils} from "../jsm/BufferGeometryUtils.123.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(5, 5, 5);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper());
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+const cR = 2;
+const cH = 2;
+const segs = 36;
+const phiStart = Math.PI * 0.5;
+const phiLength = Math.PI * 1.5;
+let g = new THREE.ConeBufferGeometry(cR, cH, segs, 1, true, phiStart, phiLength);
+let cg = new THREE.CircleBufferGeometry(cR, segs, phiStart, phiLength);
+cg.rotateX(Math.PI * 0.5);
+cg.translate(0, cH * -0.5, 0);
+
+let sg = new THREE.BufferGeometry().setFromPoints(
+	[
+  	new THREE.Vector3(0, cH * 0.5, 0),
+    new THREE.Vector3(0, cH * -0.5, 0),
+    new THREE.Vector3(0, cH * -0.5, cR).applyAxisAngle(new THREE.Vector3(0, 1, 0), phiStart)
+  ]
+);
+sg.addGroup(0, 3, 0);
+sg.setIndex([0, 1, 2]);
+sg.setAttribute("uv", new THREE.Float32BufferAttribute([
+	0, 1, 0, 0, 1, 0
+], 2));
+sg.computeVertexNormals();
+
+let eg = new THREE.BufferGeometry().setFromPoints(
+	[
+    new THREE.Vector3(0, cH * -0.5, cR).applyAxisAngle(new THREE.Vector3(0, 1, 0), phiStart + phiLength),
+    new THREE.Vector3(0, cH * -0.5, 0),
+    new THREE.Vector3(0, cH * 0.5, 0)
+  ]
+);
+eg.addGroup(0, 3, 0);
+eg.setIndex([0, 1, 2]);
+eg.setAttribute("uv", new THREE.Float32BufferAttribute([
+	0, 0, 0.5, 0, 1, 1
+], 2));
+eg.computeVertexNormals();
+
+let gs = BufferGeometryUtils.mergeBufferGeometries([g, cg, sg, eg], true);
+console.log(gs);
+
+let m = [
+	new THREE.MeshLambertMaterial({color: "aqua"}),
+  new THREE.MeshLambertMaterial({color: "white"}),
+  new THREE.MeshLambertMaterial({map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/uv_grid_opengl.jpg")}),
+  new THREE.MeshLambertMaterial({color: "maroon"})
+];
+let o = new THREE.Mesh(gs, m);
+scene.add(o);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

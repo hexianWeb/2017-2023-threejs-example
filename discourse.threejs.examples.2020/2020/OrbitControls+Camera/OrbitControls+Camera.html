@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/why-camera-position-works-as-rotation-when-i-use-orbitcontrols/13975/3 -->
+<!-- https://jsfiddle.net/m2x7b8d3/ -->
+<head>
+  <title> OrbitControls+Camera </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		background-color: #000;
+		margin: 0px;
+		overflow: hidden;
+	}
+  </style>
+</head>
+<body> </body>
+
+<script type="module">
+
+//@author Mugen87
+
+// Simple three.js example
+
+import * as THREE from "../jsm/three.module.115.js";
+import {
+  OrbitControls
+} from "../jsm/OrbitControls.115.js";
+
+var mesh, renderer, scene, camera, controls;
+var prevPosX, prevPosY, prevTouchDesktop = null;
+var moveTouchSpeed = 0.05;
+init();
+animate();
+
+function init() {
+
+  // renderer
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  document.body.appendChild(renderer.domElement);
+
+  // scene
+  scene = new THREE.Scene();
+
+  // camera
+  camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.set(0, 0, 20);
+
+  // controls
+ //controls = new OrbitControls(camera, renderer.domElement);
+
+  // ambient
+  scene.add(new THREE.AmbientLight(0x222222));
+
+  // light
+  var light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(20, 20, 0);
+  scene.add(light);
+
+  // axes
+  scene.add(new THREE.AxesHelper(20));
+
+  // geometry
+  var geometry = new THREE.SphereGeometry(5, 12, 8);
+
+  // material
+  var material = new THREE.MeshPhongMaterial({
+    color: 0x00ffff,
+    flatShading: true,
+    transparent: true,
+    opacity: 0.7,
+  });
+
+  // mesh
+  mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  document.addEventListener('mousedown', event => {
+    onMouseDown(event);
+  });
+  document.addEventListener('mouseup', event => {
+    onMouseUp(event);
+  });
+  document.addEventListener('mousemove', event => {
+    onMouseMove(event);
+  });
+}
+
+function onMouseDown(event) {
+  //controls = null;
+  if (!prevTouchDesktop) {
+    prevTouchDesktop = event;
+  }
+}
+
+function onMouseUp(event) {
+ //controls = new OrbitControls(camera, renderer.domElement);
+  if (prevTouchDesktop) {
+    prevTouchDesktop = null;
+  }
+}
+
+function onMouseMove(event) {
+  if (!prevTouchDesktop || !event) {
+    return;
+  }
+  let {
+    deltaX,
+    deltaY
+  } = getDeltaDiffXY(event);
+  if (!prevPosX && !prevPosY) {
+    moveCameraByXYOnDesktop(event, deltaX, deltaY);
+    return;
+  }
+  moveCameraByXYOnDesktop(event, deltaX, deltaY);
+  prevPosX = 0;
+  prevPosY = 0;
+}
+
+function moveCameraByXYOnDesktop(
+  event,
+  deltaX,
+  deltaY
+) {
+  if (!prevTouchDesktop) {
+    return;
+  }
+  camera.position.x += deltaX * (moveTouchSpeed);
+  camera.position.y += -deltaY * (moveTouchSpeed);
+  prevTouchDesktop = event;
+  prevPosX = camera.position.x;
+  prevPosY = camera.position.y;
+}
+
+function getDeltaDiffXY(event) {
+  var deltaX = prevTouchDesktop.clientX - event.clientX;
+  var deltaY = prevTouchDesktop.clientY - event.clientY;
+  return {
+    deltaX,
+    deltaY
+  };
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  //controls.update();
+
+  renderer.render(scene, camera);
+
+}
+</script>
+</html>

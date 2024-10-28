@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-project-a-texture-shape-to-specific-part-of-a-mesh/30622/2  -->
+<!-- https://stackoverflow.com/questions/69495736/how-to-project-a-texture-shape-to-specific-part-of-a-mesh-in-three-js/69496745#69496745 -->
+<head>
+  <title> ProjectionOnTerrain </title>
+  <meta charset="utf-8" />
+	<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+#selections {
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+}
+button.selected{
+  color: #00ff32;
+  background: blue;
+}
+	</style>
+</head>
+
+<body>
+    <div id="selections" style="position: absolute;border: 1px solid yellow;"></div>
+</body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 5, 8);
+camera.lookAt(scene.position);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(1);
+scene.add(
+    light,
+  new THREE.AmbientLight(0xffffff, 0.5)
+);
+
+let objects = new Array(5).fill(0).map((p,idx)=>{return setObject(idx)});
+//console.log(objects);
+let selected = objects[0];
+
+let g = new THREE.PlaneGeometry(10, 10, 5, 5);
+g.rotateX(-Math.PI * 0.5);
+for(let i = 0; i < g.attributes.position.count; i++){
+    g.attributes.position.setY(i, (Math.random() * 2 - 1) * 0.75);
+}
+g.computeVertexNormals();
+let uniforms = {
+    selection: {value: new THREE.Vector3()}
+}
+let m = new THREE.MeshLambertMaterial({
+    color: 0x003264,
+                                // https://threejs.org/examples/textures/water.jpg
+    map: new THREE.TextureLoader().load("water.jpg"),
+  onBeforeCompile: shader => {
+    shader.uniforms.selection = uniforms.selection;
+    shader.vertexShader = `
+        varying vec3 vPos;
+      ${shader.vertexShader}
+    `.replace(
+        `#include <begin_vertex>`,
+      `#include <begin_vertex>
+        vPos = transformed;
+      `
+    );
+    shader.fragmentShader = `
+        #define ss(a, b, c) smoothstep(a, b, c)
+        uniform vec3 selection;
+      varying vec3 vPos;
+      ${shader.fragmentShader}
+    `.replace(
+        `#include <dithering_fragment>`,
+      `#include <dithering_fragment>
+      
+        // shape
+        float dist = distance(selection.xz, vPos.xz);
+        float r = 0.25;
+        
+        float shape = (ss(r-0.1, r, dist)*0.75 + 0.25) - ss(r, r + 0.1, dist);
+        
+        vec3 col = mix(gl_FragColor.rgb, vec3(0, 1, 0.25), shape);
+        gl_FragColor = vec4(col, gl_FragColor.a);
+      `
+    );
+    //console.log(shader.fragmentShader)
+  }
+});
+
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+window.addEventListener("resize", onResize);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(_ => {
+    
+  let t = clock.getElapsedTime() * 0.5;
+  
+  objects.forEach(obj => {
+    let ud = obj.userData;
+    obj.position.x = Math.cos(t * ud.scaleX + ud.initPhase) * 4.75;
+    obj.position.y = 1;
+    obj.position.z = Math.sin(t * ud.scaleZ + ud.initPhase) * 4.75;
+  })
+  
+  o.worldToLocal(uniforms.selection.value.copy(selected.position));
+  
+  renderer.render(scene, camera);
+  
+})
+
+function setObject(idx){
+    let g = new THREE.SphereGeometry(0.25);
+  let m = new THREE.MeshLambertMaterial({color: 0x7f7f7f * Math.random() + 0x7f7f7f});
+  let o = new THREE.Mesh(g, m);
+  o.userData = {
+    initPhase: Math.PI * 2 * Math.random(),
+    scaleX: Math.random() * 0.5 + 0.5,
+    scaleZ: Math.random() * 0.5 + 0.5
+  }
+  scene.add(o);
+  
+  let btn = document.createElement("button");
+  btn.innerText = "Object " + idx;
+  selections.appendChild(btn);
+  btn.addEventListener("click", event => {
+    selections.querySelectorAll("button").forEach(b => {b.classList.remove("selected")});
+    btn.classList.add("selected");
+    selected = o
+  });
+  
+  return o;
+}
+
+function onResize(event) {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+
+</script>
+</html>

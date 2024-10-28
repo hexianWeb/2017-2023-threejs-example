@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/pointlight-brightness-at-a-close-distance/24594/3 -->
+<!-- https://jsfiddle.net/tfoller/9gp3z5f2/43/ -->
+<head>
+  <title> PointLightBrightness </title>
+  <meta charset="utf-8" />
+  <style>
+	* {
+	padding: 0;
+	margin: 0;
+	box-sizing: border-box;
+	}
+	body {
+	background: #333;
+	width: 100vw;
+	height: 100vh;
+	display: grid;
+	justify-content: center;
+	align-items: center;
+	} 
+  </style>
+</head>
+
+<body> 
+	<canvas id="main_canvas" width="100" height="100"></canvas>
+</body>
+
+<script type="module">
+
+// @author tfoller
+
+import * as THREE from "../jsm/three.module.126.js";
+
+//Create a WebGLRenderer and turn on shadows in the renderer
+const canvas = document.getElementById('main_canvas');
+const body_style = window.getComputedStyle(document.body);
+canvas.width = body_style.width.slice(0, -2) - 20;
+canvas.height = body_style.height.slice(0, -2) - 20;
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  canvas: canvas,
+});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(canvas.width, canvas.height);
+
+const [near, far] = [1, 1000];
+const camera = new THREE.PerspectiveCamera(45, 1, near, far);
+
+const scene = new THREE.Scene();
+
+const alight = new THREE.AmbientLight(0xff00ff, .01);
+
+const plight = new THREE.PointLight(0xff0000, 1, 100);
+const phlp = new THREE.Mesh(
+  new THREE.SphereBufferGeometry(2, 32, 32),
+  new THREE.MeshBasicMaterial()
+);
+phlp.material.color.copy(plight.color);
+
+const plight2 = new THREE.PointLight(0x00ff00, 0.3, 0);
+const phlp2 = new THREE.Mesh(
+  new THREE.SphereBufferGeometry(2, 32, 32),
+  new THREE.MeshBasicMaterial()
+);
+phlp2.material.color.copy(plight2.color);
+
+const cube = new THREE.Mesh(
+  new THREE.BoxBufferGeometry(80, 100, 50, 8, 10, 5),
+  new THREE.MeshLambertMaterial()
+);
+
+camera.position.set(-220, 110, 220);
+camera.lookAt(0, 0, 0);
+
+scene
+  .add(cube)
+  .add(alight)
+  .add(plight)
+  .add(plight2)
+  .add(phlp)
+  .add(phlp2);
+
+const framerate = 60;
+const fpsint = 1000 / framerate;
+let elapsed, now, then = window.performance.now();
+
+const render = (t) => {
+
+	const wt = 0.5 * (1 + Math.sin(t * 0.001));
+
+  plight.position.set(0, 0, 25 + 100 * wt);
+  phlp.position.copy(plight.position);
+  
+  plight2.position.set(-40 - 100 * wt, 0, 0);
+  phlp2.position.copy(plight2.position);
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+function animate(newtime) {
+
+  requestAnimationFrame(animate);
+
+  now = newtime;
+  elapsed = now - then;
+
+  if (!fpsint || elapsed > fpsint) {
+
+    then = now - (elapsed % fpsint);
+
+    render(newtime);
+  }
+}
+
+</script>
+</html>

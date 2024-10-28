@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/lines-over-mesh-are-losing-their-actual-width/14320/10 -->
+<!-- https://jsfiddle.net/2g75rmy8/ -->
+<head>
+  <title> LinesWidthOverMesh </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+	padding: 0;
+	margin: 0;
+	}
+	
+	#scene {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	}
+  </style>
+</head>
+
+<body> <div id='scene'> </div> </body>
+
+<script src="../js/three.min.115.js"></script>
+<script src="../js/OrbitControls.115.js"></script>
+
+<script>
+
+//@authors Click_Clock_Boom + rrrr_rrrr + Mugen87
+
+
+var wrapper = document.getElementById( 'scene' );
+
+var renderer = new THREE.WebGLRenderer( {
+	antialias: true,
+  alpha: true
+} );
+
+renderer.setSize( wrapper.clientWidth, wrapper.clientHeight );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setClearColor( 0x333333 );
+
+wrapper.appendChild( renderer.domElement );
+
+var scene = new THREE.Scene();
+
+var camera = new THREE.PerspectiveCamera( 70, wrapper.clientWidth / wrapper.clientHeight, 0.1, 100 );
+
+var controls = new THREE.OrbitControls( camera, wrapper );
+
+camera.position.z = 3;
+
+camera.add( new THREE.PointLight( '#fff', 0.4 ), new THREE.AmbientLight( '#fff', 0.6 ) );
+scene.add( camera );
+
+var geometry = new THREE.SphereGeometry( 1, 40, 20 );
+var material = new THREE.MeshPhongMaterial( { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 });
+var mesh = new THREE.Mesh( geometry, material );
+
+scene.add( mesh );
+
+var edgesGeometry = new THREE.EdgesGeometry( geometry, 1 );
+var edgesMaterial = new THREE.LineBasicMaterial( { color: '#000' } );
+var edges = new THREE.LineSegments( edgesGeometry, edgesMaterial );
+
+scene.add( edges );
+
+function animate() {
+	
+  controls.update();
+  renderer.render( scene, camera );
+  
+  window.requestAnimationFrame( animate );
+
+}
+
+animate();
+
+</script>
+
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-draw-disconnected-lines-array-of-lines/781 -->
+<!-- https://jsfiddle.net/q7dyap1y/1/ -->
+<head>
+  <title> ArrayOfLines </title>
+  <meta charset="utf-8" />
+</head>
+
+<body> </body>
+<script src="../js/three.min.83.js"></script>
+
+<script>
+
+// @author Mugen87, looeee
+
+var camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.position.z = 10;
+
+    scene = new THREE.Scene();
+
+    var geometry = new THREE.Geometry();
+		 geometry.vertices.push( new THREE.Vector3( 0, -window.innerHeight / 2, 0 ) );
+		geometry.vertices.push( new THREE.Vector3( 0, window.innerHeight / 2, 0 ) );
+		geometry.vertices.push( new THREE.Vector3( -window.innerWidth / 2, 0, 0 ) );
+		geometry.vertices.push( new THREE.Vector3( window.innerWidth / 2, 0, 0 ) );
+
+    var material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
+
+    // var line = new THREE.Line( geometry, material );
+    var line = new THREE.LineSegments( geometry, material );
+    scene.add( line );
+
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+
+    renderer.render( scene, camera );
+
+}
+</script>
+</html>

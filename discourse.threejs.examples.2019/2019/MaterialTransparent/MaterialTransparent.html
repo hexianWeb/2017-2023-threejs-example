@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/make-depthmaterial-look-transparent-not-black/11176/13 -->
+ <!-- https://jsfiddle.net/prisoner849/pu14aq5h/ -->
+<head>
+  <title> MaterialTransparent </title>
+  <meta charset="utf-8" />
+    <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}   
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.111.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+// "https://threejs.org/examples/textures/uv_grid_opengl.jpg"
+var backTex = new THREE.TextureLoader().load( "uv_grid_opengl.jpg" );
+scene.background = backTex;
+
+var cube = new THREE.Mesh(new THREE.BoxBufferGeometry(1, 1, 1), new THREE.MeshBasicMaterial({colorWrite: false}));
+cube.position.set(0, 0, 4);
+scene.add(cube);
+
+var sphere = new THREE.Mesh(new THREE.SphereBufferGeometry(2, 36, 36), new THREE.MeshNormalMaterial());
+scene.add(sphere);
+
+var clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+	cube.rotation.x += 0.0314;
+  cube.rotation.y += 0.027;
+	cube.position.x = Math.sin(clock.getElapsedTime());
+  renderer.render(scene, camera)
+});
+
+</script>
+
+</html>

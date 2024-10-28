@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/why-i-have-shadow-acne-with-meshbasicmaterial-and-no-lights-in-my-scene/48402/3 -->
+<!-- https://codepen.io/boytchev/pen/poOEJLX -->
+<head>
+  <title>ReducingMoirePpattern</title>
+  <meta charset="utf-8" />
+    <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+// general setup, boring, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gray' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 6 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+var canvas = document.createElement( 'CANVAS' );
+    canvas.width = 256;
+    canvas.height = 16;
+
+
+// procedurally defining of texture of black and white lines
+
+var context = canvas.getContext( '2d' );
+    context.fillStyle = 'white';
+    context.fillRect( 0, 0, 128, 16 );
+    context.fillStyle = 'black';
+    context.fillRect( 128, 0, 128, 16 );
+
+
+// finally creating a canvas
+
+var texture = new THREE.CanvasTexture( canvas );
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+		texture.repeat.set( 80, 1 );
+		texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+var object = new THREE.Mesh(
+			new THREE.BoxGeometry( 4, 0.1, 2 ),
+    	new THREE.MeshLambertMaterial( {
+					color: 'white',
+					map: texture} )
+    );	
+		scene.add( object );
+
+
+
+function animationLoop( t )
+{
+    object.rotation.x = Math.sin( t/700 );
+
+    controls.update( );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

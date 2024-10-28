@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/struggling-with-paths/26486/14 -->
+<head>
+  <title> MoveAlongCurve05 </title>
+  <meta charset="utf-8" />
+</head>
+
+<body></body>
+<script type="module">
+
+import * as THREE from "../jsm/three.module.128.js";
+import { OrbitControls } from "../jsm/OrbitControls.128.js";
+import { GLTFLoader } from "../jsm/GLTFLoader.128.js";
+
+const renderer = new THREE.WebGLRenderer( {antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setPixelRatio( devicePixelRatio );
+document.body.appendChild(renderer.domElement); 
+const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 1000 );
+camera.position.set(  0, 4, 3 );
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x11aa11);
+
+const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.6 );
+directionalLight.position.set( 0, 20, 15 );
+scene.add( directionalLight );
+
+new OrbitControls( camera, renderer.domElement );
+
+let newPosition, tangent; 
+let fraction = 0;
+const axisX = new THREE.Vector3( 1, 0 , 0 );
+const axisXneg = new THREE.Vector3( -1, 0 , 0 );
+let qu = new THREE.Quaternion( ); 
+
+const somePoints = [
+
+	new THREE.Vector3(  1,   0, -1 ),
+	new THREE.Vector3(  1, 0.6,  1 ),
+	new THREE.Vector3( -1,   0,  1 ),
+	new THREE.Vector3( -1, 0.2, -1 ),
+	
+];
+
+const curve = new THREE.CatmullRomCurve3( somePoints );	
+curve.closed = true;
+
+const points = curve.getPoints( 60 );
+const line = new THREE.LineLoop( new THREE.BufferGeometry( ).setFromPoints( points ), new THREE.LineBasicMaterial( { color: 0xffffaa } ) );
+scene.add( line );
+
+const material = new THREE.MeshNormalMaterial( { wireframe: true } );
+const box = new THREE.BoxGeometry( 0.05, 0.2, 0.1 );
+ 
+const char = new THREE.Mesh( box, material );
+scene.add( char );
+
+const modelBee = new THREE.Object3D( );
+const loader = new GLTFLoader( ).load( 'Kelli Ray_Bee/toi uu.gltf', processBee );
+modelBee.scale.set( 0.005, 0.005, 0.005 ); // because gltf.scene is very big
+modelBee.rotation.y = Math.PI;
+char.add( modelBee );
+ 
+animate();
+
+function animate() {
+
+	requestAnimationFrame( animate );
+	
+	fraction += 0.001;	
+	if ( fraction > 1 ) fraction = 0;
+	
+	char.position.copy( curve.getPoint( fraction ) );
+	 	
+	tangent = curve.getTangent( fraction );
+	
+	if ( tangent.x < 0 ) {
+		
+		qu.setFromUnitVectors( axisXneg, tangent );
+		qu.invert( );
+		char.quaternion.copy( qu );
+		
+	} else {
+	
+		char.quaternion.setFromUnitVectors( axisX, tangent );
+		
+	}	
+
+	renderer.render( scene, camera );
+	
+};
+
+function processBee( gltf ) { // Kelli Ray  (CC-BY) Poly by Googl
+	
+	const box = new THREE.Box3( ).setFromObject( gltf.scene );
+	const c = box.getCenter( new THREE.Vector3( ) );
+	const size = box.getSize( new THREE.Vector3( ) );
+	gltf.scene.position.set( -c.x, size.y / 2 - c.y, -c.z ); // center the gltf scene
+	modelBee.add( gltf.scene );
+	
+}
+
+</script>
+</html>

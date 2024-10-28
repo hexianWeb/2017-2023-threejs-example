@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/scaling-uv-coordinates/7088 -->
+<!-- https://jsfiddle.net/titansoftime/3das607j/ -->
+<head>
+  <title> ScalingUVCoordinates </title>
+  <meta charset="utf-8" />
+   <style>
+	html, body{
+	margin:0;
+	padding:0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.103.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/stats.min.js"></script>
+<script>
+
+// @author titansoftime
+
+var scene, camera, renderer, ambient, directional, controls, stats, clock, imageLoader, terrain;
+
+function init() {
+    
+    clock = new THREE.Clock();
+    
+    imageLoader = new THREE.TextureLoader(); 
+    
+    scene = new THREE.Scene();
+    
+    camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set(0, 1500, 500);
+    
+    ambient = new THREE.AmbientLight(0xaaaaaa);    
+    scene.add(ambient);
+    
+    directional = new THREE.DirectionalLight(0xffffff,1);
+    directional.position.set(1,1,0);
+    scene.add(directional);    
+    
+    stats = new Stats();
+		stats.showPanel( 1 );
+		document.body.appendChild( stats.dom );    
+    
+    renderer = new THREE.WebGLRenderer({antialias:false});
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setClearColor( 0x87ceeb, 1 );
+    
+    controls = new THREE.OrbitControls( camera, renderer.domElement );
+    
+    document.body.appendChild( renderer.domElement );
+    
+    loadTerrain();
+    
+}
+
+function loadSplatMaterial(ext){
+
+  var blendTexture = imageLoader.load('stitchmap.png'); // https://www.titansoftime.com/img/zones/35/stitchmap.png
+
+  var tex = imageLoader.load('stitch_1024.jpg');// https://www.titansoftime.com/materialmaptextures/stitch_1024.jpg
+  
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  
+  tex.anisotropy = 4;
+
+  var mat = new THREE.MeshLambertMaterial({
+    map: tex
+  });
+
+  mat.precision = 'highp';
+  //mat.precision = 'mediump';								
+
+  mat.onBeforeCompile = shader => {
+
+    shader.uniforms.texBlendMap = { value: blendTexture };
+
+    shader.uniforms['repeatTile1'] = { value: 1 };
+    shader.uniforms['repeatTile2'] = { value: 1 };
+
+    shader.fragmentShader = _SHADERLIB.terrainSplatTexture.tileblend_pars_fragment + "\n" + shader.fragmentShader;
+
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>',_SHADERLIB.terrainSplatTexture.tileblend_fragment);
+
+    //console.log(shader);
+
+  };
+  
+  return mat;
+
+}
+
+function loadTerrain(){
+
+  var geo = new THREE.PlaneBufferGeometry( 1000, 1000, 1, 1);
+
+  geo.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+  
+  var uvs = geo.attributes.uv.array;
+
+  for ( var i = 0, len=uvs.length; i<len; i++ ) {
+
+  	uvs[i] *= 0.5;
+
+  }
+
+	var mat = loadSplatMaterial();
+  
+  var terrain = new THREE.Mesh(geo,mat);
+  
+  scene.add(terrain);
+
+}
+
+function animate() {    
+
+		requestAnimationFrame( animate );
+    
+    renderer.render( scene, camera );
+    
+    stats.update();
+    
+}
+
+var _SHADERLIB = {
+	
+	terrainSplatTexture: {
+		
+		tileblend_pars_fragment: [
+		
+			'#define USE_MAP',
+			'uniform sampler2D texBlendMap;',
+			
+			'uniform float repeatTile1;',
+			'uniform float repeatTile2;'			
+		
+		].join('\n'),
+		
+		tileblend_fragment: [
+		
+			'vec4 tbBlend;',
+			
+			'float tbBaseWeight;',
+
+			'tbBlend = texture2D( texBlendMap, vUv * 2.0 );',
+
+			'tbBaseWeight = 1.0 - max(tbBlend.r, max(tbBlend.g, tbBlend.b));',											
+			
+			'vec4 texelColor = vec4(0.0, 0.0, 0.0, 1.0);',
+			
+			'texelColor = mix(texelColor,texture2D( map, (vUv * repeatTile1) + vec2(0.0, 0.0) ), tbBaseWeight);',
+			
+			'texelColor = mix(texelColor,texture2D( map, (vUv * repeatTile2) + vec2(0.5, 0.0) ), tbBlend.r);',										
+
+			'texelColor.a = tbBlend.a;',
+
+			'diffuseColor = mapTexelToLinear( texelColor );',
+		
+		].join('\n')
+		
+	}
+
+};
+
+init();
+animate();
+
+</script>
+
+</html>

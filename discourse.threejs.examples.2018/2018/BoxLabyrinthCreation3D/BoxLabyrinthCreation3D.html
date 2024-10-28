@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-remove-interior-faces-while-keeping-exterior-faces-untouched/4869/19 -->
+<!-- http://threejs.hofk.de/BoxLabyrinthCreation3D/BoxLabyrinthCreation3D.html -->
+<head>
+	<title> BoxLabyrinthCreation3D </title>
+	<meta charset="utf-8" />
+</head>
+<body> 	
+
+</body>
+	<script src="../js/three.min.98.js"></script>
+	<script src="../js/BufferGeometryUtils.js"></script> <!-- not in the core -->
+	<script src="../js/OrbitControls.js"></script>
+	<script src="../js/THREEx.WindowResize.js"></script>
+
+<script>
+
+// @author hofk
+
+'use strict';
+/*_______________________________________________
+
+icons
+The characters on the keyboard have been chosen so that they roughly reflect the form.
+
+wall description
+sides l f r b is left front right back, with floor and roof
+
+char sides
+G	l f r b   can only be achieved by beaming
+M	l f r
+C	b l f
+3	f r b
+U	l b r
+H	l r
+:	f b
+F	l f
+7	f r
+L	l b
+J	b r
+I	l 
+1	r
+-	f
+.	b
+
+without walls
+since extra character not possible on the wall
+* roof and floor
+^ roofless
+v floorless
+x roofless and floorless
+
+with four side walls but roofless and floorless
+#
+_________________________________________________*/
+
+var designBoxLabyrinth3D = [
+// upper storey first
+//23456789.......
+[
+'     M         G', // 1
+'     H          ', // 2
+'     H          ', // 3
+'   F-*--7       ', // 4
+'   I*7**1       ', // 5
+' C:v*L.**:::7   ', // 6
+'   L*...J   U   ', // 7
+'    H           ', // 8
+'    L::::3      '  // 9	
+],[
+'                ', // 1
+'                ', // 2
+'                ', // 3
+'                ', // 4
+'                ', // 5
+'   #            ', // 6
+'                ', // 7
+'                ', // 8
+'                '  // 9	
+],[
+'F::3            ', // 1
+'H    F:::::7    ', // 2
+'H    H     H    ', // 3
+'H  F-*-7   H    ', // 4
+'H  I****:::1    ', // 5
+'L::x***1   H    ', // 6
+'   I...J   H    ', // 7
+'   H   F:7 L:::7', // 8
+'   L:::J L:::::J'  // 9	
+]];
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 2, 10, 25 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x111111, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+THREEx.WindowResize( renderer, camera );
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+var texture	= new THREE.TextureLoader().load( "brick.jpg" );
+var material = new THREE.MeshBasicMaterial( { map: texture	, side: THREE.DoubleSide } );
+
+var boxes = [];
+var index = [];
+var storeys = designBoxLabyrinth3D.length;
+var icon;
+
+for( var f = 0; f < storeys; f ++ ) {
+	
+	for( var r = 0; r < designBoxLabyrinth3D[ f ].length; r ++ ) {
+		
+		for( var c = 0; c < designBoxLabyrinth3D[ f ][ r ].length; c ++ ) {
+
+			icon = designBoxLabyrinth3D[ storeys - 1 - f ][ r ][ c ];
+			if ( icon !== ' ' ) { boxes.push( createBox( icon ) ) } 					
+			
+		}		
+
+	}
+
+}
+
+var labyrinthGeometry = THREE.BufferGeometryUtils.mergeBufferGeometries( boxes );
+var labyrinthMesh = new THREE.Mesh( labyrinthGeometry, material );
+scene.add( labyrinthMesh );
+
+animate();
+
+function animate() {
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+function createBox( icon ) {
+
+	var g = new THREE.BoxBufferGeometry( );
+	index = [];
+	
+	switch ( icon ) {
+		case 'G': box_G( );     break;
+		case 'M': box_M( );     break;
+		case 'C': box_C( );     break;						
+		case '3': box_3( );     break;
+		case 'U': box_U( );     break;
+		case 'H': box_H( );     break;	
+		case ':': box_colon( ); break;
+		case 'F': box_F( );     break;
+		case '7': box_7( );     break;
+		case 'L': box_L( );     break;
+		case 'J': box_J( );     break;		
+		case 'I': box_I( );     break;
+		case '1': box_1( );     break;
+		case '-': box_minus( ); break;			
+		case '.': box_dot( );   break;
+		case '*': box_multi( ); break;			
+		case '^': box_caret( ); break;
+		case 'v': box_v( );     break;
+		case 'x': box_x( );     break;
+		case '#': box_sharp( ); break;						
+		default: box_x( );
+	}
+	
+	g.setIndex( index );
+	
+	// position  c, f, r  	
+	
+	for ( let xidx = 0; xidx < 72; xidx += 3 ) {
+	
+		g.getAttribute('position').array[ xidx ] = g.getAttribute('position').array[ xidx ] + c;
+		
+	}
+	
+	for ( let yidx = 1; yidx < 72; yidx += 3 ) {
+	
+		g.getAttribute('position').array[ yidx ] = g.getAttribute('position').array[ yidx ] + f;
+		
+	}		
+ 
+	for ( let zidx = 2; zidx < 72; zidx += 3 ) {
+	
+		g.getAttribute('position').array[ zidx ] = g.getAttribute('position').array[ zidx ] + r;
+		
+	}		
+ 			
+	return g;
+
+}
+
+function px( ) { index.push( 0, 2, 1, 2, 3, 1 ) }
+function nx( ) { index.push( 4, 6, 5, 6, 7, 5 ) }
+function py( ) { index.push( 8, 10, 9, 10, 11, 9 ) }
+function ny( ) { index.push( 12, 14, 13, 14, 15, 13 ) }
+function pz( ) { index.push( 16, 18, 17, 18, 19, 17 ) }
+function nz( ) { index.push( 20, 22, 21, 22, 23, 21 ) }
+
+function box_G( ) { px( ); nx( ); py( ); ny( ); pz( ); nz( ) }
+function box_M( ) { px( ); nx( ); py( ); ny( ); nz( ) }
+function box_C( ) { nx( ); py( ); ny( ); pz( ); nz( ) }
+function box_3( ) { px( ); py( ); ny( ); pz( ); nz( ) }
+function box_U( ) { px( ); nx( ); py( ); ny( ); pz( ) }
+function box_H( ) { px( ); nx( ); py( ); ny( ) }
+function box_colon( ) { py( ); ny( ); pz( ); nz( ) }
+function box_F( ) { nx( ); py( ); ny( ); nz( ) }
+function box_7( ) { px( ); py( ); ny( );  nz( ) }
+function box_L( ) { nx( ); py( ); ny( ); pz( ) }
+function box_J( ) { px( ); py( ); ny( ); pz( ) }
+function box_I( ) { nx( ); py( ); ny( ) }
+function box_1( ) { px( ); py( ); ny( ) }
+function box_minus( ) { py( ); ny( ); nz( ) }
+function box_dot( ) { py( ); ny( ); pz( ) }
+function box_multi( ) { py( ); ny( ) };
+function box_caret( ) { ny( ) }
+function box_v( ) { py( ) }
+function box_x( ) {  }
+function box_sharp( ) { px( ); nx( ); pz( ); nz( ) }
+
+</script>
+
+</html>

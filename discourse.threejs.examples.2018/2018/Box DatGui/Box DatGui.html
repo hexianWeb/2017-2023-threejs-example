@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-remove-a-face-of-a-cube/2872/7 -->
+<!-- https://jsfiddle.net/prisoner849/7bmqnrds/ -->
+<head>
+  <title> Box DatGui </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin: 0;
+	overflow: hidden;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.92.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/dat.gui.min.0.7.2.js"></script>
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var clock = new THREE.Clock();
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(2, 5, 3);
+
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var group = new THREE.Group();
+group.scale.set(3, 1, 2);
+scene.add(group)
+
+setPlane("y",  Math.PI * 0.5, 0xff0000); //px
+setPlane("y", -Math.PI * 0.5, 0xff0000); //nx
+setPlane("x",  Math.PI * 0.5, 0x00ff00); //ny
+setPlane("y",  0, 0x0000ff); //pz
+setPlane("y",  Math.PI, 0x0000ff);// nz
+
+function setPlane(axis, angle, color) {
+  let planeGeom = new THREE.PlaneGeometry(1, 1, 1, 1);
+  planeGeom.translate(0, 0, 0.5);
+  switch (axis) {
+    case 'y':
+      planeGeom.rotateY(angle);
+      break;
+    default:
+      planeGeom.rotateX(angle);
+  }
+  let plane = new THREE.Mesh(planeGeom, new THREE.MeshBasicMaterial({color: color, side: THREE.DoubleSide}));
+  group.add(plane);
+}
+
+var gui = new dat.GUI();
+gui.add(group.scale, "x", 0.1, 5);
+gui.add(group.scale, "y", 0.1, 5);
+gui.add(group.scale, "z", 0.1, 5);
+
+function render() {
+
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+render();
+
+</script>
+</html>

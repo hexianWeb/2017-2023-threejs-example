@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-can-i-change-the-up-vector-of-a-group-of-object/56005/7 -->
+<!-- https://codepen.io/boytchev/pen/abPVZYP -->
+<head>
+  <title>TurningTowardsCamera</title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.158.js';
+import { OrbitControls } from '../jsm/OrbitControls.158.js';
+
+// general setup, boring, skip to the next comment
+
+console.clear( );
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'black' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 2, 5, 10 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+
+var light = new THREE.DirectionalLight( 'white', 3 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+var object = new THREE.Group( );
+
+var axes = new THREE.AxesHelper( 1, 'white' ).setColors( 'white', 'white', 'white' ),
+		cube = new THREE.Mesh(
+			new THREE.BoxGeometry( 1, 1, 1 ),
+    	[
+					new THREE.MeshLambertMaterial( {color:'DarkMagenta'} ),
+					new THREE.MeshLambertMaterial( {color:'Crimson'} ),
+					new THREE.MeshLambertMaterial( {color:'Gold'} ),
+					new THREE.MeshLambertMaterial( {color:'SaddleBrown'} ),
+					new THREE.MeshLambertMaterial( {color:'SeaGreen'} ),
+					new THREE.MeshLambertMaterial( {color:'RoyalBlue'} ),
+			]
+    );	
+		object.add( cube, axes );
+
+scene.add( object );
+scene.add( new THREE.AxesHelper( 3 ) );		
+
+
+// next comment
+
+controls.addEventListener( 'start', deactivateSelfRotation );
+controls.addEventListener( 'end', activateSelfRotation );
+
+
+var raycaster = new THREE.Raycaster( ),
+		quaternion = new THREE.Quaternion( ),
+		smooth = false;
+
+function deactivateSelfRotation( )
+{
+		if( smooth )
+				object.quaternion.copy( quaternion );
+
+		smooth = false;	
+}
+
+function activateSelfRotation( )
+{
+		// cast a ray from camera to (0,0,0)
+		raycaster.set(
+				camera.position,
+				camera.position.clone().normalize().negate()
+		);
+	
+		// intersect it with the object
+		var intersects = raycaster.intersectObject( object );
+		
+		// if no intersection, exit
+		if( intersects.length == 0 ) return;
+			
+		// calculate the quaternion between the normal of the
+		// intersected face and the direction to the camera
+		quaternion.setFromUnitVectors(
+				object.localToWorld( intersects[0].normal ),
+				camera.position.clone().normalize()
+		);
+	
+		// apply this quaternion to the current quaternion
+		// and this is the target quaternion of the object
+		quaternion.multiplyQuaternions( quaternion, object.quaternion );
+
+		smooth = true;
+}
+
+function animationLoop( t )
+{
+		// move the object quaternion towards its target quaternion
+		if( smooth )
+				object.quaternion.rotateTowards( quaternion, 0.02 );
+	
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

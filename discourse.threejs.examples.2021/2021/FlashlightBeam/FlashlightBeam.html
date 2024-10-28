@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-can-i-achieve-flashlight-beam-using-spotlight/31501/1 -->
+<!-- https://jsfiddle.net/0a2h35jf/1/ -->
+<head>
+  <title> FlashlightBeam  </title>
+  <meta charset="utf-8" />
+  <style>
+  body {
+	    margin: 0;
+       }
+  </style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.134.js"></script>
+
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer;
+
+let spotLight;
+
+init();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
+  camera.position.z = 1;
+
+  scene = new THREE.Scene();
+  scene.add(camera);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+  scene.add(ambientLight);
+
+  spotLight = new THREE.SpotLight(0xffffff, 0.6, 0, Math.PI * 0.05);
+  camera.add(spotLight);
+  camera.add(spotLight.target);
+  
+  spotLight.target.position.z = - 1;
+
+  const geometry = new THREE.PlaneGeometry();
+  const material = new THREE.MeshPhongMaterial();
+
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setAnimationLoop(animation);
+  document.body.appendChild(renderer.domElement);
+
+}
+
+function animation(time) {
+
+  const t = time * 0.001;
+
+  camera.position.x = Math.sin(t) * 0.25;
+  camera.position.y = Math.cos(t) * 0.25;
+
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/scaling-a-shader-to-fit-the-objects-size-it-is-applied-to/24328/2 -->
+<!-- https://codepen.io/prisoner849/pen/xxRMLvQ -->
+<head>
+  <title> MultiColoredNoiseShader </title>
+  <meta charset="utf-8" />
+	<style>  
+		body{
+		overflow: hidden;
+		margin: 0;
+		}
+	</style> 
+</head>
+
+<body>
+
+<script>
+  // https://github.com/yiwenl/glsl-fbm/blob/master/3d.glsl
+  const fbm = `
+  #define NUM_OCTAVES 5
+
+  float mod289(float x){return x - floor(x * (1.0 / 289.0)) * 289.0;}
+  vec4 mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}
+  vec4 perm(vec4 x){return mod289(((x * 34.0) + 1.0) * x);}
+
+  float noise(vec3 p){
+      vec3 a = floor(p);
+      vec3 d = p - a;
+      d = d * d * (3.0 - 2.0 * d);
+
+      vec4 b = a.xxyy + vec4(0.0, 1.0, 0.0, 1.0);
+      vec4 k1 = perm(b.xyxy);
+      vec4 k2 = perm(k1.xyxy + b.zzww);
+
+      vec4 c = k2 + a.zzzz;
+      vec4 k3 = perm(c);
+      vec4 k4 = perm(c + 1.0);
+
+      vec4 o1 = fract(k3 * (1.0 / 41.0));
+      vec4 o2 = fract(k4 * (1.0 / 41.0));
+
+      vec4 o3 = o2 * d.z + o1 * (1.0 - d.z);
+      vec2 o4 = o3.yw * d.x + o3.xz * (1.0 - d.x);
+
+      return o4.y * d.y + o4.x * (1.0 - d.y);
+  }
+
+
+  float fbm(vec3 x) {
+    float v = 0.0;
+    float a = 0.5;
+    vec3 shift = vec3(100);
+    for (int i = 0; i < NUM_OCTAVES; ++i) {
+      v += a * noise(x);
+      x = x * 2.0 + shift;
+      a *= 0.5;
+    }
+    return v;
+  }
+  `;
+</script>
+
+<canvas id="cnvsGradient" width="300" height="50" style="position: absolute; margin: 10px; border: 1px solid aqua"/>
+
+</body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.126.js";
+import { OrbitControls } from "../jsm/OrbitControls.126.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 7);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0xaaaaaa);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+let tex = setGradient();
+
+let objs = [
+  createMesh(0.5, 0.5, 0.5, -2, 0, 0),
+  createMesh(1, 3, 1, 0, 0, 0),
+  createMesh(1.5, 2, 1.5, 2, 0, 0)
+];
+
+renderer.setAnimationLoop(() => {
+  objs.forEach(o => {o.rotation.y += 0.01});
+  renderer.render(scene, camera);
+});
+
+function createMesh(w, h, d, x, y, z) {
+  let g = new THREE.BoxGeometry(w, h, d);
+
+  let uniforms = {
+    tex: {
+      value: tex
+    },
+    scaling: {
+      value: new THREE.Vector3()
+    }
+  };
+  let m = new THREE.MeshLambertMaterial({
+    metalness: 0.25,
+    roughness: 0.75,
+    onBeforeCompile: (shader) => {
+      shader.uniforms.tex = uniforms.tex;
+      shader.uniforms.scaling = uniforms.scaling;
+      shader.vertexShader = `
+      uniform vec3 scaling;
+      varying vec3 vPos;
+      ${shader.vertexShader}
+    `.replace(
+        `#include <begin_vertex>`,
+        `#include <begin_vertex>
+      //vPos = (modelMatrix * vec4(position, 1.0)).xyz;
+      vPos = vec3(position * scaling);
+      `
+      );
+      //console.log(shader.vertexShader);
+      shader.fragmentShader = `
+      uniform sampler2D tex;
+      varying vec3 vPos;
+      ${fbm}
+      ${shader.fragmentShader}      
+    `.replace(
+        `vec4 diffuseColor = vec4( diffuse, opacity );`,
+        `
+      float d = fbm(vPos * 0.5);
+      for(int i = 0; i < 4; i++){
+        d = fbm(vPos * (float(i) + 1.) * d);
+      }
+
+      vec3 col = texture(tex, vec2(d, 0.5)).rgb;
+      vec4 diffuseColor = vec4( col, opacity );`
+      );
+      //console.log(shader.fragmentShader);
+    }
+  });
+  let o = new THREE.Mesh(g, m);
+  scene.add(o);
+
+  o.updateMatrixWorld();
+
+  let box = new THREE.Box3().setFromObject(o);
+  let size = new THREE.Vector3();
+  box.getSize(size);
+
+  let scaling = new THREE.Vector3(1, 1, 1);
+  let sizeMin = Math.min(size.x, Math.min(size.y, size.z));
+  let sizeMax = Math.max(size.x, Math.max(size.y, size.z));
+  if (sizeMin < 1) scaling.setScalar(1 / sizeMax);
+
+  uniforms.scaling.value.copy(scaling);
+  
+  o.position.set(x, y, z);
+  
+  return o;
+}
+
+function setGradient() {
+  let canvas = document.getElementById("cnvsGradient");
+  let ctx = canvas.getContext("2d");
+
+  let gradient = ctx.createLinearGradient(0, 0, 300, 0);
+
+  gradient.addColorStop(0.15, "#cbff7c");
+  gradient.addColorStop(0.5, "#ff007f");
+  gradient.addColorStop(0.85, "#0044ff");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+</script>
+</html>

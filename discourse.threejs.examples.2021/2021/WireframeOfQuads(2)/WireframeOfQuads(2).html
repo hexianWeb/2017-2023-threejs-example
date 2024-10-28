@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/wireframe-of-quads/17924/9 -->
+<!-- https://jsfiddle.net/prisoner849/5bk9tvjd/ -->
+<head>
+  <title> WireframeOfQuads(2) </title>
+  <meta charset="utf-8" />
+<style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+  </style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.125.js";
+import { OrbitControls } from "../jsm/OrbitControls.125.js";
+import {BufferGeometryUtils} from "../jsm/BufferGeometryUtils.125.js";
+import {GUI} from "../jsm/dat.gui.module.125.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 12, 25);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+const geometry = new THREE.TorusGeometry( 10, 3, 16, 72 );
+let uniforms = {
+	segU: {value: 72},
+  segV: {value: 16},
+  isWire: {value: false},
+  wireWidthFactor: {value: 2},
+  wireColor: {value: new THREE.Color(0xffff00)}
+}
+const material = new THREE.MeshStandardMaterial( { 
+  map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/uv_grid_opengl.jpg"),
+  side: THREE.DoubleSide,
+  onBeforeCompile: shader => {
+  	shader.uniforms.segU = uniforms.segU;
+    shader.uniforms.segV = uniforms.segV;
+    shader.uniforms.wireColor = uniforms.wireColor;
+    shader.uniforms.isWire = uniforms.isWire;
+    shader.uniforms.wireWidthFactor = uniforms.wireWidthFactor;
+  	shader.fragmentShader = `
+    	uniform float segU;
+      uniform float segV;
+      uniform vec3 wireColor;
+      uniform float isWire;
+      uniform float wireWidthFactor;
+      
+    	${shader.fragmentShader}
+    `.replace(
+    	`#include <dithering_fragment>`,
+      `#include <dithering_fragment>
+      	
+        // http://madebyevan.com/shaders/grid/
+        vec2 coord = vUv * vec2(segU, segV);
+
+        vec2 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
+        float line = min(grid.x, grid.y) / wireWidthFactor;
+        line = 1.0 - min(line, 1.0);
+        
+        if (isWire > 0.5 && line < 0.5) discard;
+        if (isWire > 0.5) gl_FragColor = vec4(0);
+        gl_FragColor = mix(gl_FragColor, vec4(wireColor, 1.0), line);
+      `
+    );
+  	console.log(shader.fragmentShader);
+  }
+});
+material.defines = {"USE_UV": ""};
+const torus = new THREE.Mesh( geometry, material );
+torus.rotation.x = Math.PI * -0.5;
+scene.add( torus );
+
+let props = {
+	wireColor: "#ffff00"
+}
+
+let gui = new GUI();
+gui.add(uniforms.segU, "value", 4, 72).step(1).name("segments U");
+gui.add(uniforms.segV, "value", 4, 16).step(1).name("segments V");
+gui.add(uniforms.isWire, "value").name("quad wireframe");
+gui.add(uniforms.wireWidthFactor, "value", 1, 4).step(1).name("wireWidthFactor");
+gui.addColor(props, "wireColor").onChange(val => {uniforms.wireColor.value.set(val)});
+
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

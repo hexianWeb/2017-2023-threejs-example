@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/the-object-disappear-from-the-screen-while-trying-to-change-its-position/7009 -->
+<!-- https://jsfiddle.net/0urhd7tj/ -->
+<head>
+  <title> ObjectFollowsMouse </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.103.js"></script>
+
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer, mesh;
+
+var mouse = new THREE.Vector2();
+var worldPosition = new THREE.Vector3();
+
+init();
+animate();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 100 );
+  camera.position.z = 5;
+
+  scene = new THREE.Scene();
+  
+  var geometry = new THREE.BoxBufferGeometry( 0.01, 0.01, 0.01 );
+ 	var material = new THREE.MeshNormalMaterial();
+
+  mesh = new THREE.Mesh( geometry, material );
+  scene.add( mesh );
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio( window.devicePixelRatio );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  document.body.appendChild( renderer.domElement );
+
+  document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+  //
+
+  window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+function onDocumentMouseMove( event ) {
+
+  event.preventDefault();
+
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+}
+
+//
+
+function animate() {
+
+  requestAnimationFrame( animate );
+
+  render();
+
+}
+
+function render() {
+
+	worldPosition.set( mouse.x, mouse.y, 0.5 ).unproject( camera );
+
+	mesh.position.copy( worldPosition );
+
+  renderer.render( scene, camera );
+
+}
+
+
+</script>
+
+</html>

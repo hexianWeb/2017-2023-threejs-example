@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/would-you-have-a-idea-to-fix-the-texture-size-on-different-size-shapes/36114/2 -->
+<!-- https://codepen.io/prisoner849/pen/ZEvQZYx -->
+<head>
+  <title> TextureOnDifferentSizeShapes </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+console.clear();
+
+let scene = new THREE.Scene();
+
+let aspect = innerWidth / innerHeight;
+let frustumSize = 35;
+let camera = new THREE.OrthographicCamera( frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 1000 );
+camera.position.set(0, 0, 10);
+
+let renderer = new THREE.WebGLRenderer();
+renderer.setClearColor(0x7f77f7);
+renderer.setSize(innerWidth, innerHeight);
+
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  aspect = innerWidth / innerHeight;
+
+  camera.left = - frustumSize * aspect / 2;
+  camera.right = frustumSize * aspect / 2;
+  camera.top = frustumSize / 2;
+  camera.bottom = - frustumSize / 2;
+
+  camera.updateProjectionMatrix();
+
+	renderer.setSize( innerWidth, innerHeight );
+})
+
+let sceneObjs = [];
+let back = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({color: 0x7fffff}));
+let plane = new THREE.Mesh(new THREE.PlaneGeometry(10, 20), new THREE.MeshBasicMaterial({color: 0xff7f7f}));
+let penta = new THREE.Mesh(new THREE.CircleGeometry(2, 5), new THREE.MeshBasicMaterial({color: 0x7fcc7f}));
+penta.position.x = -10;
+let circle = new THREE.Mesh(new THREE.CircleGeometry(4, 72), new THREE.MeshBasicMaterial({color: 0xeeee7f}));
+circle.position.x = 10;
+sceneObjs.push(back, plane, penta, circle);
+
+[plane, penta, circle].forEach(f => {f.position.z = 1});
+
+sceneObjs.forEach((so, idx) => {
+
+
+    so.material.onBeforeCompile = shader => {
+
+      shader.vertexShader = `
+        varying vec4 vPos;
+        varying vec4 vCenter;
+        ${shader.vertexShader}
+      `.replace(
+        `#include <begin_vertex>`,
+        `#include <begin_vertex>
+          vPos = modelMatrix * vec4(position, 1.);
+          vCenter = modelMatrix * vec4(0);
+        `
+      );
+      //console.log(shader.vertexShader);
+      shader.fragmentShader = `
+        #define ss(a, b, c) smoothstep(a, b, c)
+        varying vec4 vPos;
+        varying vec4 vCenter;
+        ${shader.fragmentShader}
+      `.replace(
+        `vec4 diffuseColor = vec4( diffuse, opacity );`,
+        `
+        vec3 col = diffuse; //
+        vec3 dir = normalize(vec3(1, -1, 0));
+        float dist = fract(dot(vPos.xyz * 2., dir));
+        float fw = length(fwidth(vPos.xy));
+        float f = ss(0.35 - fw, 0.35, dist) - ss(0.65, 0.65 + fw, dist);
+        col = mix(col + 0.125, col * 0.875, f);
+        vec4 diffuseColor = vec4( col, opacity );
+        `
+      )
+      console.log(shader.fragmentShader);
+    }
+
+})
+
+scene.add(back, plane, penta, circle);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  let t = clock.getElapsedTime();
+  plane.rotation.z = Math.sin(t) * 0.1;
+  penta.rotation.z = t;
+  circle.position.x = 12 + Math.sin(t);
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

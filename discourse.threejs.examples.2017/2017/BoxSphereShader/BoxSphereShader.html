@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/rendering-a-gradient-material-using-threejs-and-glsl/602 -->
+<!-- http://threejs.hofk.de/shader/01_shader_wuerfel.html -->
+<head>
+	<title> BoxSphereShader </title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+</head>
+<body>
+	<a href="Seerose.jpg" title="Seerose" target="_blank">
+		<img src="Seerose.jpg" width="128" height="75"> 
+	</a>
+	Recorded with the digital camera Seerose.jpg.  Mouse and cursor keys control the camera.	
+	<div id="container"> </div>
+</body>			
+<script src="../js/three.min.83.js"></script>		
+<script src="../js/OrbitControls.js"></script>	
+
+<!-- @author hofk -->
+
+<!--      *******  Shader *******        -->
+<script id="vertexShader" type="x-shader/x-vertex">
+	varying vec2  vUv;
+	void main()	{
+		vUv = uv;
+		gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+	}
+</script>
+<script id="fragmentShader1" type="x-shader/x-fragment">
+	uniform float time;
+	varying vec2 vUv;
+	void main( void ) {
+		vec2 position = -1.0 + 2.0 * vUv;
+		float r = abs( sin( position.x * position.y + time*0.1 ) ); // color play
+		float g = abs( sin( position.x * position.y + time*0.2  ) );
+		float b = abs( sin( position.x * position.y + time*0.6 ) );
+		gl_FragColor = vec4( r, g, b, 1.0 );                      
+	}
+</script>
+<script id="fragmentShader2" type="x-shader/x-fragment">
+	uniform float time;
+	uniform sampler2D texture;
+	varying vec2 vUv;
+	void main( void ) {
+		vec2 position = -1.0 + 2.0 * vUv;
+		float a = atan( position.y, position.x );
+		float r = sqrt( dot( position, position ) );
+		vec2 uv;
+		uv.x = cos( a ) / r;
+		uv.y = sin( a ) / r;
+		uv  /=  10.0;
+		uv  += time * 0.05;
+		vec3 color = texture2D( texture, uv ).rgb;
+		gl_FragColor = vec4( color * r * 1.5 + 0.2, 1.0 );
+	}
+</script>
+
+<!--   JavaScript  three.js	   -->
+<script>
+	init();
+	animate();
+ //......................................................
+  function init() {
+  //GLSL Include code from shader scripts
+	vertexShaderCode    = document.getElementById( 'vertexShader'    ).textContent;
+	fragmentShaderCode1 = document.getElementById( 'fragmentShader1' ).textContent;
+	fragmentShaderCode2 = document.getElementById( 'fragmentShader2' ).textContent;
+  // container, camera,  scene, controls, renderer, clock	
+	container = document.getElementById( 'container' );
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 100000 );
+	camera.position.z = 120;
+	scene = new THREE.Scene();
+	controls = new THREE.OrbitControls( camera );		
+	renderer = new THREE.WebGLRenderer();
+	renderer.setSize( window.innerWidth ,window.innerHeight);
+	renderer.setPixelRatio( window.devicePixelRatio );
+	clock = new THREE.Clock();
+	container.appendChild( renderer.domElement );	
+  // geometry	
+	sphGeo = new THREE.SphereGeometry( 20.0, 32, 32 ); 	
+	uniforms1 = { time: { value: 1.0 }};	
+	sphMat = new THREE.ShaderMaterial({uniforms:uniforms1, vertexShader:vertexShaderCode, fragmentShader:fragmentShaderCode1} );		
+	sph = new THREE.Mesh( sphGeo, sphMat );		
+	sph.position.x = -50;
+	sph.position.y =  -5
+	scene.add( sph );	
+	boxGeo = new THREE.BoxGeometry( 50, 50, 50 );
+	uniforms2 = { time: { value: 1.0 }, texture: { value: new THREE.TextureLoader().load( "Seerose.jpg" ) }};
+	uniforms2.texture.value.wrapS = uniforms2.texture.value.wrapT = THREE.RepeatWrapping;	
+	boxMat = new THREE.ShaderMaterial( {uniforms:uniforms2, vertexShader: vertexShaderCode, fragmentShader:fragmentShaderCode2} );					
+	box = new THREE.Mesh( boxGeo, boxMat );		
+	box.position.x = 40;
+	box.position.y =  5
+	scene.add( box );
+}	
+  // ................................................................
+  function animate() {
+	requestAnimationFrame( animate );
+	delta = clock.getDelta();
+	uniforms1.time.value += delta * 3;
+	uniforms2.time.value = clock.elapsedTime;
+	sph.rotation.x += delta *   0.5;
+	sph.rotation.y += delta * (-0.5);
+	sph.rotation.z += delta *   0.1;
+	box.rotation.x += delta * (-0.5);
+	box.rotation.y += delta *   0.5;	
+	renderer.render( scene, camera );				
+  }
+</script>
+</html>

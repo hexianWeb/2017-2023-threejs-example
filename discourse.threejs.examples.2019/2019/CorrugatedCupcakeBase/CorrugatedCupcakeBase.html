@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/help-with-identifying-a-shape/6979 -->
+<!-- https://jsfiddle.net/6vowugpe/1/ -->
+<head>
+  <title> CorrugatedCupcakeBase </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body></body>
+
+<script src="../js/three.min.103.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+
+const frequency = 50;
+const heightScale = 0.7;
+const fluteFactor = 0.01;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.set( 2, 1, 0 );
+
+    scene = new THREE.Scene();
+    
+    const planeWidth = 1;
+    const planeHeight = 1;
+
+    let geometry = new THREE.PlaneBufferGeometry( planeWidth, planeHeight, 500, 1 );
+    geometry = geometry.toNonIndexed();
+    
+    const position = geometry.getAttribute( 'position' );
+    const vertex = new THREE.Vector3();
+    
+    for ( let i = 0; i < position.count; i ++ ) {
+    
+    	vertex.fromBufferAttribute( position, i );
+      
+      const x = vertex.x / ( planeWidth / 2 ) * Math.PI;
+      const y = ( planeHeight + vertex.y ) * heightScale;
+  
+      position.setX( i, ( Math.sin( x ) + Math.sin( x * frequency ) * fluteFactor ) * y );
+      position.setZ( i, ( Math.cos( x ) + Math.cos( x * frequency ) * fluteFactor ) * y );
+    
+    }
+    
+    const material = new THREE.MeshNormalMaterial( { wireframe: true } );
+
+    const mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+    
+    const controls = new THREE.OrbitControls( camera );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

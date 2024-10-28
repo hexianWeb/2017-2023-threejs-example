@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-creating-a-helical-sweep-with-a-flat-profile/3163/9 -->
+<!-- https://jsfiddle.net/prisoner849/ch5r672m/ -->
+
+<!-- see also	https://jsfiddle.net/prisoner849/fxqbontj/  
+				https://jsfiddle.net/prisoner849/5Lycd4rm/ 
+				https://jsfiddle.net/prisoner849/zgd8nc9p/	-->
+<head>
+  <title> ribbon </title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+
+</body>
+<script src="../js/three.min.93.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script>
+
+//@author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(2, 3, 5);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x101000);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(100);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+var rbnWidth = 1;
+//var rbnThickness = 0.1;
+var rbnSteps = 3;
+var rbnStepLength = 1.5;
+var rbnSegsPerStep = 80;
+var rbnRadius = 1;
+
+var rbnGeom = new THREE.PlaneGeometry(rbnSteps * Math.PI * 2, rbnWidth, rbnSteps * rbnSegsPerStep, 1);
+rbnGeom.computeBoundingBox();
+var size = new THREE.Vector3();
+rbnGeom.boundingBox.getSize(size);
+rbnGeom.translate(size.x * 0.5, size.y * 0.5, size.z * 0.5);
+
+// make an arrow head
+console.log(size);
+var headHalfWidth = 0.9;
+var headLength = 1.6;
+var headStart = size.x - headLength;
+var rbnHalfWidth = rbnWidth * 0.5;
+rbnGeom.vertices.forEach(v => {
+	if (v.x > headStart){
+  	let currWidth = (1 - ((v.x - headStart) / headLength)) * headHalfWidth;
+    let sign = v.y === 0 ? -1 : 1;
+    v.y = rbnHalfWidth + (currWidth * sign);
+  }
+});
+
+// bend it!
+
+rbnGeom.vertices.forEach(v => {
+	let angle = -v.x;
+  let radius = rbnRadius + v.z;
+  let shift = (v.x / (Math.PI * 2)) * rbnStepLength + v.y;
+  
+  v.x = Math.cos(angle) * radius;
+  v.y = shift;
+  v.z = Math.sin(angle) * radius;
+});
+
+rbnGeom.computeFaceNormals();
+rbnGeom.computeVertexNormals();
+
+rbnGeom.center();
+
+
+var ribbon = new THREE.Mesh(rbnGeom, new THREE.MeshStandardMaterial({color: 0x0099ff, side: THREE.DoubleSide, wireframe: false }));
+scene.add(ribbon);
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

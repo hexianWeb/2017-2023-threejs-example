@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/line-segment-coordinates/4358/3 -->
+<!-- https://jsfiddle.net/prisoner849/hu6jjj4p/ -->
+<head>
+  <title> RaycastLineSegments </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+<body> </body>
+<script src="../js/three.min.97.js"></script>
+
+<script>
+
+//@author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var points = [
+  new THREE.Vector3(-5, 5, 0),
+  new THREE.Vector3(),
+  new THREE.Vector3(),
+  new THREE.Vector3(5, 5, 0),
+  new THREE.Vector3(5, 5, 0),
+  new THREE.Vector3(5, -5, 0)
+];
+
+var geom = new THREE.BufferGeometry().setFromPoints(points);
+geom.addAttribute("color", new THREE.BufferAttribute(new Float32Array([1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, .5, .5, .5, 1, 0, 1]), 3));
+geom.addAttribute("colorBase", new THREE.BufferAttribute(new Float32Array([1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, .5, .5, .5, 1, 0, 1]), 3));
+var mat = new THREE.LineBasicMaterial({
+  vertexColors: THREE.VertexColors
+});
+var line = new THREE.LineSegments(geom, mat);
+scene.add(line);
+
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+var intersects = [];
+var oldIndex = -1;
+var col = new THREE.Color();
+
+window.addEventListener("mousemove", onMouseMove, false);
+
+function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObject(line);
+  if (intersects.length === 0) return;
+	let idx = intersects[0].index;
+ 	if (idx !== oldIndex) highlightSegment(idx, 0xFFFF00);
+}
+
+function highlightSegment(idx, color){
+	setColor(idx, color);
+  if (oldIndex !== -1) {restoreColor();}
+  oldIndex = idx;
+}
+
+function setColor(idx, color){
+	let idxNear = idx % 2 === 0 ? idx + 1: idx - 1;
+  col.set(color);
+  let colors = line.geometry.attributes.color;
+  colors.setXYZ(idx, col.r, col.g, col.b);
+  colors.setXYZ(idxNear, col.r, col.g, col.b);
+  colors.needsUpdate = true;
+}
+
+function restoreColor(){
+	let oldIndexNear = oldIndex % 2 === 0 ? oldIndex + 1: oldIndex - 1;
+  let colors = line.geometry.attributes.color;
+  let colorBase = line.geometry.attributes.colorBase;
+  colors.copyAt(oldIndex, colorBase, oldIndex);
+  colors.copyAt(oldIndexNear, colorBase, oldIndexNear);
+  colors.needsUpdate = true;
+}
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

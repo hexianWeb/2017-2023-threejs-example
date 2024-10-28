@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-imported-glb-object-translucent/37715 -->
+<!-- https://jsfiddle.net/qtszpy4j/ -->
+<head>
+  <title> IlluminateObjects </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author Mugen87 
+
+import * as THREE from '../jsm/three.module.140.js';
+import {OrbitControls} from '../jsm/OrbitControls.140.js';
+let camera, scene, renderer;
+
+init();
+render();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 7;
+
+    scene = new THREE.Scene();
+    
+    // sun
+
+    const sunGeometry = new THREE.SphereGeometry();
+    const sunMaterial = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+
+    const sun = new THREE.Mesh( sunGeometry, sunMaterial );
+    scene.add( sun );
+    
+    sun.add( new THREE.PointLight() );
+    
+    // earth
+    
+    const earthGeometry = new THREE.SphereGeometry( 0.2 );
+    const earthMaterial = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
+    
+    const earth = new THREE.Mesh( earthGeometry, earthMaterial );
+    earth.position.set ( 2, 0, 0 );
+    
+    scene.add( earth );
+    
+    //
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+    
+    const controls = new OrbitControls( camera, renderer.domElement );
+    controls.addEventListener( 'change', render );
+    
+
+}
+
+function render() {
+
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

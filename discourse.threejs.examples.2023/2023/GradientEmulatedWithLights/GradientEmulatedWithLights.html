@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/does-maskpass-work-with-gradients/55485/5 -->
+<!-- https://codepen.io/boytchev/pen/OJrNRer -->
+<head>
+  <title>GradientEmulatedWithLights</title>
+  <meta charset="utf-8" />
+<<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.158.js';
+ 
+// general setup, boring, skip to the next comment
+
+console.clear( );
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'black' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 10 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+
+
+// next comment
+
+
+// lights for the color gradients
+
+var blueLight = new THREE.SpotLight( 'royalblue', 500, 10, 0.35, 1, 2 );
+    blueLight.position.set( 0, 0, 10 );
+    scene.add( blueLight );
+
+var redTarget = new THREE.Object3D( );
+		redTarget.position.set( 1.5, 0.2, 0 );
+		scene.add( redTarget );
+
+var redLight = new THREE.SpotLight( 'crimson', 300, 10, 0.25, 1, 2 );
+		redLight.target = redTarget;
+    redLight.position.set( 0, 1, 10 );
+    scene.add( redLight );
+
+var yellowTarget = new THREE.Object3D( );
+		yellowTarget.position.set( 0, -2, 0 );
+		scene.add( yellowTarget );
+
+var yellowLight = new THREE.SpotLight( 'orange', 800, 9, 0.25, 1, 1 );
+		yellowLight.target = yellowTarget;
+    yellowLight.position.set( 0, 1, 10 );
+    scene.add( yellowLight );
+
+
+
+// black-to-white gradient texture
+var canvas = document.createElement( 'CANVAS' );
+    canvas.width = 128;
+    canvas.height = 256;
+
+var context = canvas.getContext( '2d' );
+
+var gradient = context.createLinearGradient( 0, 256, 128, 240 );
+		gradient.addColorStop( 0.0, 'rgb(10,10,10)' );
+		gradient.addColorStop( 0.3, 'rgb(40,40,40)' );
+		gradient.addColorStop( 0.6, 'rgb(100,100,100)' );
+		gradient.addColorStop( 1.0, 'white' );
+		context.fillStyle = gradient;
+    context.fillRect( 0, 0, 128, 256 );
+		context.lineStyle = 'black';
+		context.strokeRect( 10, 10, 108, 236 );
+		
+
+// create planes
+var n = 15,
+		planes = new THREE.Group( );
+		scene.add( planes );
+
+var	geometry = new THREE.PlaneGeometry( 1, 2 ).translate( 3, 0, 0 ),
+		material = new THREE.MeshLambertMaterial( {
+					map: new THREE.CanvasTexture( canvas ),	
+					side: THREE.DoubleSide,
+			});
+
+for( var i=0; i<n; i++ )
+{
+		var plane = new THREE.Mesh( geometry, material );
+				plane.rotation.y = i/n * 2*Math.PI;
+	
+		planes.add( plane );
+}
+
+
+
+
+function animationLoop( t )
+{
+		planes.rotation.y = t/2000;
+	
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

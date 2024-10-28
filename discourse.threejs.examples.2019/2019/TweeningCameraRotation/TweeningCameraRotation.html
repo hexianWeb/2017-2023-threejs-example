@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/tweening-the-rotation-of-a-camera/5656/8 -->
+<!-- https://jsfiddle.net/prisoner849/L2vo4srd/ -->
+<head>
+  <title> TweeningCameraRotation </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.100.js"></script>
+<script src="../js/Tween.min.js"></script>
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var grid = new THREE.GridHelper(10, 10, 0x404040, 0x404040);
+grid.rotation.x = Math.PI * 0.5;
+scene.add(grid);
+
+var objects = [];
+var objCount = 6;
+for (let i = 0; i < objCount; i++) {
+  objects.push( new THREE.Vector4(THREE.Math.randFloat(-5, 5), THREE.Math.randFloat(-5, 5), 0, Math.random() * Math.PI * 2));
+}
+
+// path
+var path = new THREE.Line( new THREE.BufferGeometry().setFromPoints(objects.map(o=>{return o;})), new THREE.LineBasicMaterial({color: 0x303030}));
+scene.add(path);
+
+// create objects
+objects.forEach((o, idx) => {
+  let arrow = new THREE.ArrowHelper(new THREE.Vector3(), new THREE.Vector3(0, 1, 0), 0.5, idx == 0 ? 0x00ffff : idx == objCount - 1 ? 0xff00ff : 0xffff00, 0.25, 0.1);
+  arrow.position.copy(o);
+  arrow.rotation.z = o.w;
+  scene.add(arrow);
+});
+
+// tweening
+var tweens = [];
+for(let i=0; i< objCount - 1;i++){
+	let tween = new TWEEN.Tween(objects[i])
+	tween.to(objects[i+1].clone(), 1000);
+  tween.onUpdate( val => {
+    let arrowTween = new THREE.ArrowHelper(new THREE.Vector3(), new THREE.Vector3(0, 1, 0), 0.25, 0xffffff, 0.125, 0.1);
+    arrowTween.position.copy(val);
+    arrowTween.rotation.z = val.w;
+    scene.add(arrowTween);
+  });
+  tweens.push(tween);
+}
+
+tweens.forEach((t, idx) =>{
+	if (idx > 0){
+  	tweens[idx - 1].chain(tweens[idx]);
+  }
+})
+tweens[0].start();
+
+renderer.setAnimationLoop(() => {
+	TWEEN.update();
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

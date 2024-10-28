@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-remove-interior-faces-while-keeping-exterior-faces-untouched/4869/15 -->
+
+<!-- see template @Mardonis -->
+<!-- and https://jsfiddle.net/prisoner849/Lmrh25js/ -->
+
+<head>
+	<title> BoxLabyrinthBasic </title>
+	<meta charset="utf-8" />
+</head>
+<body> 	
+ change in code: var p = [ 1, 1,  1, 1,  0, 0 ]; // planes px,nx, py,ny, pz,nz  -> 0 hide, 1 show
+</body>
+	<script src="../js/three.min.98.js"></script>
+	<script src="../js/OrbitControls.js"></script>
+	
+<script>
+
+// @author prisoner849, hofk
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 0, 1, 4 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xaaaaaa, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+//var texture	= new THREE.TextureLoader().load( "uvgrid01.png" );
+//var material = new THREE.MeshBasicMaterial( { map: texture, side: THREE.DoubleSide } );
+
+var material = new THREE.MeshBasicMaterial( { color: 0xbb00ff, side: THREE.DoubleSide, wireframe: true } );
+var geometry = new THREE.BoxBufferGeometry();
+
+var p = [ 1, 1,  1, 1,  0, 0 ]; // planes px,nx, py,ny, pz,nz  -> 0 hide, 1 show
+
+var index = [];
+if ( p[0] === 1 ) index.push( 0, 2, 1, 2, 3, 1 );
+if ( p[1] === 1 ) index.push( 4, 6, 5, 6, 7, 5 );
+if ( p[2] === 1 ) index.push( 8, 10, 9, 10, 11, 9 )
+if ( p[3] === 1 ) index.push( 12, 14, 13, 14, 15, 13 );
+if ( p[4] === 1 ) index.push( 16, 18, 17, 18, 19, 17 );
+if ( p[5] === 1 ) index.push( 20, 22, 21, 22, 23, 21 );
+geometry.setIndex( index );
+
+var mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+animate();
+
+function animate() {
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+</script>
+</html>

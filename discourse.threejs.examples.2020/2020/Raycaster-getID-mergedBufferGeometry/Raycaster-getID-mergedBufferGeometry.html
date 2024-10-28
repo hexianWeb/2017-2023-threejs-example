@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/raycaster-get-id-of-individual-geometries-of-a-mergebuffergeometry/16154/5 -->
+<!-- https://jsfiddle.net/prisoner849/jpz78w1L/ -->
+<head>
+  <title> Raycaster-getID-mergedBufferGeometry </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as _ from "../jsm/three.module.117.js"; // NOTE!  _ replaces THREE
+import { BufferGeometryUtils } from "../jsm/BufferGeometryUtils.117.js";
+ 
+let scene = new _.Scene();
+let camera = new _.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new _.WebGLRenderer();
+renderer.setClearColor(0x202020);
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let geoms = [];
+let c = new _.Color();
+
+for (let i = 0; i < 3; i++){
+	let g = createHex();
+  g.translate(-3 + i*3, 0, 0);
+  geoms.push(g);
+}
+
+let geom = BufferGeometryUtils.mergeBufferGeometries(geoms);
+
+let mat = new _.MeshBasicMaterial({vertexColors: true, wireframe: true});
+
+let mesh = new _.Mesh(geom, mat);
+scene.add(mesh);
+
+window.addEventListener( 'mousedown', getInstanceId, false );
+
+let raycaster = new _.Raycaster();
+let mouse = new _.Vector2();
+let intersects;
+
+function getInstanceId(event){
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+	raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObject(mesh);
+  if (intersects.length > 0){
+  	let o = intersects[0];
+    let instIdx = Math.floor(o.faceIndex / 4);
+    console.log("instanceId is " + instIdx);
+  }
+}
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera)
+});
+
+
+function createHex(){
+	let pts = [];
+  let baseVec = new _.Vector3(1, 0, 0);
+  let axis = new _.Vector3(0, 0, 1);
+  let angleStep = Math.PI / 3;
+  c.set(Math.random() * 0x888888 + 0x888888);
+  let col = [];
+  
+  for(let i = 0; i < 6; i++){
+  	pts.push(new _.Vector3().copy(baseVec).applyAxisAngle(axis, angleStep * i));
+    col.push(c.r, c.g, c.b);
+  }
+  
+  let geomHex = new _.BufferGeometry().setFromPoints(pts);
+  geomHex.setIndex([0, 2, 4, 0, 1, 2, 2, 3, 4, 4, 5, 0]);
+  geomHex.setAttribute("color", new _.BufferAttribute(new Float32Array(col), 3));
+  
+  return geomHex;
+
+}
+
+</script>
+</html>

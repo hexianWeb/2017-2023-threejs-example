@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/generate-planes-from-points/4588/22 -->
+<!-- http://jsfiddle.net/prisoner849/1vob8h3p/  -->
+
+<!-- see also https://codepen.io/brabbit640/pen/RqNPVJ/ and more in the post -->
+
+<head>
+  <title> PlanesFromPoints </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+  	margin: 0;
+	}
+  </style> 
+</head>
+
+<body> </body>
+<script src="../js/three.min.97.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.setScalar(20);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var grid = new THREE.GridHelper(20, 20);
+grid.rotation.x = Math.PI * 0.5;
+scene.add(grid);
+
+var planeGeom = new THREE.PlaneBufferGeometry(20, 20, 20, 20);
+planeGeom.rotateZ(Math.PI * 0.125);
+
+// bending along Y-axis
+var axis = new THREE.Vector3(0, 1, 0);
+var axisPosition = new THREE.Vector3(-10, 0, 10);
+var positions = planeGeom.attributes.position;
+var vTemp = new THREE.Vector3();
+for (let i = 0; i < positions.count; i++){
+	vTemp.fromBufferAttribute(positions, i);
+	let lengthOfArc = vTemp.x - axisPosition.x;
+  let angleOfArc = lengthOfArc / axisPosition.z;
+  vTemp.setX(0).setZ(-axisPosition.z).applyAxisAngle(axis, -angleOfArc).add(axisPosition);
+  positions.setXYZ(i, vTemp.x, vTemp.y, vTemp.z);
+}
+
+var plane = new THREE.Mesh(planeGeom, new THREE.MeshBasicMaterial({color: 0x00ffff, wireframe: true}));
+scene.add(plane);
+
+render();
+function render(){
+	requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+</script>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/where-do-materials-properties-come/10197/12 -->
+<!-- https://jsfiddle.net/EliasHasle/btz6jq83/32/ -->
+<head>
+  <title> ShaderUniforms </title>
+  <meta charset="utf-8" />
+  <style>
+  body {
+	background-color: #000;
+	margin: 0px;
+	overflow: hidden;
+	}
+  </style>  
+</head>
+
+<body> </body>
+<script src="../js/three.min.109.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/dat.gui.min.0.7.6.js"></script>
+
+<script>
+
+// @author EliasHasle
+
+// Simple three.js example
+
+var mesh1, mesh2, renderer, scene, camera, controls;
+
+class ModStandardMaterial extends THREE.MeshStandardMaterial {
+	constructor(pars) {
+  	super(pars);
+    
+    var myUniform = {value: 0.5};
+    Object.defineProperty(this, "myUniform", {
+    	get() {return myUniform.value;},
+      set(value) {myUniform.value = value;}
+    });
+    
+    this.onBeforeCompile = shader => {
+      shader.uniforms.myUniform = myUniform;      
+    	shader.fragmentShader = shader.fragmentShader.replace("void main() {", "uniform float myUniform;void main() {").replace("vec4 diffuseColor = vec4( diffuse, opacity );", "vec4 diffuseColor = vec4( 1.-myUniform*diffuse, opacity );");
+    };    
+  }
+}
+
+init();
+animate();
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set( 20, 20, 20 );
+
+    // controls
+    controls = new THREE.OrbitControls( camera, renderer.domElement );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    
+    // light
+    var light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20, 20, 0 );
+    scene.add( light );
+    
+    // axes
+    scene.add( new THREE.AxesHelper( 20 ) );
+
+    // geometry
+    var geometry = new THREE.SphereGeometry( 5, 24, 16 );
+    
+    // material1
+    var material1 = new THREE.MeshStandardMaterial( {
+        color: 0x00ffff, 
+        transparent: true,
+        opacity: 0.7,
+    } );
+    
+    // mesh
+    mesh1 = new THREE.Mesh( geometry, material1 );
+    mesh1.position.z = 5;
+    scene.add( mesh1 );
+        
+    // material2
+    var material2 = new ModStandardMaterial( {
+        color: 0x00ffff, 
+        transparent: true,
+        opacity: 0.7,
+    } );
+    
+    // mesh2
+    mesh2 = new THREE.Mesh( geometry, material2 );
+    mesh2.position.z = -5;
+    scene.add( mesh2 );
+    
+    var gui = new dat.GUI();
+    gui.add(material2, "myUniform", 0,1);
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    
+    //controls.update();
+
+    renderer.render( scene, camera );
+
+}
+
+
+</script>
+
+
+</html>

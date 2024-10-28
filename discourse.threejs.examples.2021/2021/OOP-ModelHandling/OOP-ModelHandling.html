@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/load-models-within-class/22797/7 -->
+<!-- https://codepen.io/mjurczyk/pen/PobYpeY -->
+<head>
+  <title> OOP-ModelHandling </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+  margin: 0;
+}
+</style>
+<body> </body>
+<!-- Generated via TreasureChest: https://treasurechest.nl/ -->
+
+<script type="module">
+
+// @author mjurczyk
+
+// Question Reference: discourse.threejs.org/t/load-models-within-class/22797
+
+import * as THREE from '../jsm/three.module.124.js';
+import { GLTFLoader } from  '../jsm/GLTFLoader.124.js';
+
+class SwordObject extends THREE.Group {
+  constructor() {
+    super();
+// '//cdn.wtlstudio.com/common-ptr.wtlstudio.com/5f6458c8-2d5e-49ee-846f-49561e17e351.glb'
+    this.modelUrl = '5f6458c8-2d5e-49ee-846f-49561e17e351.glb';
+
+    this.onCreate();
+  }
+
+  onCreate() {
+    new GLTFLoader().load(
+      this.modelUrl,
+      gltf => {
+        this.updateMaterials(gltf.scene);
+        this.updateTransform();
+
+        // Since SwordObject extends Three.Group, you can treat it as one and just add the model inside "this"
+        // https://threejs.org/docs/#api/en/core/Object3D.add
+        this.add(gltf.scene);
+      }
+    );
+  }
+
+  updateMaterials(model) {
+    model.traverse(child => {
+      child.material = new THREE.MeshNormalMaterial();
+    });
+  }
+  
+  updateTransform() {
+    this.rotation.z += Math.PI / 2;
+    this.scale.set(2.0, 2.0, 2.0);
+  }
+  
+  dispose() {
+    // Dispose everything that was created in this class - GLTF model, materials etc.
+  }
+}
+
+const scene = new THREE.Scene();
+
+const swordObject = new SwordObject();
+scene.add(swordObject);
+
+// NOTE It's safe to ignore anything below this line
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+scene.background = new THREE.Color(0x332233);
+scene.add(new THREE.HemisphereLight(0xffffcc, 0x333399, 1.0));
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight);
+camera.position.set(0, 0, 10);
+
+const animate = () => {
+  if (swordObject) {
+    swordObject.rotateX(Math.PI / 360);
+  }
+
+  renderer.render(scene, camera);
+
+  requestAnimationFrame(animate);
+};
+
+animate();
+
+document.body.appendChild(renderer.domElement);
+
+</script>
+</html>

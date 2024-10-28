@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-circular-motion-of-letters-around-the-center/33967/3 -->
+<!-- https://jsfiddle.net/prisoner849/tm8h4a3s/ -->
+<head>
+  <title> CircularMotionOfLetters </title>
+  <meta charset="utf-8" />
+   <style>
+        body{
+        overflow: hidden;
+        margin: 0;
+        background-color: #000;
+	    color: #fff;
+        }
+    </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+console.clear();
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(-1, 0.5, 1).setLength(75);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x202020);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 12, 0);
+controls.update();
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(0.5, 1, 1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+scene.add(new THREE.PolarGridHelper(40));
+
+// text ring
+let cnv = document.createElement("canvas");
+cnv.width = 1024;
+cnv.height = 128;
+let ctx = cnv.getContext("2d");
+ctx.fillStyle = "magenta";
+ctx.fillRect(0, 0, cnv.width, cnv.height);
+ctx.clearRect(0, 10, cnv.width, cnv.height - 20);
+ctx.textBaseline = "middle";
+ctx.textAlign = "center";
+ctx.fillStyle = "aqua";
+ctx.font = "bold 80px Arial";
+ctx.fillText("Welcome to City 17", cnv.width * 0.5, cnv.height * 0.5);
+
+let cnvTexture = new THREE.CanvasTexture(cnv);
+cnvTexture.wrapS = THREE.RepeatWrapping;
+cnvTexture.wrapT = THREE.RepeatWrapping;
+cnvTexture.repeat.set( 3, 1 );
+
+let gc = new THREE.CylinderGeometry(25, 25, 5, 72, 1, true);
+let mc = new THREE.MeshBasicMaterial({map:cnvTexture, alphaTest: 0.5, side: THREE.DoubleSide});
+let c = new THREE.Mesh(gc, mc);
+c.position.y = 25;
+scene.add(c);
+
+// cityscape
+let clickables = [];
+let g = new THREE.BoxGeometry();
+g.translate(0, 0.5, 0);
+let m = new THREE.MeshLambertMaterial({color: 0x7f7f7f});
+for(let z = -5; z <= 5; z++){
+  for(let x = -5; x <= 5; x++){
+  
+    let o = new THREE.Mesh(g, m);
+    
+    o.position.set(x, 0, z).multiplyScalar(4);
+    o.rotation.y = Math.random() * Math.PI;
+    let posLen = o.position.length();
+    let posScale = 1 - THREE.MathUtils.clamp(posLen / 50, 0, 1);
+    posScale = Math.pow(posScale, 4);
+    o.scale.set(THREE.MathUtils.randInt(1, 4) , 1 + Math.floor(Math.random() * posScale * 75), THREE.MathUtils.randInt(1, 4));
+    o.userData = {
+      message: `block ${x} : ${z}`
+    }
+    
+    if(posLen <= 25) {
+      scene.add(o);
+      clickables.push(o);
+    }
+  }
+}
+
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let intersects;
+
+window.addEventListener("dblclick", event => {
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObjects(clickables, false);
+  if (intersects.length > 0){
+  	let obj = intersects[0].object;
+    alert(obj.userData.message);
+  }
+})
+
+window.addEventListener("resize", onWindowResize);
+
+let clock = new THREE.Clock();
+
+animate();
+
+function animate() {
+
+  requestAnimationFrame(animate);
+  let t = clock.getDelta();
+  cnvTexture.offset.x += t * 0.125; 
+  renderer.render(scene, camera);
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth, innerHeight);
+
+}
+
+</script>
+</html>

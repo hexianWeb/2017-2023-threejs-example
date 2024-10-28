@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/construction-base-with-two-scenes/5695 -->
+<!-- http://threejs.hofk.de/ConstructionBasis/ConstructionBasis.html-->
+<!-- 	based on @author: looeee  SceneComparsion   https://codepen.io/looeee/pen/jpebjN -->
+<head>
+  <title> ConstructionBasis </title>
+  <meta charset="utf-8" />
+<style> 
+	/* style based on @author: looeee */
+	body {
+	margin: 0px;
+	overflow: hidden;
+	text-align: center;
+	background-color: #66ccff;
+	}		
+	.container {
+	position: absolute;
+	top: 0;
+	z-index: -1;
+	width: 100%;
+	height: 100%;
+	}
+	* {box-sizing: border-box;}
+	.comp {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+		}	
+	.comp canvas {
+	display: block;
+	vertical-align: middle;
+	}
+	.slider {
+	position: absolute;
+	z-index: 9;
+	cursor:nw-resize;
+	width: 40px;
+	height: 40px;
+	background-color: #2196F3;
+	opacity: 0.7;
+	border-radius: 50%;	
+	}
+</style>
+</head>
+<body>
+<div class="container">
+	<div class="comp containerA"></div>	
+	<div class="slider"> </div>
+	<div class="comp containerB"></div>
+</div>
+</body>
+<script src="../js/three.min.100.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author hofk
+ 
+'use strict'
+var containerA;
+var containerB;
+var slider;
+var cameraA;
+var cameraB;
+var rendererA;
+var rendererB;
+var sceneA;
+var sceneB;
+var controlsA;
+var controlsB;
+var matMarkerL;
+var matMarkerR;
+var markerSize;
+var aspectB;
+var gBPointsL;
+var gBPointsR;
+var gReticle;
+var matReticle;
+var reticle;
+var matReticleM;
+var reticleM;
+var markersL = [];
+var markersR = [];
+var idxMarkersL = -1;
+var idxMarkersR = -1;
+var epsilon = 0.004;
+var idxHitL = -1;
+var idxHitR = -1;
+var posCount = 600;
+
+containerA = document.querySelector( '.containerA' );
+containerB = document.querySelector( '.containerB' );
+slider = document.querySelector( '.slider' );
+
+containerB.addEventListener('mousemove', onContainerBMouseMove );
+containerB.addEventListener('mouseup', onContainerBmouseUp );
+
+// create  scenes
+sceneA = new THREE.Scene();
+sceneA.background = new THREE.Color( 0x555555 );
+sceneB = new THREE.Scene();
+sceneB.background = new THREE.Color( 0xeeeeee );
+
+// perspective / orthographic camera
+cameraA = new THREE.PerspectiveCamera( 55, containerA.clientWidth / containerA.clientHeight, 0.1, 200 );
+cameraA.position.set( 0, 0, 6 );
+
+var widthB = containerB.clientWidth;
+var heightB = containerB.clientHeight;
+
+if ( widthB > 2 * heightB ) {
+
+	widthB = 2 * heightB;
+	
+} else {
+
+	 heightB = widthB / 2;
+
+}
+
+aspectB = widthB / heightB;
+
+cameraB = new THREE.OrthographicCamera( -aspectB, aspectB, 1, -1, 0.01, 10 );
+cameraB.position.set( 0, 0, 0.1 );
+  
+// controls 
+controlsA = new THREE.OrbitControls( cameraA, containerA ); // only controlsA
+ 
+// lights 
+const lightA = new THREE.DirectionalLight();
+lightA.position.set( 20, 20, 20 );
+sceneA.add( lightA );
+
+// renderer 
+rendererA = new THREE.WebGLRenderer( { antialias: true } );
+rendererA.setSize( containerA.clientWidth, containerA.clientHeight );
+rendererA.setPixelRatio( window.devicePixelRatio ) 
+containerA.appendChild( rendererA.domElement );
+rendererB = new THREE.WebGLRenderer( { antialias: true } );
+rendererB.setSize( widthB, heightB );
+rendererB.setPixelRatio( window.devicePixelRatio );
+containerB.appendChild( rendererB.domElement );
+// .....................only TEST: geometry/mesh A ...........................................
+const geoA = new THREE.CylinderBufferGeometry( 1, 1, 2, 10, 10  );
+const matA = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true } );
+const meshA = new THREE.Mesh( geoA, matA );
+meshA.position.x = 3;
+sceneA.add( meshA );
+//................................................................
+createDesignArea( );
+defineReticles( );
+
+rendererA.setAnimationLoop( () => {
+
+update();
+render();
+
+} );
+
+rendererB.setAnimationLoop( () => {
+
+update();
+render();
+
+} );
+
+initComparisons();
+
+// -------------------------------------------
+
+function createDesignArea( ){
+	
+	var gB1 = new THREE.BufferGeometry( );
+	var pos = [];
+	for ( let i = 1; i < 10; i ++ ) {
+	
+		let j = i / 10;
+		rasterPosPush( j );
+	
+	}
+	gB1.lineCount = 54;
+	gB1.positions = new Float32Array( gB1.lineCount * 6 );
+	for ( let i = 0; i < pos.length; i ++ )	gB1.positions[ i ] = pos[ i ];
+	gB1.addAttribute( 'position', new THREE.BufferAttribute( gB1.positions, 3 ) );
+	var matB1 = new THREE.LineBasicMaterial( { color: 0xcccccc } );
+	var gridB1 = new THREE.LineSegments( gB1, matB1 );
+	sceneB.add( gridB1 );
+	//.....	
+	var gB0 = new THREE.BufferGeometry( );
+	pos = [];
+	pos.push( -2,0,0, -0.02,0,0 );		// horizontal
+	pos.push( 0.02,0,0, 2,0,0 );
+	pos.push( -1,-1,0, -1,1,0 );	// vertical
+	pos.push( 1,-1,0, 1,1,0 );
+	gB0.lineCount = 4;
+	gB0.positions = new Float32Array( gB0.lineCount * 6 );
+	for ( let i = 0; i < pos.length; i ++ )	gB0.positions[ i ] = pos[ i ];
+	gB0.addAttribute( 'position', new THREE.BufferAttribute( gB0.positions, 3 ) );
+	var matB0 = new THREE.LineBasicMaterial( { color: 0x888888 } );
+	var gridB0 = new THREE.LineSegments( gB0, matB0 );
+	sceneB.add( gridB0 );	
+	//.....	
+	var gBsplit = new THREE.BufferGeometry( );
+	gBsplit.positions = new Float32Array( 6 );
+	gBsplit.positions[ 0 ] = gBsplit.positions[ 2 ] = gBsplit.positions[ 3 ] = gBsplit.positions[ 5 ] = 0;
+	gBsplit.positions[ 1 ] = -1;
+	gBsplit.positions[ 4 ] = 1;
+	gBsplit.addAttribute( 'position', new THREE.BufferAttribute( gBsplit.positions, 3 ) );
+	var matBsplit = new THREE.LineBasicMaterial( { color: 0xffffff } );
+	var gridBsplit = new THREE.LineSegments( gBsplit, matBsplit );
+	sceneB.add( gridBsplit );
+	//.....
+	markerSize = 0.015;
+	matMarkerL = new THREE.MeshBasicMaterial( { color: 0x00aaaa, transparent: true, opacity: 0.5 } );
+	matMarkerR = new THREE.MeshBasicMaterial( { color: 0xaa00aa, transparent: true, opacity: 0.5 } );
+	//.....
+	gBPointsL = new THREE.BufferGeometry( );
+	gBPointsL.positions = new Float32Array( posCount );
+	gBPointsR = new THREE.BufferGeometry( );
+	gBPointsR.positions = new Float32Array( posCount );
+
+	// detail function
+	function rasterPosPush( j ){
+	
+		pos.push( -2, j, 0,  2, j, 0 );	// horizontal
+		pos.push( -2, -j, 0,  2, -j, 0 );
+		pos.push( -2+j, -1, 0,  -2+j, 1, 0 ); // vertical
+		pos.push( -1+j, -1, 0,  -1+j, 1, 0 );
+		pos.push(  1-j, -1, 0,   1-j, 1, 0 );
+		pos.push(  2-j, -1, 0,   2-j, 1, 0 );
+	}
+
+}
+
+function defineReticles( ) {
+
+	gReticle = new THREE.BufferGeometry( );
+	gReticle.positions = new Float32Array( 4 * 3 );
+	
+	gReticle.positions[  0 ] = 0;
+	gReticle.positions[  1 ] = -0.02;
+	gReticle.positions[  2 ] = 0;
+	gReticle.positions[  3 ] = 0;
+	gReticle.positions[  4 ] = 0.02;
+	gReticle.positions[  5 ] = 0;
+	gReticle.positions[  6 ] = -0.02;
+	gReticle.positions[  7 ] = 0;
+	gReticle.positions[  8 ] = 0;
+	gReticle.positions[  9 ] = 0.02;
+	gReticle.positions[ 10 ] = 0;
+	gReticle.positions[ 11 ] = 0;
+	
+	gReticle.addAttribute( 'position', new THREE.BufferAttribute( gReticle.positions, 3 ) );
+	
+	matReticle = new THREE.LineBasicMaterial( { color: 0xff0000 } );  // hit
+	reticle = new THREE.LineSegments( gReticle, matReticle );
+	sceneB.add( reticle );
+	reticle.visible = false;
+	
+	matReticleM = new THREE.LineBasicMaterial( { color: 0x444444 } ); // Move
+	reticleM = new THREE.LineSegments( gReticle, matReticleM );
+	sceneB.add( reticleM );
+	reticleM.visible = true;
+	
+}
+
+function onContainerBMouseMove( event ) {
+	
+	event.preventDefault();
+	
+	var markerX = Math.round( 100 * ( event.clientX / widthB * 4 - 2 ) ) / 100;	
+	var markerY = Math.round( 100 * ( -event.clientY / heightB * 2 + 1 ) ) / 100;
+	
+	reticle.position.set( markerX, markerY, 0 );
+	
+	if( markerX === 0 ) {
+	
+		reticleM.visible = false;
+		
+	}
+	
+	if( markerX < 0 ) { // left
+			
+		if ( hitMarkerL( markerX, markerY ) === -1 ) {
+			
+			reticleM.visible = true;
+			reticleM.position.set( markerX, markerY, 0 );
+			reticle.visible = false;
+			
+		} else {  
+			
+			reticleM.visible = false;
+			reticle.visible = true;
+			reticle.position.set( markerX, markerY, 0 );
+			
+		}
+	
+	}
+		
+	if( markerX > 0 ) { // right
+				
+		if ( hitMarkerR( markerX, markerY ) === -1 ) {
+			
+			reticleM.visible = true;
+			reticleM.position.set( markerX, markerY, 0 );
+			reticle.visible = false;
+			
+		} else {  
+			
+			reticleM.visible = false;
+			reticle.visible = true;
+			reticle.position.set( markerX, markerY, 0 );
+			
+		}
+		
+	}
+	
+}
+
+function onContainerBmouseUp( event ) {
+	
+	event.preventDefault();
+	
+	var markerX = Math.round( 100 * ( event.clientX / widthB * 4 - 2 ) ) / 100;
+	var markerY = Math.round( 100 * ( -event.clientY / heightB * 2 + 1 ) ) / 100;
+	
+	if ( markerX < 0 ) { // left
+		
+		idxMarkersL ++;
+		markersL[ idxMarkersL ] = new THREE.Sprite( matMarkerL );
+		markersL[ idxMarkersL ].position.x = markerX;
+		markersL[ idxMarkersL ].position.y = markerY;
+		markersL[ idxMarkersL ].scale.x = markerSize;
+		markersL[ idxMarkersL ].scale.y = markerSize;
+		
+		sceneB.add( markersL[ idxMarkersL ] );
+		
+		for ( let i = idxMarkersL * 3 ; i < gBPointsL.positions.length; i += 3 ) { // fill with last value
+			
+			gBPointsL.positions[ i ] = markerX;	
+			gBPointsL.positions[ i + 1 ] = markerY;
+			gBPointsL.positions[ i + 2 ] = 0;
+			
+		}	
+		
+	}
+	
+	if ( markerX > 0 ) { // right
+		
+		idxMarkersR ++;
+		markersR[ idxMarkersR ] = new THREE.Sprite( matMarkerR );
+		markersR[ idxMarkersR ].position.x = markerX;
+		markersR[ idxMarkersR ].position.y = markerY;
+		markersR[ idxMarkersR ].scale.x = markerSize;
+		markersR[ idxMarkersR ].scale.y = markerSize;
+		
+		sceneB.add( markersR[ idxMarkersR ] );
+		
+		for ( let i = idxMarkersR * 3 ; i < gBPointsR.positions.length; i += 3 ) { // fill with last value
+			
+			gBPointsR.positions[ i ] = markerX;	
+			gBPointsR.positions[ i + 1 ] = markerY;
+			gBPointsR.positions[ i + 2 ] = 0;
+			
+		}	
+		
+	}
+	
+}
+
+function hitMarkerL( markerX, markerY ) {
+	
+	var x0;
+	var x1;
+	var y0;
+	var y1;	
+	var hitL = false;
+	var j = idxMarkersL * 3 + 3;
+	
+	while ( !hitL &&  j > 2  ) {
+
+		j -= 3;
+		
+		x0 = gBPointsL.positions[ j ] - epsilon;
+		x1 = gBPointsL.positions[ j ] + epsilon;
+		y0 = gBPointsL.positions[ j + 1 ] - epsilon;
+		y1 = gBPointsL.positions[ j + 1 ] + epsilon;
+		
+		hitL = ( markerX > x0 ) && ( markerX < x1 ) && ( markerY > y0 ) && ( markerY < y1 );
+		
+	}
+	
+	return hitL ? j : -1; // idxHitL
+	
+}
+
+function hitMarkerR( markerX, markerY ) {
+	
+	var x0;
+	var x1;
+	var y0;
+	var y1;	
+	var hitR = false;	
+	var j = idxMarkersR * 3 + 3;
+	
+	while ( !hitR &&  j > 2  ) {
+
+		j -= 3;
+		
+		x0 = gBPointsR.positions[ j ] - epsilon;
+		x1 = gBPointsR.positions[ j ] + epsilon;
+		y0 = gBPointsR.positions[ j + 1 ] - epsilon;
+		y1 = gBPointsR.positions[ j + 1 ] + epsilon;
+		
+		hitR = ( markerX > x0 ) && ( markerX < x1 ) && ( markerY > y0 ) && ( markerY < y1 );
+		
+	}
+	
+	return hitR ? j : -1; // idxHitR
+	
+}
+
+function update() {
+
+	// ??????
+
+}
+
+function render() {
+
+  rendererA.render( sceneA, cameraA );
+  rendererB.render( sceneB, cameraB );
+
+}
+
+function initComparisons() {
+
+ // modified/ extended ( based on @author: looeee )
+  
+  containerB.style.width = ( 0.75 * containerB.offsetWidth ) + 'px';
+  containerB.style.height = ( 0.75 * containerB.offsetHeight ) + 'px';
+   
+  let pX = containerB.offsetWidth;
+  let pY = containerB.offsetHeight;
+   
+  if ( pX > widthB ) {
+  
+  	slider.style.left = widthB - 20 + "px";
+	
+  } else {
+  
+  	slider.style.left = pX - 20 + "px"; 
+	
+  } 
+  
+  if ( pY > heightB ) {
+  
+  	slider.style.top = heightB - 20 + "px";
+	
+  } else {
+  
+  	slider.style.top = pY - 20 + "px"; 
+	
+  } 
+  
+  let clicked = 0;
+  
+  // only controlsA
+  const slideReady = () => { 
+    clicked = 1;
+    controlsA.enabled = false;
+  };
+  const slideFinish = () => { 
+    clicked = 0;
+    controlsA.enabled = true;
+  };
+
+  const slideMove = ( e ) => {
+    
+    if ( clicked === 0 ) return false;
+
+    let posX = getCursorPosX( e );
+    let posY = getCursorPosY( e );
+	
+    //prevent the slider from being positioned outside the canvas
+    if ( posX < 0 ) posX = 0;  
+	if ( posX > widthB ) posX = widthB;
+	slideX( posX );
+	
+    if ( posY < 0 ) posY = 0;   
+	if ( posY > heightB ) posY = heightB; 
+    slideY( posY );
+	
+  }
+  
+  //detail functions
+  function getCursorPosX( e ) {
+
+	let getCur = ( e.pageX - containerB.offsetLeft ) - window.pageXOffset;   
+    return getCur; 
+	
+  }
+  
+  function getCursorPosY( e ) {
+
+	let getCur = ( e.pageY - containerB.offsetTop ) - window.pageYOffset;
+    return getCur; 
+	
+  }
+  
+  function slideX(x) {
+
+    containerB.style.width = x + "px";
+    //position the slider
+    slider.style.left = containerB.offsetWidth - ( 0.5 * slider.offsetWidth) + "px";
+	
+  }
+   function slideY(y) {
+
+    containerB.style.height = y + "px";
+    //position the slider
+    slider.style.top = containerB.offsetHeight - ( 0.5 * slider.offsetHeight) + "px";
+	
+  }
+   
+  slider.addEventListener( 'mousedown', slideReady );
+  window.addEventListener( 'mouseup', slideFinish );
+  window.addEventListener( 'mousemove', slideMove );
+	
+} 
+
+</script>
+</html>

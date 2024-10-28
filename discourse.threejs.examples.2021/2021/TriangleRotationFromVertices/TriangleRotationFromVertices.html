@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/get-a-triangle-rotation-x-y-z-from-its-vertices/22860/13 -->
+<!-- https://jsfiddle.net/ydomk0qf/4/ -->
+<head>
+  <title> TriangleRotationFromVertices </title>
+  <meta charset="utf-8" />
+	<style>  
+	body {
+		padding: 0;
+		margin: 0;
+		background: #666;
+		display: flex;
+		flex-flow: column;
+		justify-content: center;
+		align-items: center;
+		height: 100vh;
+		width: 100vw;
+	}
+	canvas {
+	display: block;
+	}
+	img {
+	display: block;
+	}
+	
+	.transform {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	flex-flow: column;
+	width: 100%;
+	color: #FFF;
+	}
+	
+	.transform div {
+	display: flex;
+	margin: 0.5em 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.125.js"></script>
+<script src="../js/OrbitControls.125.js"></script>
+<script src="../js/dat.gui.min.js"></script>
+<script>
+
+// @author local_dev
+
+
+let scene, camera, renderer, mesh, mesh2,boxHelper, arrowHelper;
+
+const transform = {
+	position: {
+  	x: 6,
+    y: 0,
+    z: 0,
+  },
+	rotation: {
+    x: 0.4,
+    y: 0.4,
+    z: 0.4,
+  },
+  computedRotation : {
+  	x: 0,
+    y: 0,
+    z: 0,
+  }
+};
+
+init();
+
+function init() {
+
+	const [width, height] = [window.innerWidth, window.innerHeight];
+
+  // Set the Renderer
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(width, height);
+  renderer.setClearColor(0x333333, 1);
+  document.body.appendChild(renderer.domElement);
+
+  // Set the camera.
+  camera = new THREE.PerspectiveCamera( 45, width / height, 1, 1000 );
+	camera.position.z = 50;
+
+	// Set the scene
+  scene = new THREE.Scene();
+  scene.add(new THREE.AxesHelper(4));
+
+	// Set The triangle 
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(new Float32Array(Array(9).fill(0)), 3)
+  );
+  mesh = new THREE.Mesh(
+  	geometry,
+    new THREE.MeshBasicMaterial({ color: 0x1a73e8 })
+  );
+  
+  	// Set The triangle 
+  const geometry2 = new THREE.BufferGeometry();
+  geometry2.setAttribute(
+    "position",
+    new THREE.BufferAttribute(new Float32Array([0,6,0, -3,-3,0, 3,-3,0]), 3)
+  );
+  mesh2 = new THREE.Mesh(
+  	geometry2,
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
+  );
+
+	// Helpers
+	boxHelper = new THREE.BoxHelper( mesh, 0xffff00 );
+
+  scene.add(mesh, mesh2, boxHelper);
+
+	// Set the camera controls
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.addEventListener("change", () => renderer.render(scene, camera));
+
+  transfromVertices();
+}
+
+//Emulate matrix transformation
+function transfromVertices() {
+
+	// Get the rotation value from the inputs
+  const {
+  	position: {x: px, y: py, z: pz},
+  	rotation: {x: rx, y: ry, z: rz},
+  } = transform;
+
+	// Restart vertices
+  const position = mesh.geometry.attributes.position;
+  position.array = new Float32Array([0,6,0, -3,-3,0, 3,-3,0]);
+  position.needsUpdate = true;
+
+  // Apply the transfomation matrix to emulate matrix transform
+  mesh.rotation.set( rx, ry, rz );
+  mesh.position.set( px, py, pz );
+  mesh.updateMatrix();
+	mesh.geometry.applyMatrix4( mesh.matrix );
+  mesh.position.set( 0, 0, 0 );
+  mesh.rotation.set( 0, 0, 0 );
+  mesh.scale.set( 1, 1, 1 );
+  mesh.updateMatrix();
+  
+  computeRotation();
+  
+  // Render
+  boxHelper.update();
+  renderer.render(scene, camera);
+}
+
+function computeRotation() {
+  const vertices = mesh.geometry.attributes.position.array;
+  const vec1 = new THREE.Vector3(...vertices.slice(0, 3));
+  const vec2 = new THREE.Vector3(...vertices.slice(3, 6));
+  const vec3 = new THREE.Vector3(...vertices.slice(6, 9));
+  const triangle = new THREE.Triangle(vec1, vec2, vec3);
+
+  const midPoint = new THREE.Vector3();
+  triangle.getMidpoint(midPoint);
+
+  const xNormal = new THREE.Vector3().subVectors( vec3, vec2 ).normalize();  
+  const yNormal = new THREE.Vector3().subVectors( vec1, midPoint ).normalize();
+  const zNormal = new THREE.Vector3();
+  triangle.getNormal(zNormal);
+
+  const rotationMatrix = new THREE.Matrix4().set(...[
+    ...xNormal.toArray(), 0,
+    ...yNormal.toArray(), 0,
+    ...zNormal.toArray(), 0,
+    0, 0, 0, 1
+  ]);
+
+  const q = new THREE.Quaternion()
+  .setFromRotationMatrix(rotationMatrix)
+  .conjugate();
+
+  mesh2.quaternion.copy(q);
+
+  // Dat.gui update display
+  const { x, y, z } = new THREE.Euler().setFromQuaternion(q);
+
+  transform.computedRotation.x = x;
+  transform.computedRotation.y = y;
+  transform.computedRotation.z = z;
+
+  setArrowHelpers(xNormal, yNormal, zNormal, midPoint);
+
+}
+
+// Arrow Helpers
+function setArrowHelpers(x, y, z, midPoint) {
+	if(arrowHelper) 
+  	scene.remove(arrowHelper);
+
+  arrowHelper = new THREE.Group();
+  arrowHelper.add(new THREE.ArrowHelper(x, midPoint, 5, 0xff0000));
+  arrowHelper.add(new THREE.ArrowHelper(y, midPoint, 5, 0x00ff00));
+  arrowHelper.add(new THREE.ArrowHelper(z, midPoint, 5, 0x0000ff));
+
+  scene.add(arrowHelper);
+}
+
+// dat.GUI config ...
+const gui = new dat.GUI();
+const rotationGui = gui.addFolder('Rotation');
+([
+  rotationGui.add(transform.rotation, 'x', -Math.PI, Math.PI),
+  rotationGui.add(transform.rotation, 'y', -Math.PI, Math.PI),
+  rotationGui.add(transform.rotation, 'z', -Math.PI, Math.PI),
+]).forEach(gui => gui.onChange(transfromVertices))
+rotationGui.open();
+
+
+const positionGui = gui.addFolder('Position');
+([
+  positionGui.add(transform.position, 'x', -20, 20),
+  positionGui.add(transform.position, 'y', -20, 20),
+  positionGui.add(transform.position, 'z', -20, 20),
+]).forEach(gui => gui.onChange(transfromVertices))
+
+const computedRotation = gui.addFolder('Computed Rotation');
+([
+  computedRotation.add(transform.computedRotation, 'x').listen(),
+  computedRotation.add(transform.computedRotation, 'y').listen(),
+  computedRotation.add(transform.computedRotation, 'z').listen(),
+]).forEach(gui => gui.domElement.style.pointerEvents = "none")
+computedRotation.open();
+
+
+</script>
+</html>

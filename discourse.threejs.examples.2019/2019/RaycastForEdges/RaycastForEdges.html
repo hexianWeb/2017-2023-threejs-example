@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/cast-a-ray-at-linesegments/6315/8 -->
+<!-- http://discourse.threejs.hofk.de/2019/RaycastForEdges/RaycastForEdges.html -->
+<head>
+	<title> RaycastForEdges </title>
+	<meta charset="utf-8" />
+	<style>
+	body {
+	margin: 0;
+	}
+	</style>
+</head>
+<body> 	</body>
+<script src="../js/three.min.101.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author hofk
+
+document.addEventListener('mousemove', onDocumentMouseMove, false);
+var mouse = new THREE.Vector2();
+var raycaster = new THREE.Raycaster();
+
+var intersects 	= [];
+var selection;
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 0, 1, 4 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x000000, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+var faceIndices = [ 0,1,2, 0,2,3, 0,3,4, 0,4,1 ];
+
+var vertices = [ 
+	 0, 0, 0, // 0
+	 1, 1, 0, // 1
+	-1, 1, 0, // 2
+	-1,-1, 0, // 3
+	 1,-1, 0, // 4
+	 1, 1, 0, // 1 for edge line
+];
+
+var material = new THREE.MeshBasicMaterial( { side: THREE.DoubleSide, color: 0xffff00, transparent: true, opacity: 0.0 } ) ;
+var g = new THREE.BufferGeometry( );
+g.setIndex( new THREE.BufferAttribute( new Uint32Array( faceIndices ), 1 ) );
+g.addAttribute( 'position', new THREE.BufferAttribute(new Float32Array(vertices), 3 ) );
+var mesh = new THREE.Mesh( g, material );
+scene.add( mesh );
+
+var mL = [];
+var gL = [];
+var line = [];
+var vL = [];
+var j;
+var lineIdx;
+
+for ( let i = 0; i < 4; i ++ ) {
+		
+	j = ( i + 1 ) * 3; 
+	
+	vL[ i ] = [];
+	vL[ i ].push( vertices[ j ], vertices[ j + 1 ], vertices[ j + 2 ], vertices[ j + 3 ], vertices[ j + 4 ], vertices[ j + 5 ] );
+	gL[ i ] = new THREE.BufferGeometry();
+	gL[ i ].addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( vL[ i ] ), 3 ) );
+	mL[ i ] = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+	line[ i ] = new THREE.Line( gL[ i ], mL[ i ] );
+	scene.add( line[ i ] );
+	
+}
+
+animate();
+
+// .......................
+
+function animate() {
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+function onDocumentMouseMove( event ) {
+
+	// var b, c;
+	
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = -( event.clientY / window.innerHeight ) * 2 + 1;
+
+	raycaster.setFromCamera( mouse, camera );	
+	intersects = raycaster.intersectObject( mesh );
+	
+	if ( intersects.length > 0 ) {    // cutting object
+	
+		//b = intersects[0].face.b;
+		//c = intersects[0].face.c;
+		
+		lineIdx = intersects[0].face.b - 1;
+		line[ lineIdx ].material.color.setRGB( 255, 255, 0 );
+
+  	} else {
+		
+		for( let i = 0; i < 4; i ++ ) line[ i ].material.color.setRGB( 0, 0, 255 );
+		
+	}
+
+}
+
+</script>
+
+</html>

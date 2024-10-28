@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  	<title> PointsSpiral </title>
+	<meta charset="utf-8">
+		<style>
+      body { margin: 0; }
+    </style>
+</head>
+<body> 
+	<div style="position: absolute; top: 10px; left: 10px; text-align:left;">
+	<div >
+		How to decorate your Christmas tree quickly and effectively!
+	</div>
+</body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.135.js';
+import {OrbitControls} from '../jsm/OrbitControls.135.js'; 
+			
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.001, 10000 );
+camera.position.set( 0, 3, 16 );
+scene.add( camera );
+	
+const renderer = new THREE.WebGLRenderer( { antialias:true } );
+renderer.setSize(window.innerWidth, window.innerHeight);	
+renderer.setClearColor( 0xeee8aa, 1 );
+ 
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 	
+
+const controls = new OrbitControls( camera, renderer.domElement );	
+
+const sun = new THREE.DirectionalLight( ); 
+sun.intensity = 0.2; 
+sun.position.set( 10 , 16 , 16 );
+scene.add(sun);	
+
+const floor = new THREE.Mesh( new THREE.PlaneBufferGeometry( 8, 8), new THREE.MeshBasicMaterial({color: 0xffffff, wireframe:false } ) );
+//floor.position.y = -0.1;
+floor.rotation.x = -1.57;
+scene.add( floor );
+
+const treeMaterial = new THREE.MeshPhongMaterial({side:THREE.DoubleSide, wireframe: false } ); 
+treeMaterial.emissive.setRGB( 0.02, 0.77, 0.15 );
+treeMaterial.specular.setRGB( 0.5,  0.5,  0.5 );
+
+const treeGeometry =  new THREE.CylinderGeometry( 0, 3, 6, 36, 36 );
+const tree = new THREE.Mesh( treeGeometry, treeMaterial );
+scene.add( tree );
+tree.position.y = 4;
+
+const trunk = new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0.2, 2, 36, 1 ), new THREE.MeshBasicMaterial( { color:0xff5900, wireframe: false } ) );
+trunk.position.y = -3;
+tree.add( trunk );
+       
+const count = 600;
+const pointsGeometry = new THREE.BufferGeometry( );
+const pos = [];
+ 
+for ( let i = 0; i < count ; i++ ) {
+    
+   pos.push( 0, 0, 0 ); 
+    
+}
+ 
+pointsGeometry.setAttribute( 'position', new THREE.Float32BufferAttribute( pos, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+    
+const texture =  new THREE.TextureLoader( ).load ( 'redball.png' );
+const pointsMaterial  = new THREE.PointsMaterial({color: 0xeee8aa, size: 0.3, map: texture,  transparent: true, opacity: 0.7 , alphaTest: 0.5 } );
+
+const pointSystem = new THREE.Points( pointsGeometry, pointsMaterial );
+
+ ;
+scene.add( pointSystem );
+
+const spiralX = ( a, f, t ) => ( a * f * t * Math.cos( f * t )  / 512 );
+const spiralY = ( a, f, t ) => ( 7 - 2 * t / 256 );
+const spiralZ = ( a, f, t ) => ( a * f * t * Math.sin( f * t )   / 512  );
+	
+let time= 0;
+let f;
+
+animate( );
+
+function animate( ) {
+
+    requestAnimationFrame( animate );
+	
+	//t  = clock.getElapsedTime( ); 
+    time  += 0.002; 
+ 
+    f  = 1.5 - Math.atan( 0.5 + time );
+    
+	if ( f > 0.3 ) { 
+ 
+		for( let i = 0; i < pointsGeometry.attributes.position.count; i ++ ) {
+
+            pointsGeometry.attributes.position.setXYZ( i, spiralX( 8, f, time + 1.2 * i ),  spiralY( 8, f, time + 1.2 * i ), spiralZ( 8, f, time + 1.2 * i ) );
+  
+		}
+        
+    }
+    
+    pointsGeometry.attributes.position.needsUpdate = true;
+    
+	renderer.render( scene, camera );
+    
+}
+
+
+</script>
+</html>

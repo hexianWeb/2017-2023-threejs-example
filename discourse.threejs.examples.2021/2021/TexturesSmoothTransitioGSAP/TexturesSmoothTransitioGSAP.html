@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/smooth-transition-between-textures-with-gsap/24631/5 -->
+<!-- https://jsfiddle.net/prisoner849/dns0xhkz/ -->
+<head>
+  <title> TexturesSmoothTransitioGSAP </title>
+  <meta charset="utf-8" />
+<style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+ </style>
+</head>
+
+<body>
+
+</body>
+
+<!--  <script src="https://cdn.jsdelivr.net/npm/gsap@3.6.0/dist/gsap.min.js"></script>  -->
+	<script src="../js/gsap.min.js"> </script> 
+  
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.126.js";
+import { OrbitControls } from "../jsm/OrbitControls.126.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x444444);
+document.body.appendChild(renderer.domElement);
+
+let manager = new THREE.LoadingManager();
+manager.onLoad = () => {
+	startSequence();
+}
+
+let tLoader = new THREE.TextureLoader(manager);
+let textures = [
+/* 
+  tLoader.load("https://threejs.org/examples/textures/uv_grid_opengl.jpg"),
+  tLoader.load("https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg"),
+  tLoader.load("https://threejs.org/examples/textures/brick_diffuse.jpg"),
+  tLoader.load("https://threejs.org/examples/textures/colors.png")
+*/
+	tLoader.load("uv_grid_opengl.jpg"),
+	tLoader.load("2294472375_24a3b8ef46_o.jpg"),
+	tLoader.load("brick_diffuse.jpg"),
+	tLoader.load("colors.png")
+];
+
+let g = new THREE.PlaneGeometry(10, 10);
+let m = new THREE.ShaderMaterial({
+	uniforms: {
+  	t1: {value: null},
+    t2: {value: null},
+    transition: {value: 0}
+  },
+  vertexShader: `
+  	varying vec2 vUv;
+    void main() {
+    	vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }
+  `,
+  fragmentShader: `
+  	uniform sampler2D t1;
+    uniform sampler2D t2;
+    uniform float transition;
+    varying vec2 vUv;
+    void main(){
+    	vec4 tex1 = texture2D(t1, vUv);
+      vec4 tex2 = texture2D(t2, vUv);
+      
+      gl_FragColor = mix(tex1, tex2, transition);
+    
+    }
+  `
+});
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let counter = 0;
+
+function startSequence(){
+	gsap.fromTo(m.uniforms.transition, 
+  {value: 0}, 
+  {value: 1, 
+   duration: 2, 
+   repeat: -1,
+   repeatRefresh: true,
+   onRepat: () => {
+      let idx1 = counter % textures.length;
+      let idx2 = (idx1 + 1) == textures.length ? 0 : idx1 + 1;
+      console.log(counter, idx1, idx2);
+      counter++;
+   		m.uniforms.t1.value = textures[idx1];
+      m.uniforms.t2.value = textures[idx2];
+   }
+  })
+}
+
+renderer.setAnimationLoop( _ => {
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

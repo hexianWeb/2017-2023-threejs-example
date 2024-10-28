@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-add-contextmenu-on-right-click/12172/2 -->
+<!-- (in Russian) https://ru.stackoverflow.com/questions/760126/ -->
+<head>
+	<title>ContextMenu</title>
+	<meta charset="utf-8" />
+	<style>
+	body {
+	background: #fff;
+	overflow: hidden;
+	margin: 0;
+	position: relative;
+	}
+	</style>
+</head>
+<body> 
+<div id="menu" style="position:absolute;display:none;background-color:red">
+  <span color="red">menu</span>
+  <br>
+  <button id="changeColor">
+    change color
+  </button>
+</div>
+</body>
+
+<script src="../js/three.min.112.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 10, 50);
+
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var geometry = new THREE.TorusKnotGeometry(10, 2, 100, 20);
+var material = new THREE.MeshBasicMaterial({
+  color: 0xffff00
+});
+var torusKnot = new THREE.Mesh(geometry, material);
+scene.add(torusKnot);
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+/////////////////////////////
+
+var mouse = new THREE.Vector2();
+var raycaster = new THREE.Raycaster();
+var intersect;
+var rect = renderer.domElement.getBoundingClientRect();
+
+window.addEventListener('mousemove', onDocumentMouseMove, false);
+window.addEventListener('mousedown', onMouseDown, false);
+window.addEventListener('resize', onWindowResize, false);
+if (document.addEventListener) {
+  document.addEventListener('contextmenu', function (e) {
+    e.preventDefault();
+  }, false);
+} else {
+  document.attachEvent('oncontextmenu', function () {
+    window.event.returnValue = false;
+  });
+}
+
+
+function onDocumentMouseMove(event) {
+  event.preventDefault();
+  
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+}
+
+function onMouseDown(event) {
+  event.preventDefault();
+  var rightclick;
+    if (!event) var event = window.event;
+    if (event.which) rightclick = (event.which == 3);
+    else if (event.button) rightclick = (event.button == 2);
+  if (!rightclick) return;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  var intersects = raycaster.intersectObjects([torusKnot]);
+
+  if (intersects.length) {
+    intersect = intersects[0].object;
+    menu.style.left = (event.clientX - rect.left) + "px";
+    menu.style.top = (event.clientY - rect.top) + "px";
+    menu.style.display = "";
+  }
+  else{
+    intersect = undefined;
+  }
+}
+
+changeColor.addEventListener("click", function(){
+	intersect.material.color.setHex(Math.random() * 0x777777 + 0x777777);
+  menu.style.display = "none";
+}, false);
+
+function onWindowResize(event) {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+</script>
+
+</html>

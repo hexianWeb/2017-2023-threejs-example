@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/texture-projection/3224 -->
+<!-- http://jsfiddle.net/prisoner849/461bvhoc/ -->
+<head>
+  <title> </title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+<video id="videoTex" autoplay loop crossOrigin="anonymous" webkit-playsinline style="display:none">
+			<source src="https://threejs.org/examples/textures/sintel.ogv" type='video/ogg; codecs="theora, vorbis"'>
+			<source src="https://threejs.org/examples/textures/sintel.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>
+</video>
+</body>
+
+<script src="../js/three.min.93.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+  function GridBoxGeometry(geometry, independent) {
+    if (!(geometry instanceof THREE.BoxBufferGeometry)) {
+      console.log("GridBoxGeometry: the parameter 'geometry' has to be of the type THREE.BoxBufferGeometry");
+      return geometry;
+    }
+    independent = independent !== undefined ? independent : false;
+
+    let newGeometry = new THREE.BoxBufferGeometry();
+    let position = geometry.attributes.position;
+    newGeometry.attributes.position = independent === false ? position : position.clone();
+
+    let segmentsX = geometry.parameters.widthSegments || 1;
+    let segmentsY = geometry.parameters.heightSegments || 1;
+    let segmentsZ = geometry.parameters.depthSegments || 1;
+
+    let startIndex = 0;
+    let indexSide1 = indexSide(segmentsZ, segmentsY, startIndex);
+    startIndex += (segmentsZ + 1) * (segmentsY + 1);
+    let indexSide2 = indexSide(segmentsZ, segmentsY, startIndex);
+    startIndex += (segmentsZ + 1) * (segmentsY + 1);
+    let indexSide3 = indexSide(segmentsX, segmentsZ, startIndex);
+    startIndex += (segmentsX + 1) * (segmentsZ + 1);
+    let indexSide4 = indexSide(segmentsX, segmentsZ, startIndex);
+    startIndex += (segmentsX + 1) * (segmentsZ + 1);
+    let indexSide5 = indexSide(segmentsX, segmentsY, startIndex);
+    startIndex += (segmentsX + 1) * (segmentsY + 1);
+    let indexSide6 = indexSide(segmentsX, segmentsY, startIndex);
+
+    let fullIndices = [];
+    fullIndices = fullIndices.concat(indexSide1);
+    fullIndices = fullIndices.concat(indexSide2);
+    fullIndices = fullIndices.concat(indexSide3);
+    fullIndices = fullIndices.concat(indexSide4);
+    fullIndices = fullIndices.concat(indexSide5);
+    fullIndices = fullIndices.concat(indexSide6);
+
+    newGeometry.setIndex(fullIndices);
+
+    function indexSide(x, y, shift) {
+      let indices = [];
+      for (let i = 0; i < y + 1; i++) {
+        let index11 = 0;
+        let index12 = 0;
+        for (let j = 0; j < x; j++) {
+          index11 = (x + 1) * i + j;
+          index12 = index11 + 1;
+          let index21 = index11;
+          let index22 = index11 + (x + 1);
+          indices.push(shift + index11, shift + index12);
+          if (index22 < ((x + 1) * (y + 1) - 1)) {
+            indices.push(shift + index21, shift + index22);
+          }
+        }
+        if ((index12 + x + 1) <= ((x + 1) * (y + 1) - 1)) {
+          indices.push(shift + index12, shift + index12 + x + 1);
+        }
+      }
+      return indices;
+    }
+    return newGeometry;
+  };
+
+
+videoTex.volume = 0;
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
+camera.position.set(2, 1, 2).setLength(15);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x202020);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var frustFOV = 30;
+var frustRatio = 16 / 9;
+var frustPlane = 10;
+
+var frustH = frustPlane * Math.sin(THREE.Math.degToRad(frustFOV * 0.5));
+var frustW = frustH * frustRatio;
+var frustPoints = [
+	new THREE.Vector3(),
+	new THREE.Vector3( -frustW,  frustH, -frustPlane ),
+  new THREE.Vector3(  frustW,  frustH, -frustPlane ),
+  new THREE.Vector3( -frustW, -frustH, -frustPlane ),
+  new THREE.Vector3(  frustW, -frustH, -frustPlane )
+];
+
+var frustGeom = new THREE.BufferGeometry().setFromPoints(frustPoints);
+frustGeom.setIndex([0,1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 4, 4, 3, 3, 1]);
+var frustumHelper = new THREE.LineSegments(frustGeom, new THREE.LineBasicMaterial({color: 0xff0000}));
+frustumHelper.position.set(0, 0, 9);
+frustumHelper.updateMatrixWorld();
+scene.add(frustumHelper);
+
+var screen = new THREE.Mesh(new THREE.BoxBufferGeometry(16, 9, 2), 
+	new THREE.ShaderMaterial({
+  	uniforms: {
+    	baseColor: {value: new THREE.Color(0xcccccc)},
+    	frustum: { value: [
+      	new THREE.Vector3(),
+        new THREE.Vector3(),
+        new THREE.Vector3(),
+        new THREE.Vector3(),
+        new THREE.Vector3(),
+        ]},
+      texture: {value: new THREE.VideoTexture( videoTex )}
+    },
+    vertexShader: `
+    	
+      varying vec4 vWorldPos;
+    	
+      void main() {
+        vWorldPos = modelMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * viewMatrix * vWorldPos;
+      }
+    `,
+    fragmentShader: `
+    	uniform vec3 baseColor;
+      uniform vec3 frustum[5];
+      uniform sampler2D texture;
+    	
+      varying vec4 vWorldPos;
+      
+      // port from https://github.com/mrdoob/three.js/blob/35ae830a7c4544582ed2759e5b18c5d6ef37c6d9/src/math/Vector3.js#L559
+      vec3 projectOnVector(vec3 a, vec3 b){
+      	float dist = length(b);
+        return b * ( dot(a, b) / (dist * dist) );
+      }
+      
+    	void main() {
+      
+      	vec3 dir = vWorldPos.xyz - frustum[0];
+        vec3 center = (frustum[1] + frustum[2] + frustum[3] + frustum[4]) * 0.25;
+        vec3 frustumAxis = center - frustum[0];
+        
+        vec3 projected = projectOnVector(dir, frustumAxis);
+        float scalar = length(frustumAxis) / length(projected);
+        vec3 planeProj = ( dir * scalar ) + frustum[0];
+        
+        // UVs
+        vec3 uvBase = planeProj - frustum[1]; // from top-left corner
+        
+        vec3 sub12 = frustum[2] - frustum[1];
+        vec3 sub12uv = projectOnVector(uvBase, sub12);
+        float u = length(sub12uv) * sign(dot(sub12, sub12uv)) / length(sub12);
+        vec3 sub13 = frustum[3] - frustum[1];
+        vec3 sub13uv = projectOnVector(uvBase, sub13);
+        float v = length(sub13uv) * sign(dot(sub13, sub13uv)) / length(sub13);
+        v = 1. - v;
+        
+        vec3 color = ( max( u,v ) <= 1. && min( u, v ) >= 0. ) ? texture2D(texture, vec2(u, v)).rgb : vec3(1);
+      	
+      	gl_FragColor = vec4(baseColor * color, 1.0);
+      }
+    `,
+    side: THREE.DoubleSide
+  })
+);
+screen.position.z = -2;
+var boxGeom = new THREE.BoxBufferGeometry(16, 9, 2, 16, 9, 2);
+var gridBoxGeom = GridBoxGeometry(boxGeom);
+var grid = new THREE.LineSegments(gridBoxGeom, new THREE.LineBasicMaterial({color: 0x777777}));
+screen.add(grid);
+scene.add(screen);
+
+frustPoints.forEach( (p, idx) => {
+	frustumHelper.localToWorld(screen.material.uniforms.frustum.value[idx].copy(p));	
+});
+
+var clock = new THREE.Clock();
+var time = 0;
+var rotation = THREE.Math.degToRad(15);
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  time += clock.getDelta();
+  screen.rotation.y = Math.sin(time * 0.314) * rotation;
+  screen.rotation.x = Math.cos(time * 0.54) * rotation;
+  screen.position.z = Math.sin(time * 0.71) * 4 - 2;
+  screen.position.y = Math.cos(time * 0.44) * 2;
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/procedurally-generated-heart-in-three-js/6074/8 -->
+<!-- https://jsfiddle.net/prisoner849/exztfmr0/ -->
+<head>
+  <title> ProceduralHeart </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.101.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 5);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var limit = 1.8;
+var step = limit / 1000;
+var points = [];
+for (let i = -limit; i <= limit; i+=step){
+	points.push(new THREE.Vector3(i, 0, 0));
+}
+//console.log(points.length);
+
+var geom = new THREE.BufferGeometry().setFromPoints(points);
+var material = new THREE.ShaderMaterial({
+	uniforms:{
+  	aVal: {value: 25}
+  },
+  vertexShader:`
+  	#define PI 3.1415926
+  
+  	uniform float aVal;
+    
+  	float heart(float x, float a){
+      return pow(abs(x), 2. / 3.) + 0.9 * sqrt(3.3 - pow(abs(x), 2.)) * sin(a * PI * x);
+    }
+    
+  	void main()
+    {
+    	vec3 pos = position;
+      pos.y = heart(pos.x, aVal);
+      vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader:`
+    void main()
+    {
+    	gl_FragColor = vec4( 1., 0., 0., 1.0 );
+    }
+  `
+});
+
+var heart = new THREE.Line(geom, material);
+scene.add(heart);
+
+var clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+	material.uniforms.aVal.value = Math.sin(clock.getElapsedTime() * 0.5) * 25 + 25;
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

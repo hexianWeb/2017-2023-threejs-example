@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-build-a-cartoonish-beach-scene/47947/2 -->
+<!-- https://codepen.io/boytchev/pen/xxaKXgK -->
+<head>
+  <title>LowPolyBeach</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+
+// defining the necessary elements, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 5, 10 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// now let's make the sea
+
+var sea = new THREE.Mesh(
+			new THREE.BoxGeometry( 3, 5, 0.2, 12, 20, 2 ),
+    	new THREE.MeshPhongMaterial( {color:'royalblue', side:THREE.DoubleSide, flatShading: true} )
+    );	
+    sea.rotation.x = -Math.PI/2;
+		scene.add( sea );
+
+// make it 3D by modifying manually all the 
+// vertices on the top side of the sea box
+
+var pos = sea.geometry.getAttribute( 'position' );
+for( var i=0; i<pos.count; i++) if( pos.getZ(i) > 0 )
+{
+    pos.setX( i, pos.getX(i)+0.2*Math.random() );
+    pos.setY( i, pos.getY(i)+0.2*Math.random() );
+    pos.setZ( i, 0.1+0.1*Math.random() );    
+}
+
+
+
+// and now let's make the sand
+
+var sand = new THREE.Mesh(
+			new THREE.BoxGeometry( 3, 5, 0.2, 12, 20, 2 ),
+    	new THREE.MeshPhongMaterial( {color:'gold', side:THREE.DoubleSide, flatShading: true} )
+    );	
+    sand.position.x = 2.9;
+    sand.rotation.x = -Math.PI/2;
+		scene.add( sand );
+
+// make it 3D in the same way
+
+var pos = sand.geometry.getAttribute( 'position' );
+for( var i=0; i<pos.count; i++) if( pos.getZ(i) > 0 )
+{
+    var h = THREE.MathUtils.smoothstep( pos.getX( i ), -1.5, 0 );
+  
+    pos.setX( i, pos.getX(i)+0.2*Math.random() );
+    pos.setY( i, pos.getY(i)+0.2*Math.random() );
+    pos.setZ( i, 0.1+0.01*Math.random()+0.3*h );    
+}
+
+
+function animationLoop( t )
+{
+  scene.rotation.y = 2*Math.sin( t/2700 );
+  
+	renderer.render( scene, camera );
+}
+
+</script>
+</html>

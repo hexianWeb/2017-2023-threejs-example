@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-extrude-a-path/27248/11 -->
+<head>
+	<title> ProfileSurface </title>
+	<meta charset="utf-8" />
+	<style>
+		body{
+		overflow: hidden;
+		margin: 0;
+		}
+	</style>
+</head>
+
+<body></body>
+
+<script src="../js/three.min.129.js"></script>
+<script src="../js/OrbitControls.129.js"></script>
+
+<script>
+
+// @author hofk
+ 
+const scene = new THREE.Scene( );
+const camera = new THREE.PerspectiveCamera( 55, innerWidth / innerHeight, 0.01, 1000 );
+camera.position.set( 0, 4, 25 );
+const renderer = new THREE.WebGLRenderer( );
+renderer.setSize( innerWidth, innerHeight );
+document.body.appendChild(renderer.domElement);
+
+const light1 = new THREE.PointLight( );
+light1.position.set( 2, 5, 10 );
+scene.add( light1 );
+const light2 = new THREE.PointLight( );
+light2.position.set( -4, -5, -10 );
+scene.add( light2 );
+
+new THREE.OrbitControls( camera, renderer.domElement );
+
+const material = new THREE.MeshPhongMaterial( { side: THREE.DoubleSide, color: 0xff3344, flatShading: true, wireframe: false } );
+
+const pathCoordinates = [
+	
+	-5,  0,
+	-2,  3,
+	-1,  1,
+	 0,  0,
+	 1,  0.5,
+	 2,  1,
+	 4,  2,
+	 6,  2,
+	7.2, 0
+]
+
+const segPath = pathCoordinates.length / 2 - 1;
+const segExtrude = 9;
+
+const geometry = BasisGeometry( segPath, segExtrude );
+ 
+for( let i = 0 ; i <= segPath; i++ ) {
+
+	for( let j = 0; j <= segExtrude; j++ ) {	
+	
+		geometry.attributes.position.setXYZ( j * ( segPath + 1 ) + i, pathCoordinates[ i * 2 ], j,  pathCoordinates[ i * 2  + 1 ] );
+		
+	}
+	
+}
+
+geometry.computeVertexNormals( );
+
+console.log ( geometry.index.array ); ////////////////////
+console.log( geometry.attributes.position.array ); ////////////////// 
+ 
+const mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+let t = 0;
+let i, j;
+animate( );
+
+function animate( ) {
+
+	requestAnimationFrame( animate );
+	
+	t += 0.25;	
+	
+	if (  t % 2 === 0 ) {
+ 
+		i = Math.trunc( Math.random( ) * segPath );
+		j = Math.trunc( Math.random( ) * segExtrude );
+		
+		geometry.index.array[ 3 * i * 3 * j ] = 0;
+		geometry.index.array[ 3 * i * 3 * j + 1 ] = 0;
+		geometry.index.array[ 3 * i * 3 * j + 2 ] = 0;
+ 
+	}
+	
+	geometry.index.needsUpdate = true;
+	
+	renderer.render( scene, camera );
+	
+}
+
+function BasisGeometry( segmentsA, segmentsB ) {
+	
+	const g = new THREE.BufferGeometry( );
+	
+	let indices = [];
+	
+	let index = 0;
+	let indexArray = [];
+	
+	for ( let y = 0; y <= segmentsB; y ++ ) {
+		
+		let indexRow = [];		
+		
+		for ( let x = 0; x <= segmentsA; x ++ ) {
+			
+			indexRow.push( index ++ );
+			
+		}
+		
+		indexArray.push( indexRow );
+		
+	}
+	
+	let a, b, c, d;
+	
+	for ( let i = 0; i < segmentsA; i ++ ) {
+		
+		for ( let j = 0; j < segmentsB; j ++ ) {
+			
+			a = indexArray[ j ][ i ];
+			b = indexArray[ j + 1 ] [ i ];
+			c = indexArray[ j + 1 ][ i + 1 ];
+			d = indexArray[ j ] [ i + 1 ];
+			
+			indices.push( a, b, d );
+			indices.push( b, c, d );
+			
+		}
+		
+	}
+	
+	let verticesCount = ( segmentsA + 1 ) * ( segmentsB + 1 )
+	 
+	g.setIndex( new THREE.BufferAttribute( new Uint32Array( indices ), 1 ) );
+	g.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array( verticesCount * 3 ), 3 ) );
+	
+	return g;
+	
+}
+</script>	
+</html>

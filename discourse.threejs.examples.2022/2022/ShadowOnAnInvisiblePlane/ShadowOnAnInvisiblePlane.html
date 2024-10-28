@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/the-white-plane-does-not-receive-shadows/41868/5 -->
+<!-- https://codepen.io/mjurczyk/pen/KKoLVKy -->
+<head>
+  <title>ShadowOnAnInvisiblePlane</title>
+  <meta charset="utf-8" />
+ <style>
+    *{
+    margin: 0;
+    }
+  </style>
+</head>
+<script src="../js/three.min.142.js"></script>
+<script src="../js/OrbitControls.142.js"></script>
+<body> </body>
+
+<script>
+
+// @author mjurczyk
+
+// Question Reference: discourse.threejs.org/t/the-white-plane-does-not-receive-shadows/41868
+
+let camera, scene, renderer, controls, mesh, ground, shadowGeometry;
+
+const createWorld = () => {
+  mesh = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(2, 2, 2),
+    new THREE.MeshStandardMaterial({ color: 0xff9999 })
+  );
+  mesh.castShadow = true;
+  
+  ground = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(15.0, 15.0, 15.0),
+    new THREE.MeshStandardMaterial({ color: 0xffffcc })
+  );
+  ground.rotation.x = -Math.PI / 2.0;
+  ground.position.y = -2.0;
+  ground.receiveShadow = false;
+  
+  shadowGeometry = ground.clone();
+  shadowGeometry.material = new THREE.ShadowMaterial({
+    opacity: 0.5
+  });
+  shadowGeometry.receiveShadow = true;
+  shadowGeometry.position += 0.01;
+  
+  lightPrimary = new THREE.PointLight(0xffffff, 1.0, 10.0);
+  lightPrimary.position.set(2.0, 2.0, 2.0);
+  lightPrimary.castShadow = true;
+  
+  lightSecondary = new THREE.PointLight(0x8888ff, 1.0, 10.0);
+  lightSecondary.position.set(-2.0, 2.0, -2.0);
+  lightSecondary.castShadow = true;
+  
+  scene.add(mesh);
+  scene.add(ground);
+  scene.add(shadowGeometry);
+  scene.add(lightPrimary);
+  scene.add(lightSecondary);
+  
+  camera.lookAt(mesh.position);
+  
+  setInterval(() => {
+    mesh.rotateX(0.001);
+    mesh.rotateY(0.001);
+  }, 1 / 60);
+};
+
+const init = () => {
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000.0);
+  camera.position.set(-5, 5, 7);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x333333);
+
+  scene.add(new THREE.HemisphereLight(0xffffcc, 0x19bbdc, 0.1));
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+
+  document.body.appendChild(renderer.domElement);
+  
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  
+  createWorld();
+}
+
+const animate = () => {
+  requestAnimationFrame(animate);
+  
+  controls.update();
+
+  renderer.render(scene, camera); 
+}
+
+init();
+animate();
+
+</script>
+</html>

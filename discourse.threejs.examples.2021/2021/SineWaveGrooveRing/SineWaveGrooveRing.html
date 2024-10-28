@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-create-sine-wave-groove-in-ring-geometry-with-extrudegeometry/23068/4 -->
+<!-- https://jsfiddle.net/prisoner849/8bw94cs3/ -->
+<head>
+  <title> SineWaveGrooveRing </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>	
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849  
+
+import * as THREE from "../jsm/three.module.125.js";
+import { OrbitControls } from "../jsm/OrbitControls.125.js";
+import {GUI} from "../jsm/dat.gui.module.125.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 5, 10);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let g = new THREE.BoxGeometry(1, 1, 1, 360, 1, 1);
+g.translate(0.5, 0.5, 0);
+let pos = g.attributes.position;
+
+let v = new THREE.Vector3();
+let r = 2;
+let R = 3;
+let waves = 5;
+for(let i = 0; i < pos.count; i++){
+	v.fromBufferAttribute(pos, i);
+	
+  let angle = v.x * Math.PI * 2;
+  
+  let radius = v.z > 0 ? R : r;
+  let y = v.y < 0.5 ? v.y : v.y + Math.sin(v.x * Math.PI * 2 * waves) * 0.25;
+  
+  pos.setXYZ(i, Math.cos(angle) * radius, y, -Math.sin(angle) * radius);
+}
+g.computeVertexNormals();
+
+let m = new THREE.MeshLambertMaterial({color: "aqua", wireframe: true});
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let gui = new GUI();
+gui.add(m, "wireframe");
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+
+
+</script>
+</html>

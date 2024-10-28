@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-do-points-smoothly-disappear-with-increasing-distance/48152/3 -->
+<!-- https://codepen.io/prisoner849/pen/jOvPZdG -->
+<head>
+  <title>FadingPoints</title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author  prisoner849
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+console.clear();
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0xface8d);
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let gu = {
+  time: { value: 0 }
+};
+
+scene.add(
+  new THREE.Mesh(
+    new THREE.BoxGeometry(2, 2, 2),
+    new THREE.MeshBasicMaterial({ color: 0x7f7f7f })
+  )
+);
+
+let g = new THREE.BufferGeometry().setFromPoints(
+  new Array(1000).fill().map((_) => {
+    let p = new THREE.Vector3()
+      .randomDirection()
+      .multiplyScalar(Math.random() + 3);
+    return p;
+  })
+);
+let m = new THREE.PointsMaterial({
+  color: 0xffaa00,
+  map: new THREE.TextureLoader().load(
+    //"https://threejs.org/examples/textures/sprites/circle.png"
+    './circle.png'
+  ),
+  transparent: true,
+  opacity: 0.8,
+  alphaTest: 0.7,
+  onBeforeCompile: shader => {
+    shader.uniforms.distanceMin = m.userData.distanceMin;
+    shader.uniforms.distanceMax = m.userData.distanceMax;
+    shader.vertexShader = `
+      varying float alphaDepth;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <fog_vertex>`,
+      `#include <fog_vertex>
+        alphaDepth = - mvPosition.z;
+      `
+    );
+    console.log(shader.vertexShader);
+    shader.fragmentShader = `
+      uniform float distanceMin;
+      uniform float distanceMax;
+      varying float alphaDepth;
+      ${shader.fragmentShader}
+    `.replace(
+      `#include <fog_fragment>`,
+      `#include <fog_fragment>
+        float aNorm = clamp(smoothstep(distanceMax, distanceMin, alphaDepth), 0., 1.);
+        if (aNorm == 0.) discard;
+        gl_FragColor.a *= aNorm;
+      `
+    );
+    console.log(shader.fragmentShader);
+  }
+});
+m.userData = {
+  distanceMin: {value: 15},
+  distanceMax: {value: 100}
+}
+let p = new THREE.Points(g, m);
+scene.add(p);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  gu.time.value = t;
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+
+</script>
+</html>

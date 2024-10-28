@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/transfromcontrols-cant-attach-to-selected-objects-transformcontrols-move-separate-from-selected-objects/42534/2 -->
+<!-- https://codepen.io/qiumeng12/pen/zYjNvGO -->
+<head>
+  <title> TransfromControlsSimple </title>
+  <meta charset="utf-8" />
+<style>
+    body {
+    margin: 0;
+    padding: 0;
+    }
+    .scene {
+    position: absolute;
+    height: 100vh;
+    width: 100vw;
+    }
+  </style>
+</head>
+
+<body> <div class="scene" id="scene"></div> </body>
+
+<script type="module">
+
+// @author Qiumeng12
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+import { TransformControls } from '../jsm/TransformControls.136.js';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(
+  45,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  4000
+);
+camera.position.set(0, 2, 3);
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  logarithmicDepthBuffer: true
+});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.setClearColor(0xffffff, 0.6);
+const dom = document.getElementById("scene");
+dom.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+
+const trcontrol = new TransformControls(camera, renderer.domElement);
+trcontrol.addEventListener("dragging-changed", function (event) {
+  controls.enabled = !event.value;
+});
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+const boxgeometry = new THREE.SphereGeometry(1);
+const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const mesh = new THREE.Mesh(boxgeometry, material);
+scene.add(mesh);
+trcontrol.attach(mesh);
+scene.add(trcontrol);
+
+</script>
+</html>

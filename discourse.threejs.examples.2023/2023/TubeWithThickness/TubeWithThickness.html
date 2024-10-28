@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/tube-geometry-with-width/50540/9 -->
+ <!-- https://codepen.io/prisoner849/pen/WNaGowN -->
+<head>
+  <title>TubeWithThickness</title>
+  <meta charset="utf-8" />
+    <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+<body></body>
+
+<script type="module">
+
+// @author  prisoner849
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+console.clear();
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(-3, 5, 8).setLength(12);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+//renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+scene.add(new THREE.GridHelper());
+
+let cps = new Array(6).fill().map((_, idx, arr) => {
+  let init = -(arr.length - 1);
+  return new THREE.Vector3(
+    init + idx * 2,
+    Math.random() < 0.5 ? -1 : 1,
+    -init - idx  * 2
+  );
+});
+let curve = new THREE.CatmullRomCurve3(cps);
+
+let shape = new THREE.Shape()
+shape.absarc(0, 0, 1, 0, Math.PI * 2);
+    shape.holes.push(new THREE.Path().absarc(0, 0, 0.5, 0, Math.PI * 2, false));
+let g = new THREE.ExtrudeGeometry(shape, {steps: 100, bevelEnabled: false, extrudePath: curve});
+let m = new THREE.MeshLambertMaterial({color: "aqua"});
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

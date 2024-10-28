@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/modify-dynamic-texture-float-32-array-with-frag-shaders/22816/2 -->
+<!-- https://codepen.io/mjurczyk/pen/poEXMoE -->
+<head>
+  <title> TiledUVcanvas </title>
+  <meta charset="utf-8" />
+<<style>
+* {
+  margin: 0;
+}
+</style>
+
+<body> </body>
+<!-- <link href="https://fonts.googleapis.com/css2?family=Baloo+Tamma+2&display=swap" rel="stylesheet">  -->
+<script src="../js/three.min.124.js"></script>
+<script src="../js/OrbitControls.124.js"></script>
+
+<script>
+
+// @author mjurczyk
+
+// Question Reference: discourse.threejs.org/t/modify-dynamic-texture-float-32-array-with-frag-shaders/22816
+
+let camera, scene, renderer, controls, mesh, clock;
+
+const USE_DEBUG_TEXTURE = false;
+		// '//cdn.wtlstudio.com/sample.wtlstudio.com/113ec317-3b5f-4059-b60b-c4f8520da921.png'
+const colorTexture = new THREE.TextureLoader().load('113ec317-3b5f-4059-b60b-c4f8520da921.png', texture => {
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+});
+		// '//cdn.wtlstudio.com/sample.wtlstudio.com/f73ee2e3-f623-4d48-9c04-83a19603a1cc.jpg'
+const photoTexture = new THREE.TextureLoader().load('f73ee2e3-f623-4d48-9c04-83a19603a1cc.jpg', texture => {
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.wrapS = THREE.RepeatWrapping;
+});
+
+const pixelsX = 10;
+const pixelsY = 10;
+const pixelSize = 2.0;
+
+const createWorld = () => {
+  const mesh = new THREE.Group(); // Entire "screen"
+  
+  for (let i = 0; i < pixelsX * pixelsY; i++) {
+    // Create pixel
+    const x = i % pixelsX;
+    const y = Math.floor(i / pixelsX);
+    
+    const pixel = new THREE.Mesh(
+      new THREE.BoxBufferGeometry(pixelSize, pixelSize, pixelSize),
+      new THREE.MeshStandardMaterial({ map: USE_DEBUG_TEXTURE ? colorTexture : photoTexture })
+    );
+    pixel.position.set(
+      x * pixelSize,
+      y * pixelSize,
+      0,
+    );
+    
+    // Remap pixel UVs to show only a specific part of the texture
+    const {
+      count,
+      itemSize,
+      array
+    } = pixel.geometry.attributes.uv;
+    const mappedUVs = [];
+
+    for (let j = 0; j < count * itemSize; j += itemSize) {
+      const u = array[j];
+      const v = array[j + 1];
+      
+      // mappedUVs.push(x / pixelsX + u / pixelsX);
+      // mappedUVs.push(y / pixelsY + v / pixelsY);
+      // Can be simplified to:
+
+      mappedUVs.push((x + u) / pixelsX);
+      mappedUVs.push((y + v) / pixelsY);
+    }
+    
+    const uvAttribute = new THREE.BufferAttribute(new Float32Array(mappedUVs), 2);
+    
+    pixel.geometry.setAttribute('uv', uvAttribute);
+
+    // Save original pixel information for later use
+    pixel.userData.x = x;
+    pixel.userData.y = y;
+    pixel.userData.originalUV = mappedUVs;
+
+    mesh.add(pixel);
+  }
+  
+  scene.add(mesh);
+  mesh.position.x -= pixelsX * pixelSize / 2;
+  mesh.position.y -= 5.0;
+  mesh.position.z += 10.0;
+  mesh.rotation.x -= Math.PI / 4;
+  
+  camera.lookAt(mesh.position);
+  
+  setInterval(() => {
+    updatePixels(mesh.children);
+  }, 1 / 60);
+};
+
+const updatePixels = (pixels) => {
+  // This defines the displacement, could also be mouse coordinates
+  const time = clock.getElapsedTime();
+  const screenSize = new THREE.Vector2(pixelsX - 1, pixelsY - 1);
+  const displacementScale = 0.03;
+  
+  pixels.forEach(pixel => {
+    const { geometry, userData } = pixel;
+    const { x, y, originalUV } = userData;
+
+    // We do similar mapping as earlier, just with a displacement
+    const { count, itemSize } = geometry.attributes.uv;
+    const shiftedUVs = [];
+    
+    // Determine displacement by distance from top-left corner
+    const distance = new THREE.Vector2(x, y).sub(screenSize).length() * displacementScale;
+    
+    for (let i = 0; i < count * itemSize; i += itemSize) {
+      const u = originalUV[i];
+      const v = originalUV[i + 1];
+      
+      geometry.attributes.uv.array[i] = u + distance * Math.sin(time);
+      geometry.attributes.uv.array[i + 1] = v - distance * Math.cos(time);
+    }
+    
+    geometry.attributes.uv.needsUpdate = true;
+  });
+};
+
+const init = () => {
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000.0);
+  camera.position.set(-15, 15, 28);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x333333);
+
+  scene.add(new THREE.HemisphereLight(0xffffcc, 0x19bbdc, 1));
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  document.body.appendChild(renderer.domElement);
+  
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  
+  clock = new THREE.Clock();
+  
+  createWorld();
+}
+
+const animate = () => {
+  requestAnimationFrame(animate);
+  
+  controls.update();
+
+  renderer.render(scene, camera); 
+}
+
+init();
+animate();
+
+</script>
+</html>

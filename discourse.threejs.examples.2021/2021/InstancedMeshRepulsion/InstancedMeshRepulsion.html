@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/repulsion-on-instancedmesh-feels-to-nervous/29328/3 -->
+<!-- https://jsfiddle.net/C3O3CI6/t18qscrn/43/ -->
+<head>
+  <title> InstancedMeshRepulsion </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.124.js"></script>
+<script src="../js/gsap.min.js"></script>
+
+<script>
+
+// @author blackInk
+
+var camera, scene, renderer;
+
+var mouse = { x:null, y:null };
+
+var mesh;
+var floor;
+var amount = parseInt( window.location.search.substr( 1 ) ) || 10;
+var count = Math.pow( amount, 3 );
+var dummy = new THREE.Object3D();
+var matrix = new THREE.Matrix4();
+var position = new THREE.Vector3();
+var raycaster = new THREE.Raycaster();
+
+
+init();
+animate();
+
+function init() {
+
+	camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 100 );
+	camera.position.set( amount * 0.9, amount * 0.9, amount * 0.9 );
+	camera.lookAt( 0, 0, 0 );
+
+	scene = new THREE.Scene();
+
+	var loader = new THREE.BufferGeometryLoader();
+		//https://threejs.org/examples/models/json/suzanne_buffergeometry.json
+	loader.load( 'suzanne_buffergeometry.json', function ( geometry ) {
+
+		geometry.computeVertexNormals();
+		geometry.scale( 0.5, 0.5, 0.5 );
+
+		var material = new THREE.MeshNormalMaterial();
+
+		mesh = new THREE.InstancedMesh( geometry, material, count );
+		mesh.instanceMatrix.setUsage( THREE.DynamicDrawUsage ); // will be updated every frame
+		scene.add( mesh );
+		
+		var i = 0;
+		var offset = ( amount - 1 ) / 2;
+
+		for ( var x = 0; x < amount; x ++ ) {
+
+				for ( var z = 0; z < amount; z ++ ) {
+					
+          
+					dummy.position.set( offset - x, 0, offset - z );
+					dummy.updateMatrix();
+
+					mesh.setMatrixAt( i ++, dummy.matrix );
+
+			}
+
+		}
+
+	} );
+	//
+var geom = new THREE.PlaneGeometry(100, 100);
+var mtrl = new THREE.ShadowMaterial({ opacity: .3 });
+
+floor = new THREE.Mesh(geom, mtrl);
+floor.position.y = 0;
+floor.receiveShadow = true;
+floor.rotateX(- Math.PI / 2);
+
+scene.add(floor);
+
+
+	renderer = new THREE.WebGLRenderer( { antialias: true } );
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	document.body.appendChild( renderer.domElement );
+
+	//
+    window.addEventListener( 'pointermove', function( event ) {
+  		 mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+  		 mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+    }, false );
+
+	window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+//
+
+function animate() {
+
+	requestAnimationFrame( animate );
+
+	render();
+
+}
+
+function map(value, start1, stop1, start2, stop2) {
+  return (value - start1) / (stop1 - start1) * (stop2 - start2) + start2
+}
+
+function distance(x1, y1, x2, y2) {
+    return Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2));
+}
+
+function render() {
+
+	if ( mesh ) {	
+  		
+      raycaster.setFromCamera( mouse, camera );
+	
+  		const intersects = this.raycaster.intersectObjects([floor]);
+      
+			if (intersects.length) {
+      		const { x, z } = intersects[0].point;
+          for ( var i = 0; i < mesh.count; i ++ ) {
+          
+                let j = i;
+                let pos = new THREE.Vector3();
+                let mtx = new THREE.Matrix4();
+                mesh.getMatrixAt( i, mtx );
+                
+								pos.setFromMatrixPosition( mtx );
+                
+								const mouseDistance = distance( x, z, pos.x , pos.z );
+          			const maxPositionY = 5;
+          			const minPositionY = 0;
+          			const startDistance = 6;
+          			const endDistance = 0;
+          			const y = map(mouseDistance, startDistance, endDistance, minPositionY, maxPositionY);
+          gsap.to(pos, 1, { y: y < 1 ? 1 : y, onUpdate:function() {
+
+            let matrix = new THREE.Matrix4();
+            matrix.setPosition( pos);
+            mesh.setMatrixAt( j, matrix );
+
+            mesh.instanceMatrix.needsUpdate = true;
+
+          } });
+
+          }
+      }
+	}
+
+	renderer.render( scene, camera );
+
+}
+</script>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-do-2d-pixel-displacement-on-a-texture/30199/2 -->
+<!-- https://jsfiddle.net/sdfgLy25/1/ -->
+<head>
+  <title> DisplacementOnTexture(Shader) </title>
+  <meta charset="utf-8" />
+ 	<style>
+	body {
+	margin: 0;
+	}
+	</style>
+</head>
+
+<script src="../js/three.min.132.js"></script>
+
+<body> </body>
+
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
+  camera.position.z = 1;
+
+  scene = new THREE.Scene();
+
+  const loader = new THREE.TextureLoader();
+  const diffuseMap = loader.load('brick_diffuse.jpg'); // https://threejs.org/examples/textures/brick_diffuse.jpg
+  diffuseMap.wrapS = diffuseMap.wrapT = THREE.RepeatWrapping;
+  const displacementMap = loader.load('dHLcm3j.png'); // https://i.imgur.com/dHLcm3j.png
+  displacementMap.format = THREE.LuminanceFormat;
+
+  const geometry = new THREE.PlaneGeometry();
+  const material = new THREE.MeshBasicMaterial({
+    map: diffuseMap
+  });
+
+  material.onBeforeCompile = function(shader) {
+
+    shader.uniforms.displacementMap = {
+      value: displacementMap
+    };
+
+    shader.fragmentShader = 'uniform sampler2D displacementMap;\n' + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      `
+     #ifdef USE_MAP
+     
+     		float displacement = texture2D( displacementMap, vUv ).r;
+
+        vec4 texelColor = texture2D( map, vUv + displacement );
+        
+        texelColor = mapTexelToLinear( texelColor );
+        diffuseColor *= texelColor;
+
+      #endif
+     `
+    );
+
+    material.userData.shader = shader;
+
+  };
+
+
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+
+} 
+
+</script>
+</html>

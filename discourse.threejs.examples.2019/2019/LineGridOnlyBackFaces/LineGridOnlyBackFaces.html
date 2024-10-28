@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/line-grid-that-only-shows-up-on-back-faces/7105/3 -->
+<!-- https://codepen.io/bitzilla/pen/XQzryM -->
+<head>
+  <title> LineGridOnlyBackFaces </title>
+  <meta charset="utf-8" />
+</head>
+
+<body style="background-color: black; overflow: hidden;"> </body>
+
+<script src="../js/three.min.103.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author lunch
+
+const PLOT_RADIUS = 50;
+
+let renderer = new THREE.WebGLRenderer();
+let camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight );
+let controls = new THREE.OrbitControls(camera, renderer.domElement);
+let scene = new THREE.Scene();
+
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+let planeXY = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
+let planeXZ = new THREE.Plane(new THREE.Vector3(1, 0, 0), PLOT_RADIUS * -2);
+let planeYX = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let planeYZ = new THREE.Plane(new THREE.Vector3(0, 1, 0), PLOT_RADIUS * -2);
+let planeZX = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+let planeZY = new THREE.Plane(new THREE.Vector3(0, 0, 1), PLOT_RADIUS * -2);
+
+let gridXY = new THREE.GridHelper(PLOT_RADIUS*2, 10, new THREE.Color(0x00BB00), new THREE.Color(0x00BB00));
+let gridXZ = new THREE.GridHelper(PLOT_RADIUS*2, 10, new THREE.Color(0x00BB00), new THREE.Color(0x00BB00));
+let gridYX = new THREE.GridHelper(PLOT_RADIUS*2, 10, new THREE.Color(0xBB0000), new THREE.Color(0xBB0000));
+let gridYZ = new THREE.GridHelper(PLOT_RADIUS*2, 10, new THREE.Color(0xBB0000), new THREE.Color(0xBB0000));
+let gridZX = new THREE.GridHelper(PLOT_RADIUS*2, 10, new THREE.Color(0x0000BB), new THREE.Color(0x0000BB));
+let gridZY = new THREE.GridHelper(PLOT_RADIUS*2, 10, new THREE.Color(0x0000BB), new THREE.Color(0x0000BB));
+
+gridXY.position.x += 0;
+gridXY.position.y += PLOT_RADIUS;
+gridXY.position.z += PLOT_RADIUS;
+
+gridXY.rotateZ(Math.PI / 2);
+
+gridXZ.position.x += PLOT_RADIUS*2;
+gridXZ.position.y += PLOT_RADIUS;
+gridXZ.position.z += PLOT_RADIUS;
+
+gridXZ.rotateZ(Math.PI / 2);
+
+gridYX.position.x += PLOT_RADIUS;
+gridYX.position.y += 0
+gridYX.position.z += PLOT_RADIUS;
+
+gridYZ.position.x += PLOT_RADIUS;
+gridYZ.position.y += PLOT_RADIUS*2;
+gridYZ.position.z += PLOT_RADIUS;
+
+gridZX.position.x += PLOT_RADIUS;
+gridZX.position.y += PLOT_RADIUS;
+gridZX.position.z += 0;
+
+gridZX.rotateX(Math.PI / 2);
+
+gridZY.position.x += PLOT_RADIUS;
+gridZY.position.y += PLOT_RADIUS;
+gridZY.position.z += PLOT_RADIUS*2;
+
+gridZY.rotateX(Math.PI / 2);
+
+scene.add( gridXY );
+scene.add( gridXZ );
+scene.add( gridYX );
+scene.add( gridYZ );
+scene.add( gridZX );
+scene.add( gridZY );
+
+window.addEventListener( 'resize', onWindowResize, false );
+setControls();
+animate();
+
+function setControls() {
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.mouseButtons = {
+        LEFT: THREE.MOUSE.LEFT,
+        MIDDLE: THREE.MOUSE.RIGHT
+    }
+    controls.autoRotate = false;
+    controls.autoRotateSpeed = 0.06;
+    controls.rotateSpeed = 0.15;
+    controls.target = new THREE.Vector3(50, 50, 50);
+    controls.screenSpacePanning = false;
+    controls.enablePan = false;
+    controls.minDistance = 20;
+    controls.maxDistance = 225;
+    controls.maxPolarAngle = Math.PI;
+    controls.minPolarAngle = 0;
+}
+
+function render() {
+    renderer.render( scene, camera );
+}
+
+function animate() {
+
+    cameraPos = new THREE.Vector3().unproject(camera);
+
+    gridXY.visible = isGridVisible(cameraPos, planeXY);
+    gridXZ.visible = isInverseGridVisible(cameraPos, planeXZ);
+    gridYX.visible = isGridVisible(cameraPos, planeYX);
+    gridYZ.visible = isInverseGridVisible(cameraPos, planeYZ);
+    gridZX.visible = isGridVisible(cameraPos, planeZX);
+    gridZY.visible = isInverseGridVisible(cameraPos, planeZY);
+
+    requestAnimationFrame( animate );
+    controls.update();
+    render();
+
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+function isGridVisible(camera, plane) {
+    if (plane.distanceToPoint(camera) < 0) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+function isInverseGridVisible(camera, plane) {
+    if (plane.distanceToPoint(camera) >= 0) {
+        return false;
+    } else {
+        return true;
+    } 
+}
+</script>
+
+</html>

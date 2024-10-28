@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/help-getting-the-actual-position-of-a-vertices-in-a-buffer-geometry/29649/3 -->
+<!-- https://jsfiddle.net/prisoner849/cxwkhgdL/ -->
+<head>
+  <title> TiledNoiseSurfaces </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear(); 
+
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+import {  ImprovedNoise } from "../jsm/ImprovedNoise.132.js";
+
+THREE.BufferGeometry.prototype.toQuads = ToQuads;
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 8, 13);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+const perlin = new ImprovedNoise();
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let step = 20;
+for(let z = -4; z <= 4; z ++){
+	for(let x = -4; x <= 4; x++){
+  	let p = createPlane(step, Math.random() * 0x7f7f7f + 0x7f7f7f);
+    setNoise(p.geometry, new THREE.Vector2(x, z), 2, 3);
+    p.geometry.rotateX(Math.PI * 0.5);
+    p.position.set(x, 0, z).multiplyScalar(step);
+    scene.add(p);
+  }
+}
+
+renderer.setAnimationLoop( _ => {
+	renderer.render(scene, camera);
+})
+
+function createPlane( step, color){
+  let g = new THREE.PlaneGeometry(step, step, 25, 25).toQuads();
+  let m = new THREE.LineBasicMaterial({color: color});
+  let l = new THREE.LineSegments(g, m);
+  return l;
+}
+
+function setNoise(g, uvShift, multiplier, amplitude){
+	let pos = g.attributes.position;
+  let uv = g.attributes.uv;
+  let vec2 = new THREE.Vector2();
+  for(let i = 0; i < pos.count; i++){
+    vec2.fromBufferAttribute(uv, i).add(uvShift).multiplyScalar(multiplier);
+    pos.setZ(i, perlin.noise(vec2.x, vec2.y, 0) * amplitude );
+  }
+}
+
+
+function ToQuads() {
+	let g = this;
+  let p = g.parameters;
+  let segmentsX = (g.type == "TorusBufferGeometry" ? p.tubularSegments : p.radialSegments) || p.widthSegments || p.thetaSegments || (p.points.length - 1) || 1;
+  let segmentsY = (g.type == "TorusBufferGeometry" ? p.radialSegments : p.tubularSegments) || p.heightSegments || p.phiSegments || p.segments || 1;
+  let indices = [];
+  for (let i = 0; i < segmentsY + 1; i++) {
+    let index11 = 0;
+    let index12 = 0;
+    for (let j = 0; j < segmentsX; j++) {
+      index11 = (segmentsX + 1) * i + j;
+      index12 = index11 + 1;
+      let index21 = index11;
+      let index22 = index11 + (segmentsX + 1);
+      indices.push(index11, index12);
+      if (index22 < ((segmentsX + 1) * (segmentsY + 1) - 1)) {
+        indices.push(index21, index22);
+      }
+    }
+    if ((index12 + segmentsX + 1) <= ((segmentsX + 1) * (segmentsY + 1) - 1)) {
+      indices.push(index12, index12 + segmentsX + 1);
+    }
+  }
+  g.setIndex(indices);
+  return g;
+}
+
+</script>
+</html>

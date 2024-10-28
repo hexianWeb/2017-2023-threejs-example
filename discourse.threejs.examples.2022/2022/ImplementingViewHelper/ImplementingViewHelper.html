@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/implementing-viewhelper-to-the-project/45947/2 -->
+<!-- https://jsfiddle.net/ztx6k3pg/ -->
+<head>
+  <title>ImplementingViewHelper</title>
+  <meta charset="utf-8" />
+    <style> body{ margin: 0; } </style
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author Mugen87
+
+import * as THREE from '../jsm/three.module.140.js';
+import {OrbitControls} from '../jsm/OrbitControls.140.js';
+import { ViewHelper } from '../jsm/ViewHelper.140.js';
+ 
+
+let mesh, renderer, scene, camera, controls, helper;
+
+init();
+animate();
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.autoClear = false;
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set( 20, 20, 20 );
+
+    // controls
+    controls = new OrbitControls( camera, renderer.domElement );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    
+    // light
+    const light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20,20, 0 );
+    scene.add( light );
+    
+    // axes
+    scene.add( new THREE.AxesHelper( 20 ) );
+
+    // geometry
+    const geometry = new THREE.SphereGeometry( 5, 12, 8 );
+    
+    // material
+    const material = new THREE.MeshPhongMaterial( {
+        color: 0x00ffff, 
+        flatShading: true,
+        transparent: true,
+        opacity: 0.7,
+    } );
+    
+    // mesh
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+    
+    
+    // helper
+    helper = new ViewHelper( camera, renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    
+    renderer.clear();
+    
+    renderer.render( scene, camera );
+    
+   	helper.render( renderer );
+
+}
+
+</script>
+</html>

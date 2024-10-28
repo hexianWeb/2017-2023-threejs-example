@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/line-segment-coordinates/4358/3 -->
+<!-- http://jsfiddle.net/prisoner849/go0dfwo5/ -->
+<head>
+  <title> Interaction with Points </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+   </style>
+</head>
+
+<body>
+
+</body>
+<script src="../js/three.min.97.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script> // @author prisoner849
+  Object.assign(THREE.PlaneBufferGeometry.prototype, {
+    toGrid: function() {
+      let segmentsX = this.parameters.widthSegments || 1;
+      let segmentsY = this.parameters.heightSegments || 1;
+      let indices = [];
+      for (let i = 0; i < segmentsY + 1; i++) {
+        let index11 = 0;
+        let index12 = 0;
+        for (let j = 0; j < segmentsX; j++) {
+          index11 = (segmentsX + 1) * i + j;
+          index12 = index11 + 1;
+          let index21 = index11;
+          let index22 = index11 + (segmentsX + 1);
+          indices.push(index11, index12);
+          if (index22 < ((segmentsX + 1) * (segmentsY + 1) - 1)) {
+            indices.push(index21, index22);
+          }
+        }
+        if ((index12 + segmentsX + 1) <= ((segmentsX + 1) * (segmentsY + 1) - 1)) {
+          indices.push(index12, index12 + segmentsX + 1);
+        }
+      }
+      this.setIndex(indices);
+      return this;
+    }
+  });
+</script>
+
+<script>
+
+//@author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(1.25, 7, 7);
+camera.lookAt(scene.position);
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var geometry = new THREE.PlaneBufferGeometry(10, 10, 10, 10).toGrid();
+geometry.rotateX(-Math.PI * 0.5);
+
+var plane = new THREE.LineSegments(geometry, new THREE.MeshBasicMaterial({
+  color: "red"
+}));
+scene.add(plane);
+
+var points = new THREE.Points(geometry, new THREE.PointsMaterial({
+  size: 0.25,
+  color: "yellow"
+}));
+scene.add(points);
+
+var raycaster = new THREE.Raycaster();
+raycaster.params.Points.threshold = 0.25;
+var mouse = new THREE.Vector2();
+var intersects = null;
+var plane = new THREE.Plane();
+var planeNormal = new THREE.Vector3();
+var currentIndex = null;
+var planePoint = new THREE.Vector3();
+var dragging = false;
+
+window.addEventListener("mousedown", mouseDown, false);
+window.addEventListener("mousemove", mouseMove, false);
+window.addEventListener("mouseup", mouseUp, false);
+
+function mouseDown(event) {
+  setRaycaster(event);
+  getIndex();
+  dragging = true;
+}
+
+function mouseMove(event) {
+  if (dragging && currentIndex !== null) {
+    setRaycaster(event);
+    raycaster.ray.intersectPlane(plane, planePoint);
+    geometry.attributes.position.setXYZ(currentIndex, planePoint.x, planePoint.y, planePoint.z);
+    geometry.attributes.position.needsUpdate = true;
+  }
+}
+
+function mouseUp(event) {
+  dragging = false;
+  currentIndex = null;
+  controlsEnabled(true);
+}
+
+function getIndex() {
+  intersects = raycaster.intersectObject(points);
+  if (intersects.length === 0) {
+    currentIndex = null;
+    return;
+  }
+  controlsEnabled(false);
+  currentIndex = intersects[0].index;
+  setPlane(intersects[0].point);
+}
+
+function setPlane(point) {
+  planeNormal.subVectors(camera.position, point).normalize();
+  plane.setFromNormalAndCoplanarPoint(planeNormal, point);
+}
+
+function setRaycaster(event) {
+  getMouse(event);
+  raycaster.setFromCamera(mouse, camera);
+}
+
+function getMouse(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+}
+
+function controlsEnabled(state){
+	controls.enableZoom = state;
+  controls.enableRotate = state;
+  controls.enablePan = state;
+}
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/html-on-different-faces-of-cube/17281/8 -->
+<!-- https://jsfiddle.net/prisoner849/w6sz1t2a/ -->
+<head>
+  <title> LabelOnCubeFaces </title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+
+.label {
+  text-align: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid white;
+  border-radius: 5px;
+  color: #4f8;
+  font-family: sans-serif;
+  background: rgba( 0, 0, 0, .6 );
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.122.js"; 
+import { OrbitControls } from "../jsm/OrbitControls.122.js";
+import { CSS3DRenderer, CSS3DObject } from '../jsm/CSS3DRenderer.122.js';
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(10, 10, 10);
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var labelRenderer = new CSS3DRenderer();
+labelRenderer.setSize( innerWidth, innerHeight );
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0px';
+document.body.appendChild( labelRenderer.domElement );
+
+var controls = new OrbitControls(camera, labelRenderer.domElement);
+
+var light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(10, 20, 30);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+scene.add(new THREE.GridHelper(10, 10));
+
+var box = new THREE.Mesh(new THREE.BoxBufferGeometry(4, 2, 2), new THREE.MeshLambertMaterial({color: 0x0088ff, wireframe: false}));
+scene.add(box);
+
+var pos = new THREE.Vector3(2, 0.5, 0);
+var normal = new THREE.Vector3(1, 0, 0);
+
+var cNormal = new THREE.Vector3();
+var cPos = new THREE.Vector3();
+var m4 = new THREE.Matrix4();
+
+var div = document.createElement( 'div' );
+div.className = 'label';
+div.textContent = '1';
+var label = new CSS3DObject( div );
+label.position.copy(pos);
+label.rotation.y = Math.PI * 0.5;
+label.scale.set(0.025, 0.025, 1);
+box.add( label );
+
+window.addEventListener( 'resize', onWindowResize, false );
+
+animate();
+
+function animate(){
+	requestAnimationFrame(animate);
+	
+  cNormal.copy(normal).applyMatrix3(box.normalMatrix);
+  cPos.copy(pos).applyMatrix4(m4.multiplyMatrices(camera.matrixWorldInverse, box.matrixWorld));
+  let d = cPos.negate().dot(cNormal);
+  
+  div.style.visibility = d < 0 ? "hidden" : "visible";
+  
+	renderer.render(scene, camera);
+  labelRenderer.render( scene, camera );
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+  labelRenderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+</script>
+</html>

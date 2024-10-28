@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-transform-controls-changes-to-different-mesh-on-a-scene-even-when-the-arrow-is-in-focus/10796/10 -->
+<!-- https://codepen.io/abnormalcoder/pen/gOOdjgY -->
+<head>
+  <title> TransformControls </title>
+  <meta charset="utf-8" />
+</head>
+
+<body></body>
+
+<script src="../js/three.min.109.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/TransformControls.js"></script>
+
+<script>
+
+// @author abnormalcoder
+
+var camera, scene, renderer;
+        var geometry, material, mesh;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let meshes = [];
+        var controledObject;
+        var a;
+
+        init();
+        animate();
+
+        function init() {
+
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
+            camera.position.z = 1;
+
+            scene = new THREE.Scene();
+            geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            material = new THREE.MeshNormalMaterial();
+            material1 = new THREE.MeshNormalMaterial();
+            renderer = new THREE.WebGLRenderer({
+                antialias: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            document.body.appendChild(renderer.domElement);
+
+            mesh = new THREE.Mesh(geometry, material);
+            mesh.name = "mesh1";
+
+            scene.add(mesh);
+            var mesh1 = new THREE.Mesh(geometry, material1);
+            scene.add(mesh1);
+            mesh1.name = "mesh2";
+            meshes.push(mesh1);
+            meshes.push(mesh);
+            mesh1.position.set(0.2, 0, 0);
+            // console.log(meshes);
+
+            orbit = new THREE.OrbitControls(camera, renderer.domElement);
+            orbit.update();
+            orbit.addEventListener('change', render);
+
+            control = new THREE.TransformControls(camera, renderer.domElement);
+            control.addEventListener('change', render);
+            scene.add(control);
+
+            control.addEventListener('dragging-changed', function(event) {
+
+                orbit.enabled = !event.value;
+                // control.attach(controledObject);
+            });
+
+
+            control.addEventListener('mouseDown', function(event) {
+                controledObject = control.object;
+                control.attach(controledObject);
+                console.log("clicked", controledObject);
+                a = true;
+                console.log(a);
+
+            });
+
+
+            control.addEventListener('mouseUp', function(event) {
+
+                console.log(controledObject);
+                control.attach(controledObject);
+                control.mode = 'translate';
+
+
+            });
+            // console.log(controledObject);
+
+            control.attach(mesh);
+            meshes.push(control);
+            controledObject = control.object;
+
+            //scene.add(control);
+
+            window.addEventListener('click', onClick, false);
+        }
+        console.log(controledObject.name);
+
+        function onClick(event) {
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // calculate objects intersecting the picking ray
+            var intersects = raycaster.intersectObjects(scene.children, true);
+            //console.log(intersects);
+
+            for (var i = 0; i < intersects.length; i++) {
+                console.log(intersects[i].object.type);
+
+                //console.log(a);
+
+                if (intersects[i].object.type == "Mesh") {
+                    if (a) {
+                        control.attach(controledObject);
+                        a = false;
+                    } else {
+                        control.attach(intersects[i].object);
+                        console.log("inside");
+
+                    }
+
+                }
+
+
+                // if (intersects[i].object.type == "Mesh" || intersects[i].object.type == "TransformControlsPlane") {
+                // console.log("inside");
+                // control.attach(intersects[i].object);
+                // break;
+
+                // control.attach(intersects[i].object);
+                // console.log("outside");
+                // break;
+                // if (intersects[i].object.type == "TransformControlsPlane" || intersects[i].object.type == "Line") {
+                //     control.attach(controledObject);
+                //     console.log("inside");
+                // }
+
+
+
+            }
+
+            // }
+
+            render();
+
+        }
+
+        function animate() {
+
+            requestAnimationFrame(animate);
+
+            /* mesh.rotation.x += 0.01;
+            mesh.rotation.y += 0.02; */
+
+            renderer.render(scene, camera);
+        }
+
+        function render() {
+            renderer.render(scene, camera);
+        }
+
+</script>
+
+</html>

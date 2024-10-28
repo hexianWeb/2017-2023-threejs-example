@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-recreate-this-spiral-effect/9080/3 -->
+<!-- https://jsfiddle.net/prisoner849/4gnm8bw3/ -->
+<head>
+  <title> SpiralEffect </title>
+  <meta charset="utf-8" />
+     <style>
+		body {
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.107.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 30, 30);
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 12, 0);
+controls.update();
+
+scene.add(new THREE.GridHelper(20, 10));
+
+var radius = 10;
+var turns = 3;
+var objPerTurn = 30;
+
+var angleStep = (Math.PI * 2) / objPerTurn;
+var heightStep = 0.5;
+
+var geom = new THREE.BoxBufferGeometry(2, 3, 0.1);
+
+for (let i = 0; i < turns * objPerTurn; i++) {
+  let plane = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({
+    color: Math.random() * 0x888888 + 0x888888
+  }));
+
+  // position
+  plane.position.set(
+    Math.cos(angleStep * i) * radius,
+    heightStep * i,
+    Math.sin(angleStep * i) * radius
+  );
+
+  // rotation
+  plane.rotation.y = -angleStep * i;
+
+  scene.add(plane);
+}
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera)
+});
+
+</script>
+</html>

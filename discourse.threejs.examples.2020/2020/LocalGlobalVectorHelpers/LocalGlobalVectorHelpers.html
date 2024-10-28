@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/get-camera-horizontal-vector/20671/4 -->
+ <!-- https://codepen.io/mjurczyk/pen/bGeOYKp?editors=0010 -->
+<head>
+  <title> LocalGlobalVectorHelpers </title>
+  <meta charset="utf-8" />
+<style>
+*{
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script src="../js/three.min.122.js"></script>
+<script src="../js/OrbitControls.122.js"></script>
+
+<script>
+
+//@author mjurczyk
+
+// Question Reference: discourse.threejs.org/t/get-camera-horizontal-vector/20671
+
+let camera, scene, renderer, controls, mesh;
+
+const drawArrow = (color, vectorCalculation) => {
+  const arrow = new THREE.ArrowHelper(
+    vectorCalculation(),
+    new THREE.Vector3(0.0, Math.random() * 0.2, 0.0),
+    3.0,
+    new THREE.Color(color)
+  );
+  scene.add(arrow);
+  
+  setInterval(() => {
+    arrow.setDirection(vectorCalculation());
+  }, 1);
+};
+
+const createWorld = () => {
+  mesh = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(2, 2, 2),
+    new THREE.MeshStandardMaterial({ color: 0xff9999 })
+  );
+  scene.add(mesh);
+  
+  camera.lookAt(mesh.position);
+  
+  drawArrow(
+    'red',
+    () => mesh.getWorldDirection()
+          .clone()
+  );
+  
+  drawArrow(
+    'green',
+    () => mesh.getWorldDirection()
+            .clone()
+            .applyAxisAngle(mesh.up, Math.PI / 2)
+  );
+
+  drawArrow(
+    'blue',
+    () => new THREE.Vector3(1.0, 0.0, 0.0)
+  );
+
+  drawArrow(
+    'cyan',
+    () => new THREE.Vector3(0.0, 0.0, 1.0)
+  );
+
+  drawArrow(
+    'pink', // NOTE This one points towards the camera
+    () => camera.getWorldDirection()
+            .clone()
+            .negate()
+  );
+
+  drawArrow(
+    'magenta',
+    () => {
+      const direction = camera.getWorldDirection()
+            .clone()
+            .applyAxisAngle(new THREE.Vector3(0.0, 1.0, 0.0), -Math.PI / 2);
+      direction.y = 0;
+      
+      return direction;
+    }
+  );
+  
+  drawArrow(
+    'darkred',
+    () => mesh.up
+  );
+};
+
+const init = () => {
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000.0);
+  camera.position.set(-5, 5, 7);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x333333);
+
+  scene.add(new THREE.HemisphereLight(0xffffcc, 0x19bbdc, 1));
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  document.body.appendChild(renderer.domElement);
+  
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.autoRotate = true;
+  
+  createWorld();
+}
+
+const animate = () => {
+  requestAnimationFrame(animate);
+  
+  controls.update();
+
+  renderer.render(scene, camera); 
+}
+
+init();
+animate();
+
+</script>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-do-i-set-up-post-processing-to-make-only-one-object-in-the-scene-glow-not-all-of-it/50643/9 -->
+<!-- https://codepen.io/boytchev/pen/ExdmvxE -->
+<head>
+  <title>FakeSelectiveBloom</title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+// general setup, boring, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 12, 4, 12 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+
+// create the back ball
+
+var globe = new THREE.Mesh(
+			new THREE.IcosahedronGeometry( 2, 2 ),
+			new THREE.MeshStandardMaterial( {
+					color: 'dimgray',
+					flatShading: true,
+					metalness: 0.9,
+					roughness: 0.6
+			} )
+);	
+scene.add( globe );
+
+
+// create the blue background
+
+var cosmos = new THREE.Mesh(
+			new THREE.IcosahedronGeometry( 30, 5 ),
+			new THREE.MeshStandardMaterial( {
+					color: 'navy',
+					flatShading: true,
+					side: THREE.BackSide,
+					metalness: 0.8,
+					roughness: 0.3,
+			} )
+);	
+scene.add( cosmos );
+
+var cosmos2 = cosmos.clone();
+		cosmos2.rotation.y = 0.1;
+		scene.add( cosmos2 );
+
+
+// the fake bloom is a group with 20 torii
+// the oreol is simulated with opacity
+
+var bloom = new THREE.Group();
+		bloom.position.y = 2;
+		scene.add( bloom );
+
+for( var i=0; i<1; i+=0.05 )
+{
+		var torus = new THREE.Mesh(
+				new THREE.TorusGeometry( 2, 0.1+i*i/2, 20, 120 ),
+ 		   	new THREE.MeshLambertMaterial( {
+							color: i==0?'white':'orange',
+							transparent: true,
+							opacity: 1-Math.pow(i,0.1)
+					} )
+    );	
+		bloom.add( torus );
+}
+
+
+function animationLoop( t )
+{
+		t = t/10000;
+
+		// make the background alive
+		cosmos.rotation.x = 2*t;
+		cosmos.rotation.y = -2*t;
+		cosmos2.rotation.x = -1.5*t;
+		cosmos2.rotation.y = 1.5*t;
+	
+		// move the blooming torus up and down
+		bloom.position.y = 2*Math.sin(4*t);
+	
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+</script>
+</html>

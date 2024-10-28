@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/directionallight-shadow-camera-helper-pointing-in-the-wrong-direction/27392 -->
+<!-- https://jsfiddle.net/pugd0sLv/2/ -->
+<head>
+  <title> ShadowCameraHelper </title>
+  <meta charset="utf-8" />
+  	<style>
+		body{
+		margin: 0;
+		}
+	</style>
+</head>
+
+<body></body>
+
+<script src="../js/three.min.129.js"></script>
+<script src="../js/OrbitControls.129.js"></script>
+
+<script>
+
+// @author twisted + Mugen87
+
+const RED = 0xff0000;
+const GREEN = 0x00ff00;
+const BLUE = 0x0000ff;
+const AXIS_LENGTH = 100;
+
+let canvas, scene, renderer, camera;
+
+function initRenderer() {
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.shadowMap.enabled = true;
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+}
+
+function initCamera() {
+  camera = new THREE.PerspectiveCamera(70, 1, 1, 10000);
+  camera.name = 'camera';
+  scene.add(camera);
+  camera.position.set(180, 150, 100);
+}
+
+function initLight() {
+  const light = new THREE.DirectionalLight(0xFFFFFF, 5);
+  light.name = 'light';
+  light.castShadow = true;
+  light.position.set(-100, 100, 0);
+  light.target.position.set(0, 100, 100);
+  scene.add(light);
+  light.target.name = 'light.target';
+  scene.add(light.target);
+  //add light helper
+  const lightHelper = new THREE.DirectionalLightHelper(light, 10);
+  lightHelper.name = 'lightHelper';
+  scene.add(lightHelper);
+  lightHelper.parent.updateMatrixWorld();
+  lightHelper.update();
+  //add shadow helper
+  const shadowHelper = new THREE.CameraHelper(light.shadow.camera);
+  shadowHelper.name = 'shadowHelper';
+  scene.add(shadowHelper);
+}
+
+function initAxes() {
+  function makeAxis(start, finish, material, name) {
+    const points = [start, finish];
+    const axisGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    const newAxis = new THREE.Line(axisGeometry, material);
+    newAxis.name = name;
+    scene.add(newAxis);
+  }
+  var xAxisMaterial = new THREE.LineBasicMaterial({
+    color: RED
+  });
+  var yAxisMaterial = new THREE.LineBasicMaterial({
+    color: GREEN
+  });
+  var zAxisMaterial = new THREE.LineBasicMaterial({
+    color: BLUE
+  });
+  makeAxis(new THREE.Vector3(-AXIS_LENGTH, 0, 0), new THREE.Vector3(AXIS_LENGTH, 0, 0), xAxisMaterial, 'xAxis');
+  makeAxis(new THREE.Vector3(0, -AXIS_LENGTH, 0), new THREE.Vector3(0, AXIS_LENGTH, 0), yAxisMaterial, 'yAxis');
+  makeAxis(new THREE.Vector3(0, 0, -AXIS_LENGTH), new THREE.Vector3(0, 0, AXIS_LENGTH), zAxisMaterial, 'zAxis');
+}
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+function listSceneObjects() {
+  console.log(`id: ${scene.id}, name: ${scene.name}, parent.id: ${scene?.parent?.id}`);
+  for (const obj of scene.children) {
+    console.log(`id: ${obj.id}, name: ${obj.name}, parent.id: ${obj.parent.id}`);
+  }
+}
+
+
+scene = new THREE.Scene();
+scene.name = 'scene';
+initRenderer();
+initCamera();
+initLight();
+initAxes();
+new THREE.OrbitControls(camera, renderer.domElement);
+listSceneObjects();
+render();
+
+</script>
+</html>

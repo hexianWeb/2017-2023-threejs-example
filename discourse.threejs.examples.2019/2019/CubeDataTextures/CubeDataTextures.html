@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/does-cubetexture-support-datatexture/11591 -->
+ <!-- https://jsfiddle.net/0mnygezs -->
+<head>
+  <title> CubeDataTextures </title>
+  <meta charset="utf-8" />
+ <style>	
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+<body> </body>
+<script src="../js/three.min.111.js"></script>
+<script src="../js/OrbitControls.js"></script> 
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+		
+		var textures = [];
+		
+		for ( var i = 0; i < 6; i ++ ) {
+		
+			textures.push( generateDataTexture( new THREE.Color( 0xffffff * Math.random() ) ) );
+		
+		}
+		
+		var cubeTexture = new THREE.CubeTexture( textures );
+		cubeTexture.needsUpdate = true;
+		scene.background = cubeTexture;
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+function generateDataTexture( color ) {
+
+	var width = 256;
+	var height = 256;
+
+	// create a buffer with color data
+
+	var size = width * height;
+	var data = new Uint8Array( 3 * size );
+
+	var r = Math.floor( color.r * 255 );
+	var g = Math.floor( color.g * 255 );
+	var b = Math.floor( color.b * 255 );
+
+	for ( var i = 0; i < size; i ++ ) {
+
+		var stride = i * 3;
+
+		data[ stride ] = r;
+		data[ stride + 1 ] = g;
+		data[ stride + 2 ] = b;
+
+	}
+
+	// used the buffer to create a DataTexture
+
+	return new THREE.DataTexture( data, width, height, THREE.RGBFormat );
+
+}
+
+</script> 
+
+</html>

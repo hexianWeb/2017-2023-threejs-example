@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/transparent-faces-in-three-js/22716/2 -->
+<!-- https://codepen.io/mjurczyk/pen/BaLggOe -->
+<head>
+  <title> TransparencyRenderOrder </title>
+  <meta charset="utf-8" />
+<style>
+* {
+  margin: 0;
+}
+</style>
+
+<body> </body>
+<!-- <link href="https://fonts.googleapis.com/css2?family=Baloo+Tamma+2&display=swap" rel="stylesheet">  -->
+<script src="../js/three.min.124.js"></script>
+<script src="../js/OrbitControls.124.js"></script>
+
+<script>
+
+// @author mjurczyk
+
+// Question Reference: discourse.threejs.org/t/opacity-on-intersect-mesh/22716
+
+let camera, scene, renderer, controls, mesh;
+
+const TRANSPARENT_RENDER_ORDER = 2;
+const OPAQUE_RENDER_ORDER = 1;
+
+const createWorld = () => {
+// '//cdn.wtlstudio.com/sample.wtlstudio.com/2c676b21-2931-439b-9b3c-29727637959f.png'
+  const gridTexture = new THREE.TextureLoader().load('2c676b21-2931-439b-9b3c-29727637959f.png');
+  
+  const opaqueSphere1 = new THREE.Mesh(
+    new THREE.SphereBufferGeometry(2, 10, 10),
+    new THREE.MeshStandardMaterial({
+      color: 0xff9999,
+      transparent: true,
+      opacity: 1.0,
+    })
+  );
+  opaqueSphere1.renderOrder = OPAQUE_RENDER_ORDER;
+  
+  scene.add(opaqueSphere1);
+  
+  const transparentSphere1 = new THREE.Mesh(
+    new THREE.SphereBufferGeometry(2, 10, 10),
+    new THREE.MeshStandardMaterial({
+      color: 0x9999ff,
+      transparent: true,
+      opacity: 0.7,
+      map: gridTexture,
+    })
+  );
+  transparentSphere1.position.x += 2.0;
+  transparentSphere1.renderOrder = TRANSPARENT_RENDER_ORDER;
+  
+  scene.add(transparentSphere1);
+  
+  const opaqueSphere2 = new THREE.Mesh(
+    new THREE.SphereBufferGeometry(2, 10, 10),
+    new THREE.MeshStandardMaterial({
+      color: 0x99ff99,
+      transparent: true,
+      opacity: 1.0,
+    })
+  );
+  opaqueSphere2.renderOrder = OPAQUE_RENDER_ORDER;
+  opaqueSphere2.position.x += 4.0;
+  
+  scene.add(opaqueSphere2);
+  
+  camera.lookAt(transparentSphere1.position);
+};
+
+const init = () => {
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000.0);
+  camera.position.set(-5, 5, 7);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x333333);
+
+  scene.add(new THREE.HemisphereLight(0xffffcc, 0x19bbdc, 1));
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  document.body.appendChild(renderer.domElement);
+  
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  
+  createWorld();
+}
+
+const animate = () => {
+  requestAnimationFrame(animate);
+  
+  controls.update();
+
+  renderer.render(scene, camera); 
+}
+
+init();
+animate();
+
+</script>
+</html>

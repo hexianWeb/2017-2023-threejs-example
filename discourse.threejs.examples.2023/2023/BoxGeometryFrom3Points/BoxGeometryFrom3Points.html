@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/set-box-geometry-position-and-orientation-from-3-points/59114/10 -->
+<!-- https://codepen.io/boytchev/pen/GRzagBW -->
+<head>
+  <title>BoxGeometryFrom3Points</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.158.js';
+import { OrbitControls } from '../jsm/OrbitControls.158.js';
+
+// general setup, boring, skip to the next comment
+
+console.clear( );
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight, 1, 5000 );
+    camera.position.set( 400, 700, 1500 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+
+// next comment
+
+
+
+// create 3 points (actually, they are spheres)
+
+var A = new THREE.Mesh(
+			new THREE.SphereGeometry( 4 ),
+    	new THREE.MeshLambertMaterial( {color:'crimson'} )
+    ),	
+		B = A.clone(),
+		C = A.clone();
+
+scene.add( A, B, C );
+
+
+
+// set random positions of the points
+
+// A.position.randomDirection( ).multiplyScalar( 400 );
+// B.position.randomDirection( ).multiplyScalar( 400 );
+// C.position.randomDirection( ).multiplyScalar( 400 );
+
+
+
+// set specific coordinates
+
+A.position.set(  25.881325015111123, -54.843221018845696, 1005.6995636272433 );
+B.position.set( -19.933612712994144, -47.000350482003206,  583.9372101709666 );
+C.position.set( -40.457901562441855, -48.85426306392774,   588.8611391499182 );
+
+controls.target.copy( C.position );
+
+
+
+// reorder A, B, C so AB is the longest side of triangle ABC
+
+var distAB = A.position.distanceTo( B.position ),
+		distBC = B.position.distanceTo( C.position ),
+		distCA = C.position.distanceTo( A.position );
+
+var v;
+
+if( distBC>=distCA && distBC>=distAB )
+{
+			// swap A-C
+			v = A; A = C; C = v;
+} else
+if( distCA>=distAB && distCA>=distBC )
+{
+			// swap B-C
+			v = B; B = C; C = v;
+}
+
+
+// create a plane
+
+var plane = new THREE.Mesh(
+		new THREE.BoxGeometry( 1, 1, 0.1 ).translate( 0.5, 0.5, 0 ),
+		new THREE.MeshNormalMaterial( {
+						transparent: true,
+						opacity: 0.4,
+		} )
+)
+
+scene.add( plane );
+
+
+
+// set the position of the plane
+
+plane.position.copy( A.position );
+
+
+
+// set the size of the plane
+
+v = new THREE.Vector3();
+
+plane.scale.x = A.position.distanceTo( B.position );
+plane.scale.y = new THREE.Line3( A.position, B.position ) 
+										.closestPointToPoint( C.position, false, v )
+										.distanceTo( C.position );
+
+
+
+// set the orientation of the plane 
+
+var x = new THREE.Vector3().subVectors( B.position, A.position ).normalize( ),
+		y = new THREE.Vector3().subVectors( C.position, v ).normalize( ),
+		z = new THREE.Vector3().crossVectors( x, y );
+
+var matrix = new THREE.Matrix4().makeBasis( x, y, z ),
+		euler = new THREE.Euler().setFromRotationMatrix( matrix );
+
+plane.rotation.copy( euler );
+
+
+
+function animationLoop( t )
+{
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

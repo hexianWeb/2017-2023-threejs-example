@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/periodic-circular-opening-and-closing-box/32322 -->
+<!-- Periodic circular opening and closing box  -->
+<head>
+  <title> ShaderExamples_09 </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        overflow:hidden;
+        margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.135.js';
+import { OrbitControls } from '../jsm/OrbitControls.135.js';
+import { GLTFLoader } from '../jsm/GLTFLoader.135.js';
+
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.01, 1000 );
+camera.position.set( 1, 1, 1.3 );
+
+const scene = new THREE.Scene();
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x3e9724 );
+document.body.appendChild( renderer.domElement );
+
+const light = new THREE.PointLight( 0xffffff, 1.2 );
+light.position.set( 5, 5, 5 );
+scene.add( light );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const forestTexture = new THREE.TextureLoader( ).load( 'myForest.png' ); // self photographed, free
+const texturLoader = new THREE.TextureLoader( );
+const squirrelTexture = texturLoader.load( 'mySquirrel.png' );  // self photographed, free
+
+let frShPart1, openingPosition, frShPart2 ;
+shaderParts( );  
+
+let shaderMaterial = [ ];
+
+for ( let i = 0; i < 3; i ++ ) {
+
+    shaderMaterial[ i ] = new THREE.ShaderMaterial({ 
+        uniforms: { 
+                v_Uv: { value: new THREE.Vector2( ) },
+                u_time: { value:  1.5 },
+                u_Texture: { value: forestTexture },
+        },
+        vertexShader: vertexShader( ),
+        fragmentShader: frShPart1 + openingPosition[ i ] + frShPart2, 
+        side: THREE.DoubleSide,
+        transparent: true,
+    });
+
+}
+
+const loader = new GLTFLoader( );
+const modelSqu = new THREE.Object3D( );
+loader.load( 'Lowpoly Squirrel by Tipatat Chennavasin/model.gltf', function ( gltf ) { //  (CC-BY) Poly by Google
+	const box = new THREE.Box3( ).setFromObject( gltf.scene );
+	const c = box.getCenter( new THREE.Vector3( ) );
+	const size = box.getSize( new THREE.Vector3( ) ); 
+	gltf.scene.position.set( -c.x, size.y / 2 - c.y, -c.z );
+	modelSqu.add( gltf.scene );
+    modelSqu.scale.set( 1.5, 1.5, 1.5 );
+	modelSqu.position.y = -0.5;
+	scene.add( modelSqu );
+	}
+);
+
+const boxMaterials = [
+
+    shaderMaterial[ 0 ],
+    new THREE.MeshBasicMaterial( { map: squirrelTexture, side: THREE.DoubleSide, } ),
+    shaderMaterial[ 1 ],
+    new THREE.MeshBasicMaterial( { color: 0x3f5b50, side: THREE.DoubleSide, } ),
+    shaderMaterial[ 2 ],
+    new THREE.MeshBasicMaterial( { map: forestTexture, side: THREE.DoubleSide, } ),
+    
+];
+
+const boxGeometry = new THREE.BoxBufferGeometry( );
+const boxMesh = new THREE.Mesh( boxGeometry, boxMaterials );
+scene.add( boxMesh );
+
+animate();
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    shaderMaterial[ 0 ].uniforms.u_time.value += 0.01;
+    shaderMaterial[ 1 ].uniforms.u_time.value += 0.01;
+    shaderMaterial[ 2 ].uniforms.u_time.value += 0.01;
+	modelSqu.rotation.y += 0.01;   
+    renderer.render( scene, camera );
+
+}
+
+function vertexShader ( ) { //   return `    `;   a multiline template literal 
+    return `
+        varying vec2 v_Uv;
+        uniform float u_time;
+        uniform sampler2D u_Texture;
+        
+        void main( )	{
+
+				v_Uv = uv;
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+            
+		} 
+    `;
+}
+
+function shaderParts( ) {
+    frShPart1 = 
+    `   varying vec2 v_Uv;
+        uniform float u_time;
+        uniform sampler2D u_Texture;   
+        float circle( vec2 pos, vec2 c, float r ) {     // pos: position   c: center  r: radius
+            vec2 dist = pos - vec2( c.x, c.y );         // distance
+            return step( 0.5 * r, dot( dist, dist ) );
+        }
+        void main( ) {
+            
+            vec2 position = v_Uv;
+            float radius = 1.3;         
+            vec2 center = vec2( 0.85 + 0.5 *( 1.0 + sin( u_time ) ) );
+    `;
+    
+    openingPosition = [
+    
+        ` position = vec2( 1.0 - v_Uv.x, 0.0 + v_Uv.y ); `, // top left
+        ` position = vec2( 0.0 + v_Uv.x, 1.0 - v_Uv.y ); `, // bottom right
+        ` position = vec2( 0.0 + v_Uv.x, 0.0 + v_Uv.y ); `, // top right 
+        ` position = vec2( 1.0 - v_Uv.x, 1.0 - v_Uv.y ); `, // bottom left - not used here!
+    
+    ];
+    
+    frShPart2 = 
+        `   float aCirc = circle( position, center, radius );            
+            vec3 colorTex = texture2D( u_Texture, v_Uv ).rgb;           
+            float aTex = texture2D( u_Texture, v_Uv ).a;           
+            vec4 color = vec4( colorTex, aTex ) * vec4( vec3( 1.0 ), aCirc );
+            gl_FragColor = color;           
+        }
+    `;
+}
+
+</script>
+</html>

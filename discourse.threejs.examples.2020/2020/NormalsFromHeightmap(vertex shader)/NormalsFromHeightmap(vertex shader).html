@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/calculating-normals-from-heightmap-in-vertex-shader/13014/3 -->
+ <!-- https://codepen.io/marquizzo/pen/zYGNjZx -->
+<head>
+  <title> NormalsFromHeightmap(vertex shader) </title>
+  <meta charset="utf-8" />
+	<style>
+	body{
+	margin:0;
+	}
+	</style>
+</head>
+<body> </body>
+<script src="../js/three.min.113.js"></script>	
+
+<script>
+
+ // @author marquizzo
+ 
+ let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+document.body.appendChild(renderer.domElement);
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight);
+let directionalLight = new THREE.DirectionalLight();
+directionalLight.position.set(-7, 10, -4);
+scene.add(directionalLight);
+
+let map, heightMap;
+
+// Set up visible texture (just a green fill)
+{
+  let canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  let ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#2ca';
+  ctx.fillRect(0,0,256,256);
+
+  map = new THREE.Texture(canvas);
+  map.needsUpdate = true;
+}
+
+// Set up height texture
+{
+  let canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  let ctx = canvas.getContext('2d');
+
+  let gx = 200, gy = 50;
+  let gradient = ctx.createRadialGradient(gx, gy, 10, gx, gy, 50);
+  gradient.addColorStop(0, '#fff');
+  gradient.addColorStop(1, '#000');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0,0,256,256);
+
+  heightMap = new THREE.Texture(canvas);
+  heightMap.needsUpdate = true;
+}
+
+const vertShader = `
+#define PHONG
+
+varying vec3 vViewPosition;
+varying vec3 vNormal;
+
+uniform sampler2D heightMap;
+uniform float texelSize;
+uniform float texelMaxHeight;
+
+#include <common>
+
+#include <uv_pars_vertex>
+#include <uv2_pars_vertex>
+#include <displacementmap_pars_vertex>
+#include <envmap_pars_vertex>
+#include <color_pars_vertex>
+#include <fog_pars_vertex>
+#include <morphtarget_pars_vertex>
+#include <skinning_pars_vertex>
+#include <shadowmap_pars_vertex>
+#include <logdepthbuf_pars_vertex>
+#include <clipping_planes_pars_vertex>
+
+vec3 getNormal(vec2 uv) {
+
+    float u = texture2D(heightMap, uv + texelSize * vec2(0.0, -1.0)).r;
+    float r = texture2D(heightMap, uv + texelSize * vec2(-1.0, 0.0)).r;
+    float l = texture2D(heightMap, uv + texelSize * vec2(1.0, 0.0)).r;
+    float d = texture2D(heightMap, uv + texelSize * vec2(0.0, 1.0)).r;
+
+    vec3 n;
+    n.z = u - d;
+    n.x = r - l;
+    n.y = 1.0 / 256.0;
+    return normalize(n);
+}
+
+void main() {
+
+    #include <uv_vertex>
+    #include <uv2_vertex>
+    #include <color_vertex>
+
+    #include <beginnormal_vertex>
+
+    #include <begin_vertex>
+    
+    vec4 height = texture2D(heightMap, vUv);
+
+
+    vec4 worldPosition = modelMatrix * vec4(transformed, 1.0);
+    worldPosition.y += height.r * texelMaxHeight;
+    vec4 mvPosition = viewMatrix * worldPosition;
+
+    objectNormal = getNormal(vUv);
+    vec3 transformedNormal = objectNormal;
+    transformedNormal = normalMatrix * transformedNormal;
+    vNormal = normalize( transformedNormal );
+
+    gl_Position = projectionMatrix * mvPosition;
+
+    #include <logdepthbuf_vertex>
+    #include <clipping_planes_vertex>
+
+    vViewPosition = - mvPosition.xyz;
+//vNormal = vec3(0.0, 0.0, 1.0);
+
+    #include <envmap_vertex>
+    #include <shadowmap_vertex>
+    #include <fog_vertex>
+}`;
+
+
+let material = new THREE.MeshPhongMaterial({
+  map: map,
+  // flatShading: true,
+});
+
+let uniforms = {
+  heightMap: { value: heightMap },
+  texelSize: { value: 1.0 / 256 },
+  texelMaxHeight: { value: 0.3 },
+};
+material.onBeforeCompile = function (shader) {
+  shader.vertexShader = vertShader;
+  Object.assign(shader.uniforms, uniforms);
+};
+
+
+// Create a plane mesh and add it to the scene.
+{
+  const planeGeom = new THREE.PlaneBufferGeometry(1, 1, 64, 64);
+  planeGeom.rotateX(-Math.PI / 2);
+  let mesh = new THREE.Mesh(planeGeom, material);
+  scene.add(mesh);
+}
+
+
+
+function animate(s) {
+  
+  camera.position.set(
+    Math.sin(s * 0.001), 
+    1, 
+    Math.cos(s * 0.001)
+  );
+  camera.lookAt(new THREE.Vector3(0,0,0))
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate(0);
+
+</script>
+</html>

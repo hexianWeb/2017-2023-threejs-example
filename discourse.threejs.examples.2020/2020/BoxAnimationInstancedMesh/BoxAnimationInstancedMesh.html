@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-create-animation-like-that-in-the-gif-file-link-uploaded-in-the-description/17460/3 -->
+<!-- https://codepen.io/prisoner849/pen/ZEQNMXv -->
+<head>
+  <title> BoxAnimationInstancedMesh </title>
+  <meta charset="utf-8" />
+ 	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.118.js";
+import {  OrbitControls} from "../jsm/OrbitControls.118.js";
+
+let scene = new THREE.Scene();
+
+let aspect = innerWidth / innerHeight;
+let frustumSize = 20;
+let camera = new THREE.OrthographicCamera(
+  (frustumSize * aspect) / -2,
+  (frustumSize * aspect) / 2,
+  frustumSize / 2,
+  frustumSize / -2,
+  1,
+  1000
+);
+camera.position.setScalar(10);
+camera.lookAt(scene.position);
+
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+//let controls = new OrbitControls(camera, renderer.domElement);
+
+let iCount = 50;
+let dummy = new THREE.Object3D();
+let g = new THREE.BoxBufferGeometry(10, 10, 10);
+let m = new THREE.MeshBasicMaterial({color: "aqua"});
+m.defines = {USE_UV: ""};
+m.extensions = {derivatives: true}
+m.onBeforeCompile = shader => {
+  console.log(shader.fragmentShader);
+  shader.fragmentShader = shader.fragmentShader
+    .replace(
+    `#include <clipping_planes_pars_fragment>`,
+    `#include <clipping_planes_pars_fragment>
+
+    float edgeFactor(vec2 p){
+    	vec2 grid = abs(fract(p - 0.5) - 0.5) / fwidth(p) / 2.0;
+  		return min(grid.x, grid.y);
+    }
+`
+  )
+    .replace(
+    `vec4 diffuseColor = vec4( diffuse, opacity );`,
+    `float a = edgeFactor(vUv);
+vec3 c = mix(diffuse, vec3(0), a);
+vec4 diffuseColor = vec4(c, opacity);
+`
+  );
+}
+
+let o = new THREE.InstancedMesh(g, m, iCount);
+o.instanceMatrix.setUsage( THREE.DynamicDrawUsage );
+scene.add(o);
+
+let maxRotation = new THREE.Euler(Math.PI, Math.PI, 0);
+let maxScale = new THREE.Vector3().setScalar(0.5);
+
+
+window.addEventListener("resize", onWindowResize, false);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(()=>{
+  
+  let t = clock.getElapsedTime() * 0.5;
+  let s = Math.sin(t) * 0.5 + 0.5;
+  
+  for(let i = 0; i < iCount; i++){
+    let factor = i / (iCount - 1) * s;
+    dummy.position.setScalar((iCount - i) * -10);
+    dummy.rotation.set(maxRotation.x * factor, maxRotation.y * factor, maxRotation.z * factor);
+    dummy.scale.set(1 - maxScale.x * factor, 1- maxScale.y * factor, 1 - maxScale.z * factor);
+    dummy.updateMatrix();
+    o.setMatrixAt(i, dummy.matrix);
+  }
+  o.instanceMatrix.needsUpdate = true;
+  
+  renderer.render(scene, camera);
+})
+
+function onWindowResize() {
+  var aspect = innerWidth / innerHeight;
+
+  camera.left = (-frustumSize * aspect) / 2;
+  camera.right = (frustumSize * aspect) / 2;
+  camera.top = frustumSize / 2;
+  camera.bottom = -frustumSize / 2;
+
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth, innerHeight);
+}
+
+
+</script>
+</html>

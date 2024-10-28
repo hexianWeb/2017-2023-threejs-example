@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/roundedrectangle-squircle/28645/14 -->
+<!-- https://jsfiddle.net/3ojmtu9p/ -->
+<head>
+  <title> ShaderBasedSquircle </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+	margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author makc3d 
+ 
+import * as THREE from '../jsm/three.module.136.js';
+
+// init
+
+const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+camera.position.z = 1;
+
+const scene = new THREE.Scene();
+
+const geometry = new THREE.PlaneGeometry( 1, 1 );                                                // https://i.imgur.com/6Jvf9KT.jpeg
+const material = new THREE.MeshBasicMaterial( { side: THREE.DoubleSide, map: new THREE.TextureLoader().load( '6Jvf9KT.jpeg' ), transparent: true } );
+
+material.map.anisotropy = 8;
+
+material.onBeforeCompile = function( hack ) {
+	hack.fragmentShader = hack.fragmentShader.replace(
+  	`#include <dithering_fragment>`,
+    `#include <dithering_fragment>
+    	vec2 okay = pow(vUv - 0.5, vec2(4.0));
+      float lol = 0.0625 - okay.x - okay.y;
+      if(lol < 0.0) discard;
+      ${
+      	material.transparent ?
+      		`gl_FragColor.a *= smoothstep(0.0, 0.002, lol);` :
+					``
+      }
+    `
+  );
+};
+
+
+const mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setAnimationLoop( animation );
+document.body.appendChild( renderer.domElement );
+
+// animation
+
+function animation( time ) {
+
+	mesh.rotation.x = time / 2000;
+	mesh.rotation.y = time / 1000;
+
+	renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

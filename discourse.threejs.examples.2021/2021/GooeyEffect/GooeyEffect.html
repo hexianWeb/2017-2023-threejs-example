@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/gooey-effect-recreation/31582 -->
+<!-- https://jsfiddle.net/prisoner849/db8et7k1/ -->
+<head>
+  <title> GooeyEffect </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.133.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 20);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let boxes = [];
+for(let i = 0; i < 5; i++){
+	let box = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshNormalMaterial());
+  box.scale.set(
+  	THREE.MathUtils.randInt(1, 3),
+    THREE.MathUtils.randInt(1, 3),
+    THREE.MathUtils.randInt(1, 3)
+  )
+  box.position.set(
+  	(-2 + i) * 4, 0, 0
+  )
+  box.userData = {
+  	rotSpeed: 1 + (Math.random() * 2),
+    initPos: box.position.clone(),
+    vx: 0,
+    vy: 0,
+    friction: 0.75,
+    springFactor: 0.01
+  }
+  boxes.push(box);
+  scene.add(box);
+}
+
+let plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2().setScalar(0.5);
+let m = new THREE.Vector2();
+
+window.addEventListener( 'pointermove', event => {
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+}, false );
+
+window.addEventListener("resize", () => {
+	camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+renderer.setAnimationLoop( _ => {
+
+  raycaster.setFromCamera(mouse, camera);
+  raycaster.ray.intersectPlane(plane, m);
+	
+	boxes.forEach((b, idx) => {
+  	let ud = b.userData;
+  	b.rotation.x += 0.01 * ud.rotSpeed;
+    b.rotation.y += 0.01 * ud.rotSpeed;
+    move(b, m);
+  })
+	renderer.render(scene, camera);
+})
+
+function move(obj, mouse){
+
+  let dx = obj.position.x - mouse.x;
+  let dy = obj.position.y - mouse.y;
+
+  let  dist = Math.sqrt(dx*dx + dy*dy);
+  // interaction
+  let dLim = 3;
+  if(dist<dLim){
+    let angle = Math.atan2(dy,dx);
+    let tx = mouse.x + Math.cos(angle) * dLim;
+    let ty = mouse.y + Math.sin(angle) * dLim;
+
+    obj.userData.vx += tx - obj.position.x;
+    obj.userData.vy += ty - obj.position.y;
+  }
+
+  // spring back
+  let dx1 = -(obj.position.x - obj.userData.initPos.x);
+  let dy1 = -(obj.position.y - obj.userData.initPos.y);
+
+  obj.userData.vx += dx1 * obj.userData.springFactor;
+  obj.userData.vy += dy1 * obj.userData.springFactor;
+
+
+  // friction
+  obj.userData.vx *= obj.userData.friction;
+  obj.userData.vy *= obj.userData.friction;
+
+  // actual move
+  obj.position.x += obj.userData.vx;
+  obj.position.y += obj.userData.vy;
+}
+
+</script>
+</html>

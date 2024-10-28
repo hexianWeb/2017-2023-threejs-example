@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-change-the-vertex-position-of-a-mesh-using-the-transform-controls/46512/2 -->
+<!-- https://jsfiddle.net/593hfj70/ -->
+<head>
+  <title>ChangeVertexPosWithTransform</title>
+  <meta charset="utf-8" />
+ <style>
+    body {
+        margin: 0px;
+    overflow: hidden;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  a627247084 + Mugen87
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+import { TransformControls } from '../jsm/TransformControls.149.js' 
+
+let mesh, renderer, scene, camera, controls, transformControl;
+
+const vsShader = `
+			varying vec4 pos;
+			void main() {
+				pos = modelMatrix * vec4(position, 1.0);
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			}
+			`;
+
+const fragmentShader = `
+				uniform vec3 boxMin;
+			uniform vec3 boxMax;
+			uniform vec3 boxColor;
+			varying vec4 pos;
+
+			void main() {
+				// Calculate the position of the model vertex
+
+				// Check if the model vertex is outside the box range
+				if (pos.x < boxMin.x || pos.x > boxMax.x ||
+					pos.y < boxMin.y || pos.y > boxMax.y ||
+					pos.z < boxMin.z || pos.z > boxMax.z) {
+				// If it is outside the range, change the vertex color to boxColor
+				gl_FragColor = vec4(boxColor, 1.0);
+				} else {
+				// If it is within the range, use the original color
+				gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+				}
+			}
+			`;
+
+init();
+animate();
+
+function init() {
+
+  // renderer
+  renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // scene
+  scene = new THREE.Scene();
+
+  // camera
+  camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 10000);
+  camera.position.set(60, 60, 60);
+
+  // controls
+  controls = new OrbitControls(camera, renderer.domElement);
+
+  // ambient
+  scene.add(new THREE.AmbientLight(0x222222));
+
+  // light
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(20, 20, 0);
+  scene.add(light);
+
+  const box = new THREE.BoxGeometry(
+    192,
+    124,
+    220
+  );
+
+  const lineMaterial = setLineMaterial();
+  const lineSegments = new THREE.LineSegments(box, lineMaterial);
+  const boxMesh = new THREE.Mesh(box, new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0.1
+  }));
+
+  const box3 = new THREE.Box3();
+  box3.setFromObject(boxMesh);
+  console.log(box3);
+
+  scene.add(lineSegments);
+  scene.add(boxMesh);
+
+  // geometry
+  const geometry = new THREE.BoxGeometry(
+    40,
+    40,
+    40
+  );
+
+  // material
+  const material = new THREE.ShaderMaterial({
+
+    uniforms: {
+
+      boxMin: {
+        value: new THREE.Vector3(box3.min.x, box3.min.y, box3.min.z)
+      },
+      boxMax: {
+        value: new THREE.Vector3(box3.max.x, box3.max.y, box3.max.z)
+      },
+      boxColor: {
+        value: new THREE.Vector3(1.0, 0.0, 0.0)
+      }
+
+    },
+
+    vertexShader: vsShader,
+
+    fragmentShader: fragmentShader
+
+  });
+
+  // mesh
+  mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  // TransformControls
+  transformControl = new TransformControls(camera, renderer.domElement);
+
+  transformControl.addEventListener('dragging-changed', function(event) {
+
+    controls.enabled = !event.value;
+
+  });
+  transformControl.attach(mesh);
+  scene.add(transformControl);
+
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  renderer.render(scene, camera);
+
+
+}
+
+function setLineMaterial() {
+
+  return new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    linewidth: 1,
+    transparent: true,
+    opacity: 0.5
+  });
+
+}
+
+</script>
+</html>

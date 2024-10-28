@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-use-facevertexuvs-from-new-version-of-three-js/33720/2 -->
+<head>
+	<title> BufferGeometryNonIndexed </title>
+	<meta charset="utf-8">
+</head>
+<body>
+	very simple BufferGeometry NonIndexed (triangle soup)
+	<div id="container"></div> 
+</body>
+
+<script type ="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+    
+const container = document.getElementById( 'container' );
+
+const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 3500 );
+camera.position.y = 50;
+camera.position.z = 500;
+
+const scene = new THREE.Scene();
+scene.add( new THREE.AmbientLight( 0x444444 ) );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x888888, 1 );	
+
+container.appendChild( renderer.domElement );
+
+const  light1 = new THREE.DirectionalLight( 0xffffff, 0.5 );
+light1.position.set( 1, 1, 1 );
+scene.add( light1 );
+
+const  light2 = new THREE.DirectionalLight( 0xffffff, 1.5 );
+light2.position.set( 0, -1, 0 );
+scene.add( light2 );
+
+const  triangles = 2;
+
+const  geometry = new THREE.BufferGeometry();
+
+const positions = new Float32Array( triangles * 3 * 3 );  // buffer arrray, position of vertices
+const colors = new Float32Array( triangles * 3 * 3 );	// buffer arrray, vertexColors
+
+	// 4 positions  ...
+	
+	const ax = 0;
+	const ay = 0;
+	const az = 0;
+
+	const bx = 100;
+	const by = 0;
+	const bz = 100;
+
+	const cx = 0;
+	const cy = 0;
+	const cz = 100;
+
+	const dx = 0;
+	const dy = 100;
+	const dz = 50;
+
+	// ... some positions are needed several times
+	
+	// first triangle
+	positions[ 0 ] = ax;
+	positions[ 1 ] = ay;
+	positions[ 2 ] = az;
+
+	positions[ 3 ] = bx;
+	positions[ 4 ] = by;
+	positions[ 5 ] = bz;
+
+	positions[ 6 ] = cx;
+	positions[ 7 ] = cy;
+	positions[ 8 ] = cz;
+	
+  	// second triangle
+    positions[ 9 ] = ax;
+	positions[ 10 ] = ay;
+	positions[ 11 ] = az;
+
+	positions[ 12 ] = bx;
+	positions[ 13 ] = by;
+	positions[ 14 ] = bz;
+
+	positions[ 15 ] = dx;
+	positions[ 16 ] = dy;
+	positions[ 17 ] = dz;
+  
+	// vertex colors
+	
+	// first triangle
+	colors[ 0]  = 0.9;
+	colors[ 1 ] = 0.9;
+	colors[ 2 ] = 0.0;
+
+	colors[ 3 ] = 0.9;
+	colors[ 4 ] = 0.9;
+	colors[ 5 ] = 0.0;
+
+	colors[ 6 ] = 0.9;
+	colors[ 7 ] = 0.9;
+	colors[ 8 ] = 0.0;
+	
+	// second triangle
+	colors[ 9]  = 1;
+	colors[ 10 ] = 0;
+	colors[ 11 ] = 0;
+
+	colors[ 12 ] = 0;
+	colors[ 13 ] = 1;
+	colors[ 14 ] = 0;
+
+	colors[ 15 ] = 0;
+	colors[ 16 ] = 0;
+	colors[ 17 ] = 1;
+
+geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ));
+geometry.setAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
+const material = new THREE.MeshBasicMaterial( { vertexColors: THREE.VertexColors,	side: THREE.DoubleSide } );
+
+const mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+// ---------------------------------------------------------------
+
+const uvTex	= new THREE.TextureLoader().load( "uvgrid01.png" );
+const material01 = new THREE.MeshBasicMaterial( {  map: uvTex,   side: THREE.DoubleSide, } );	//   uv grid
+
+const geometry01 = new THREE.BufferGeometry();
+
+const vertices = new Float32Array( [
+   -50, -50,  50,
+	50, -50,  50,
+	50,  50,  50,
+
+	 50,  50, 50,
+	-50,  50, 50,
+	-50, -50, 50
+] );
+const uvs = new Float32Array( [
+	0,   0,
+	1,   0, 
+	1,   1, 
+
+	1,   1, 
+	0,   1, 
+	0,   0
+] );
+
+geometry01.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+geometry01.setAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+
+const mesh01 = new THREE.Mesh( geometry01, material01 );
+
+scene.add( mesh01 );
+ 
+animate();
+
+function animate() {
+
+	requestAnimationFrame( animate );
+	const time = Date.now() * 0.001;
+	mesh.rotation.y = time;
+	mesh01.rotation.z = time;
+	renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

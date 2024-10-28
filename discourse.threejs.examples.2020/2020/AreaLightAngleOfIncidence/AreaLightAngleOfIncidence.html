@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/angle-of-incidence-support-for-rectarealight/12704 -->
+ <!-- https://jsfiddle.net/te20mfoq/ -->
+<head>
+  <title> AreaLightAngleOfIncidence </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+		margin: 0;
+	}
+	</style>
+</head>
+<body> </body> 
+
+<script src="../js/three.min.113.js"></script>	
+<script src="../js/RectAreaLightUniformsLib.js"></script>
+
+<script>
+
+ // @author makc3d
+ 
+ THREE.RectAreaLightUniformsLib.init();
+
+var camera, scene, renderer;
+var geometry, material, mesh, light;
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.set( -1, 1, -1 ); camera.lookAt( 0, 0, 0 );
+
+    scene = new THREE.Scene();
+    scene.add( new THREE.AmbientLight( 0x331100 ) );
+    
+    light = new THREE.RectAreaLight( 0xff0000, 4, 1, 1 );
+    light.position.set( 1, 0, 0 ); light.lookAt( 0, 0, 0 );
+    scene.add( light );
+
+		geometry = new THREE.PlaneGeometry( 1, 1 );
+    material = new THREE.MeshBasicMaterial({ color: 0xff1100, side: THREE.BackSide });
+
+    mesh = new THREE.Mesh( geometry, material );
+    mesh.position.copy( light.position );
+    mesh.rotation.copy( light.rotation );
+    scene.add( mesh );
+
+    geometry = new THREE.PlaneGeometry( 2, 2 );
+    material = new THREE.MeshStandardMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    mesh.rotation.x = -Math.PI / 2;
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+// https://discourse.threejs.org/t/how-can-i-shear-skew-a-mesh-not-the-geometry-directly/6713/4
+var rotScaleTranslation = new THREE.Matrix4();
+
+init();
+light.matrixAutoUpdate = false;
+
+function animate(s) {
+
+    requestAnimationFrame( animate );
+    
+    rotScaleTranslation.compose( light.position, light.quaternion, light.scale );
+    light.matrix.makeShear( 0, Math.sin(s / 123) - 1, 0 ).premultiply( rotScaleTranslation );
+
+    renderer.render( scene, camera );
+
+}
+
+animate(0);
+ 
+</script>
+</html>

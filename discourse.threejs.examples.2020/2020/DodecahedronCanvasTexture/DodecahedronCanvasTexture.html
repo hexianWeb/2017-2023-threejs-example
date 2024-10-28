@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/dodecahedron-with-a-separate-texture-for-each-face/21897/5 -->
+<!-- https://jsfiddle.net/prisoner849/3zanmcbt/ -->
+
+<!-- see also  https://discourse.threejs.org/t/apply-texture-for-glb-model/21922/8   https://jsfiddle.net/prisoner849/eL75qgaf/ -->
+
+<head>
+  <title> DodecahedronCanvasTexture </title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.123.js"; 
+import { OrbitControls } from "../jsm/OrbitControls.123.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 1, 100);
+camera.position.set(0, 10, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper());
+
+let light = new THREE.DirectionalLight(0xffffff, 2);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+let g = new THREE.DodecahedronBufferGeometry(2);
+
+const base = new THREE.Vector2(0, 0.5);
+const center = new THREE.Vector2();
+const angle = THREE.MathUtils.degToRad(72);
+let baseUVs = [
+	base.clone().rotateAround(center, angle * 1).addScalar(0.5),
+  base.clone().rotateAround(center, angle * 2).addScalar(0.5),
+  base.clone().rotateAround(center, angle * 3).addScalar(0.5),
+  base.clone().rotateAround(center, angle * 4).addScalar(0.5),
+  base.clone().rotateAround(center, angle * 0).addScalar(0.5)
+];
+
+let uvs = [];
+let sides = [];
+for (let i = 0; i < 12; i++){
+	uvs.push(
+  	baseUVs[1].x, baseUVs[1].y,
+    baseUVs[2].x, baseUVs[2].y,
+    baseUVs[0].x, baseUVs[0].y,
+    
+    baseUVs[2].x, baseUVs[2].y,
+    baseUVs[3].x, baseUVs[3].y,
+    baseUVs[0].x, baseUVs[0].y,
+    
+    baseUVs[3].x, baseUVs[3].y,
+    baseUVs[4].x, baseUVs[4].y,
+    baseUVs[0].x, baseUVs[0].y
+  );
+  sides.push(i, i, i, i, i, i, i, i, i);
+}
+g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+g.setAttribute("sides", new THREE.Float32BufferAttribute(sides, 1));
+
+let m = new THREE.MeshStandardMaterial({
+	roughness: 0.25,
+  metalness: 0.75,
+	map: createTexture(),
+  onBeforeCompile: shader => {
+  	shader.vertexShader = `
+    	attribute float sides;
+      ${shader.vertexShader}
+    `.replace(
+    	`#include <uv_vertex>`,
+      `
+      	#include <uv_vertex>
+        
+        vUv.x = (1./16.) * (vUv.x + sides);
+      `
+    );
+    console.log(shader.vertexShader);
+  }
+});
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+renderer.setAnimationLoop(()=>{
+	renderer.render(scene, camera);
+})
+
+function createTexture(){
+	let c = document.createElement("canvas");
+  let step = 64;
+  c.width = step * 16;
+  c.height = step;
+  let ctx = c.getContext("2d");
+  ctx.fillStyle = "#7f7f7f";
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.font = "40px Arial";
+  ctx.textAlign = "center"; 
+  ctx.fillStyle = "aqua";
+  ctx.textBaseline = "middle"; 
+  for (let i = 0; i < 12; i++){
+  		ctx.fillText(i + 1, step * 0.5 + step * i, step * 0.5);
+  }
+  
+  return new THREE.CanvasTexture(c);
+}
+
+</script>
+</html>

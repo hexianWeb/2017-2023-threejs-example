@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-a-hud-heads-up-display-using-depthwrite/1516/2 -->
+<!-- https://jsfiddle.net/prisoner849/p9kk3u5g/ -->
+<head>
+  <title> interactiveHUD </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body>
+	<div style="position: absolute; color: white;">
+		<input type="checkbox" id="dTest">
+		<label for="dTest">depthTest</label>
+	</div> 
+</body>
+<script src="../js/three.min.88.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<!-- @author prisoner 849 -->
+
+<script>
+	var dTestVertex = `
+    varying vec3 vPos;
+    void main(){
+      vPos = position;
+  		gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }
+  `;
+  var dTestFragment = `
+    uniform float distance;
+    varying vec3 vPos;
+    void main(){
+      
+      float s = smoothstep(distance - 1., distance + 1., abs(vPos.z));
+      vec3 res = mix(vec3(0., 1., 1.), vec3(1., 0., 0.), s);
+      
+  		gl_FragColor = vec4(res, 1.0);
+    }
+  `;
+</script>
+
+<script>
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, .01, 1000);
+camera.position.set(0, 1, 10);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var light = new THREE.DirectionalLight(0xffffff, .5);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, .5));
+
+var cubes = [];
+for (let i = 0; i < 10; i++) {
+  let obj = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshLambertMaterial({
+    color: Math.random() * 0x7777 + 0x777777
+  }));
+  obj.position.set(
+    THREE.Math.randInt(-10, 10),
+    THREE.Math.randInt(-10, 10),
+    THREE.Math.randInt(-10, 10)
+  );
+  scene.add(obj);
+  cubes.push(obj);
+}
+
+// HUD sphere
+var points = [];
+for (let i = 2; i < 13; i++) {
+  points.push(new THREE.Vector3(-1, -1, -i));
+  points.push(new THREE.Vector3(-1, 1, -i));
+  points.push(new THREE.Vector3(-1, 1, -i));
+  points.push(new THREE.Vector3(1, 1, -i));
+  points.push(new THREE.Vector3(1, 1, -i));
+  points.push(new THREE.Vector3(1, -1, -i));
+  points.push(new THREE.Vector3(1, -1, -i));
+  points.push(new THREE.Vector3(-1, -1, -i));
+}
+var bufferGeometry = new THREE.BufferGeometry().setFromPoints(points);
+bufferGeometry.rotateZ(Math.PI * .25);
+var hud = new THREE.LineSegments(bufferGeometry, new THREE.ShaderMaterial({
+  uniforms:{
+  	distance:{value:100}
+  },
+  vertexShader: dTestVertex,
+  fragmentShader: dTestFragment,
+  depthTest: false
+}));
+scene.add(hud);
+
+dTest.addEventListener("click", function() {
+  hud.material.depthTest = dTest.checked;
+}, false);
+
+var hudPos = bufferGeometry.attributes.position;
+var clock = new THREE.Clock();
+var time = 0;
+var speed = 2; // units a second;
+var mouse = new THREE.Vector2();
+var raycaster = new THREE.Raycaster();
+var intersects;
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  time = clock.getDelta();
+  
+  for (let i = 0; i < hudPos.count; i++) {
+    let z = hudPos.getZ(i);
+    z += speed * time;
+    z = z > -1 ? -12 + (z - (-1)) % 11 : z;
+    hudPos.setZ(i, z);
+  }
+  hudPos.needsUpdate = true;
+  
+  raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObjects(cubes);
+  if (intersects.length > 0){
+    hud.material.uniforms.distance.value = intersects[0].point.sub(camera.position).length();
+  }
+  else{
+    hud.material.uniforms.distance.value = 100;
+  }
+  
+  hud.position.copy(camera.position);
+  hud.quaternion.copy(camera.quaternion);
+  renderer.render(scene, camera);
+}
+</script>
+</html>

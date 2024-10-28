@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!--   -->
+<head>
+    <meta charset="utf-8">
+    <title> NumberingHelperExamples </title>
+    <style> body { overflow: hidden; margin: 0;} </style>
+</head>
+<body>
+    <form name="form">
+    geometry: 
+    <input id="plane"       type="radio"    name="geo" checked="checked"> plane
+    <input id="circle"      type="radio"    name="geo"> circle
+    <input id="ring"        type="radio"    name="geo"> ring
+    <input id="box"         type="radio"    name="geo"> box
+    <input id="sphere"      type="radio"    name="geo"> sphere
+    <input id="cylinder"    type="radio"    name="geo"> cylinder
+    <input id="torus"       type="radio"    name="geo"> torus
+    <input id="lathe"       type="radio"    name="geo"> lathe
+    <input id="shape"       type="radio"    name="geo"> shape
+    </form> 
+</body> 
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.136.js';
+import { OrbitControls } from '../jsm/OrbitControls.136.js';
+import { vertexFaceNumbersHelper } from '../jsm/THREEn.js';
+
+const scene = new THREE.Scene( );
+scene.add( new THREE.AxesHelper( 5 ) );
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.001, 1000 );
+camera.position.set( 4, 8, 22 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );
+document.body.appendChild( renderer.domElement );
+new OrbitControls( camera, renderer.domElement );
+window.addEventListener("resize", event => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+                                             renderer.setSize(innerWidth, innerHeight);});
+const light1 = new THREE.PointLight( 0xffffff, 1, 0 ); 
+const light2 = light1.clone(); 
+light1.position.set( -1, 10, 7 ); 
+light2.position.set(  0, 8, -5 );      
+scene.add( light1 );
+scene.add(light2);
+
+const geo = [];
+const mesh = [];
+const meshW = [];
+const helper = [];
+
+const material = new THREE.MeshPhongMaterial(
+    { color: 0x896215, emissive: 0xa96415, side: THREE.DoubleSide, transparent: true, opacity: 0.4 } );
+const materialW = new THREE.MeshBasicMaterial(
+    { color: 0x000000, side: THREE.DoubleSide, wireframe: true } );
+ 
+geo[ 0 ] = new THREE.PlaneGeometry( 8, 7, 4, 3 );     
+geo[ 1 ] = new THREE.CircleGeometry( 5, 12 );    
+geo[ 2 ] = new THREE.RingGeometry( 2, 5, 6, 2  );     
+geo[ 3 ] = new THREE.BoxGeometry( 8, 6, 3, 3, 2, 2 );      
+geo[ 4 ] = new THREE.SphereGeometry( 4, 6, 6 );      
+geo[ 5 ] = new THREE.CylinderGeometry( 2, 2, 6, 3, 4, true );     
+geo[ 6 ] = new THREE.TorusGeometry( 5, 4, 6, 8, Math.PI );   
+    /*
+    const points = [];
+    for ( let i = 0; i < 4; i ++ ) {
+    
+        points.push( new THREE.Vector2( Math.sin( i * 0.2 ) * 10 + 1, i - 5 ) );
+    }
+    const geometry    = new THREE.LatheGeometry( points );
+    */ 
+    
+    /*
+    const x = 0, y = 0;
+    const heartShape = new THREE.Shape();
+    heartShape.moveTo( x + 5, y + 5 );
+    heartShape.bezierCurveTo( x + 5, y + 5, x + 4, y, x, y );
+    heartShape.bezierCurveTo( x - 6, y, x - 6, y + 7,x - 6, y + 7 );
+    heartShape.bezierCurveTo( x - 6, y + 11, x - 3, y + 15.4, x + 5, y + 19 );
+    heartShape.bezierCurveTo( x + 12, y + 15.4, x + 16, y + 11, x + 16, y + 7 );
+    heartShape.bezierCurveTo( x + 16, y + 7, x + 16, y, x + 10, y );
+    heartShape.bezierCurveTo( x + 7, y, x + 5, y + 5, x + 5, y + 5 );
+    const geometry    = new THREE.ShapeGeometry( heartShape );
+    */
+    
+for ( let i = 0; i < geo.length; i++ ) {
+
+    mesh[ i ] = new THREE.Mesh( geo[ i ], material );
+    meshW[ i ] = new THREE.Mesh( geo[ i ], materialW );
+    mesh[ i ].visible = false;
+    meshW[ i ].visible = false;
+    scene.add( mesh[ i ] );
+    scene.add( meshW[ i ] );
+        
+    helper[ i ] = new vertexFaceNumbersHelper( camera, meshW[ i ], 3, 0.2, 0x0022ee );  // from THREEn.js
+     
+}
+
+mesh[ 0 ].visible = true;
+meshW[ 0 ].visible = true;
+  
+    
+function showNewGeo( No, newNo ) {
+    
+    mesh[ No ].visible = false;
+    meshW[ No ].visible = false;
+    mesh[ newNo ].visible = true;
+    meshW[ newNo ].visible = true;
+    
+}
+
+let geoNo = 0;
+let newGeoNo;
+
+animate( );
+
+function animate( ) {
+
+    requestAnimationFrame( animate );
+    
+    renderer.render( scene, camera );
+    
+    newGeoNo = selectGeometry( );
+    
+    if ( newGeoNo !== geoNo ) { showNewGeo( geoNo, newGeoNo ); geoNo = newGeoNo;  } 
+    
+    helper[ newGeoNo ].update( );
+    
+}
+
+function selectGeometry( ) {
+
+    let idx;
+    
+    for ( let i = 0; i < document.form.geo.length; i ++ ) {
+    
+        if ( document.form.geo[i].checked )  idx = i;
+        
+    }
+    
+    return idx;
+}
+
+</script>
+</html>

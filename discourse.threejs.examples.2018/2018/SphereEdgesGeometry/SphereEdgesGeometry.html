@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sphere-geometry-just-wireframe-but-without-diagonal-lines/4027/2  -->
+<!-- https://jsfiddle.net/f2Lommf5/13132/ -->
+<head>
+  <title> SphereEdgesGeometry </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.96.js"></script>
+
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+
+    const geometry = new THREE.SphereBufferGeometry( 0.2, 16, 16 );
+    const material = new THREE.MeshNormalMaterial( { wireframe: false } );
+		const mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+		
+		const edgesGeometry = new THREE.EdgesGeometry( geometry );
+		const wireframe = new THREE.LineSegments( edgesGeometry, new THREE.LineBasicMaterial( { color: 0xffffff } ) ); 
+		mesh.add( wireframe );
+		
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+		renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+</script>
+
+</html>

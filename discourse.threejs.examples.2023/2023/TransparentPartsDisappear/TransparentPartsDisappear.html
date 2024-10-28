@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/depending-on-the-camera-position-transparent-parts-of-the-model-disappear-in-a-transparent-bubble/47442 -->
+<!-- https://hofk.de/main/threejs/1TEST/materialTEST/material.TEST.html -->
+<head>
+  <title>TransparentPartsDisappear</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body> 
+   <section id="loading-screen">
+        <div id="loader"></div>
+    </section>
+</body>
+
+<script type="module">
+ 
+// @author hofk
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+import { GLTFLoader } from '../jsm/GLTFLoader.149.js';
+
+const rad = α => α * Math.PI / 180;   // ° => rad 
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
+camera.position.set( -1, 0, 5 );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede);
+document.body.appendChild( renderer.domElement );
+
+const ambientLight = new THREE.AmbientLight( 0x404040, 0.8 );
+scene.add( ambientLight );
+
+const pointLightA = new THREE.PointLight( 0xffffff, 0.6 ); 
+pointLightA.position.set( 10, 20, 10 );
+scene.add( pointLightA );
+
+const pointLightB = new THREE.PointLight( 0xffff00, 0.6 ); 
+pointLightB.position.set( -5, -20, -7 );
+scene.add( pointLightB );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const loadingManager = new THREE.LoadingManager( ( ) => {
+    
+	const loadingScreen = document.getElementById( 'loading-screen' );
+	loadingScreen.classList.add( 'fade-out' );
+	loadingScreen.addEventListener( 'transitionend', e => e.target.remove( ) );  // optional: remove loader from DOM
+	
+} );
+
+const gltfLoader = new GLTFLoader( loadingManager );
+
+const modelFiles = [ './SmithFish/google poly.gltf', './Kelli Ray_Bee/toi uu.gltf' ];
+
+let objects = [];
+const mfl = modelFiles.length;
+
+for ( let i = 0; i < mfl; i ++ ) {
+    
+    const object= new THREE.Object3D( );
+    object.file = modelFiles[ i ];
+    
+    gltfLoader.load( object.file, gltf => {
+    
+        const box = new THREE.Box3( ).setFromObject( gltf.scene );
+        const c = box.getCenter( new THREE.Vector3( ) );
+        const size = box.getSize( new THREE.Vector3( ) );
+        gltf.scene.position.set( -c.x, size.y / 2 - c.y, -c.z ); // center the gltf scene
+        object.add( gltf.scene );
+        
+        objects[ i ] = object;
+        
+        if ( i === 0 ) {
+            
+            objects[ i ].scale.set( 0.022, 0.022, 0.022 );
+            objects[ i ].rotation.set( rad( 0 ), rad( 70 ), rad( 0 ) ); //  ° => rad  see above
+            objects[ i ].position.set( -2, -0.7, 0 );
+        }
+        
+        if ( i === 1 ) {
+            
+            objects[ i ].scale.set( 0.005, 0.005, 0.005 );
+            objects[ 1 ].rotation.set( rad( 10 ), rad( 0 ), rad( 0 ) ); //  ° => rad  see above
+            objects[ i ].position.set( 2, -0.2, 0 );
+        }
+        
+        scene.add( objects[ i ] );
+        
+    } );
+
+}
+
+const material =  new THREE.MeshPhongMaterial( {
+    color: 0xaaee00,
+    side: THREE.FrontSide,
+    transparent: true,
+    opacity: 0.05,
+    wireframe: false 
+} );
+
+const spherGeo = new THREE.SphereGeometry( 1, 24, 24 );
+const sphere = new THREE.Mesh( spherGeo, material );
+sphere.position.set( - 2, 0, 0 );
+sphere.renderOrder  = 1;
+scene.add( sphere );
+    
+const icosaGeo = new THREE.IcosahedronGeometry( 1, 4 );
+const Icosahedron = new THREE.Mesh( icosaGeo, material );
+Icosahedron.position.set( 2, 0, 0 );
+
+// SOLUTION!
+Icosahedron.renderOrder = 1; // added after hints from @Chaser_Code and @donmccurdy
+// Icosahedron.renderOrder = Infinity; // also works
+//-----------------------------------------------------------------------------------
+
+scene.add( Icosahedron );
+
+const lineMaterial = new THREE.LineBasicMaterial( {	color: 0x008800 });
+const points = [ new THREE.Vector3( -1, 0, 0 ), new THREE.Vector3(  1, 0, 0 ) ];
+const lineGeo = new THREE.BufferGeometry( ).setFromPoints( points );
+const line = new THREE.Line( lineGeo, lineMaterial );
+scene.add( line );
+
+animate( );
+
+function animate( ) {
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	
+}
+ 
+</script>
+
+</html>

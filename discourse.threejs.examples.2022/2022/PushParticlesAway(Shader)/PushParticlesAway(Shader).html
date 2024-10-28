@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/particle-animation/35019/2 -->
+<!-- https://stackoverflow.com/questions/66136122/push-particles-away-from-mouseposition-in-glsl-and-three-js/66136881#66136881 -->
+<head>
+  <title> PushParticlesAway(Shader) </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        overflow: hidden;
+        margin: 0;
+    }
+   
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+import * as BufferGeometryUtils from "../jsm/BufferGeometryUtils.136.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let marker = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 8), new THREE.MeshBasicMaterial({color: "red", wireframe: true}));
+scene.add(marker);
+
+let g = new THREE.IcosahedronGeometry(4, 20);
+g = BufferGeometryUtils.mergeVertices(g);
+let uniforms = {
+  mousePos: {value: new THREE.Vector3()}
+}
+let m = new THREE.PointsMaterial({
+  size: 0.1,
+  onBeforeCompile: shader => {
+    shader.uniforms.mousePos = uniforms.mousePos;
+    shader.vertexShader = `
+      uniform vec3 mousePos;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+        
+        vec3 seg = position - mousePos;
+        vec3 dir = normalize(seg);
+        float dist = length(seg);
+        if (dist < 2.){
+          float force = clamp(1. / (dist * dist), 0., 1.);
+          transformed += dir * force;
+        }
+      
+      `
+    );
+    console.log(shader.vertexShader);
+  }
+});
+let p = new THREE.Points(g, m);
+scene.add(p);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop( _ => {
+  let t = clock.getElapsedTime();
+  marker.position.x = Math.sin(t * 0.5) * 5;
+  marker.position.y = Math.cos(t * 0.3) * 5;
+  uniforms.mousePos.value.copy(marker.position);
+  renderer.render(scene, camera);
+})
+ 
+</script>
+</html>

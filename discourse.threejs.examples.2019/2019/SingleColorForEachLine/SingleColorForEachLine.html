@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/different-edges-color-in-same-cube/11071/2 -->
+<!-- https://jsfiddle.net/fLgvcka7/  -->
+	<!-- see https://stackoverflow.com/questions/58461984/single-color-for-each-line-in-three-js/58462348#58462348 -->
+<head>
+  <title> SingleColorForEachLine </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+	margin: 0;
+	}
+   </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.109.js"></script>
+ 
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 3;
+
+    scene = new THREE.Scene();
+
+    var geometry = new THREE.BufferGeometry();
+		
+		var vertices = [];
+		var colors = [];
+		
+		vertices.push( 0, 0, 0 );
+		vertices.push( 1, 0, 0 );
+		
+		vertices.push( 1, 0, 0 );
+		vertices.push( 1, 1, 0 );
+		
+		vertices.push( 1, 1, 0 );
+		vertices.push( 0, 1, 0 );
+		
+		colors.push( 1, 0, 0 );
+		colors.push( 1, 0, 0 );
+		
+		colors.push( 0, 1, 0 );
+		colors.push( 0, 1, 0 );
+		
+		colors.push( 0, 0, 1 );
+		colors.push( 0, 0, 1 );
+		
+		geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+		geometry.addAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
+		
+    var material = new THREE.LineBasicMaterial( { vertexColors: THREE.VertexColors } );
+
+    var lines = new THREE.LineSegments( geometry, material );
+    scene.add( lines );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/change-vertex-color-by-bufferattribute-using-copy/18588 -->
+<!-- https://jsfiddle.net/t4ov5r8b/ -->
+<head>
+  <title> ColorIndividualInstances </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+	body {
+	margin: 0;
+	}
+	
+	canvas {
+	display: block;
+	}
+</style>	
+<body> </body>
+
+<script src="../js/three.min.120.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set( 4, 0, 10 );
+
+  scene = new THREE.Scene();
+	
+	var hemiLight = new THREE.HemisphereLight( 0xffffff, 0x444444 );
+	hemiLight.position.set( 0, 10, 0 );
+	scene.add( hemiLight );
+
+	var dirLight = new THREE.DirectionalLight( 0xffffff );
+	dirLight.position.set( - 3, 10, - 10 );
+	scene.add( dirLight );
+
+  var geometry = new THREE.OctahedronBufferGeometry();
+  var material = new THREE.MeshPhongMaterial();
+
+  var meshes = new THREE.InstancedMesh(geometry, material, 5);
+  scene.add(meshes);
+
+  var matrix = new THREE.Matrix4();
+  var color = new THREE.Color();
+
+  for (var i = 0; i < meshes.count; i++) {
+
+    matrix.setPosition( i * 2, 0, 0);
+    meshes.setMatrixAt(i, matrix);
+    meshes.setColorAt(i, color.setHex(0xffffff * Math.random()));
+
+  }
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

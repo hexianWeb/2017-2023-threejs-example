@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-log-the-fps-in-the-console/51118 -->
+<!-- https://jsfiddle.net/z2c19qab/1/ -->
+<head>
+  <title>FPS-Counter-Console</title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    margin: 0px;
+    }
+  </style>
+</head>
+<body> </body>
+
+<script type="module">
+
+// @author Mugen87
+
+// Simple three.js example
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+let mesh, renderer, scene, camera, controls;
+
+let frames = 0, prevTime = performance.now();
+
+init();
+animate();
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set( 20, 20, 20 );
+
+    // controls
+    controls = new OrbitControls( camera, renderer.domElement );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    
+    // light
+    const light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20,20, 0 );
+    scene.add( light );
+    
+    // axes
+    scene.add( new THREE.AxesHelper( 20 ) );
+
+    // geometry
+    const geometry = new THREE.SphereGeometry( 5, 12, 8 );
+    
+    // material
+    const material = new THREE.MeshPhongMaterial( {
+        color: 0x00ffff, 
+        flatShading: true,
+        transparent: true,
+        opacity: 0.7,
+    } );
+    
+    // mesh
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+    
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    
+    // FPS
+    
+    frames ++;
+    const time = performance.now();
+    
+    if ( time >= prevTime + 1000 ) {
+    
+    	console.log( Math.round( ( frames * 1000 ) / ( time - prevTime ) ) );
+      
+      frames = 0;
+      prevTime = time;
+      
+    }
+    
+    //
+
+    renderer.render( scene, camera );
+
+}
+
+
+</script>
+</html>

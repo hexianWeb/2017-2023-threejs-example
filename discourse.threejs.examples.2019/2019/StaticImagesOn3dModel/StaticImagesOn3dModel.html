@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/static-images-on-3d-model/9452 -->
+<!-- https://jsfiddle.net/wmbvu70h/ -->
+<head>
+  <title> StaticImagesOn3dModel </title>
+  <meta charset="utf-8" />
+  	<style>
+	body {
+		margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.108.js"></script>
+
+<script>
+
+// @author Mugen87
+let camera, scene, renderer, mesh, raycaster, texture1, texture2;
+
+const mouse = new THREE.Vector2( - 1, - 1 );
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+		
+		const loader = new THREE.TextureLoader();
+		
+		texture1 = loader.load( '//cdn.rawgit.com/mrdoob/three.js/master/examples/textures/brick_diffuse.jpg' );
+		texture2 = loader.load( '//cdn.rawgit.com/mrdoob/three.js/master/examples/textures/floors/FloorsCheckerboard_S_Diffuse.jpg' );
+
+    const geometry = new THREE.PlaneBufferGeometry();
+    const material = new THREE.MeshBasicMaterial( { map: texture1 } );
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+		renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		raycaster = new THREE.Raycaster();
+		
+		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+		window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+function onDocumentMouseMove( event ) {
+
+		event.preventDefault();
+		mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+		mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+		
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+		
+		raycaster.setFromCamera( mouse, camera );
+		var intersection = raycaster.intersectObject( mesh );
+		
+		if ( intersection.length > 0 ) {
+		
+			mesh.material.map = texture2;
+		
+		} else {
+		
+			mesh.material.map = texture1;
+		
+		}
+		
+		
+    renderer.render( scene, camera );
+
+}
+</script>
+
+</html>

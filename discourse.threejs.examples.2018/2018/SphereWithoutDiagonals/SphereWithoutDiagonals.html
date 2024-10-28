@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!--  https://discourse.threejs.org/t/sphere-geometry-just-wireframe-but-without-diagonal-lines/4027/4-->
+<!-- http://jsfiddle.net/prisoner849/4p9kp1p2/ -->
+<head>
+  <title> SphereWithoutDiagonals </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		overflow: hidden;
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.96.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(-30, 60, -120);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var r = 20,
+    verticalLines = 32, /* must be divisible by 4! */
+    horizontalLines = 16; /* must be divisible by 2! */
+
+var quadSphere_threeQuarters = createQuadSphere(r, 3 * verticalLines / 4, horizontalLines, {
+    color: 0x0000ff
+}, 0, 3 * Math.PI / 2);
+scene.add(quadSphere_threeQuarters);
+
+var quadSphere_oneEighth = createQuadSphere(r, verticalLines / 4, horizontalLines / 2, {
+    color: 0xff0000
+}, 3 * Math.PI / 2, Math.PI / 2, Math.PI / 2, Math.PI / 2);
+quadSphere_oneEighth.position.x += 50;
+scene.add(quadSphere_oneEighth);
+
+var quadSphere_threeQuarters_right = createQuadSphere(r, 3 * verticalLines / 4, horizontalLines, {
+    color: 0xff00ff
+}, 0, 3 * Math.PI / 2);
+quadSphere_threeQuarters_right.position.x -= 50;
+scene.add(quadSphere_threeQuarters_right);
+
+var quadSphere_oneEighth_right = createQuadSphere(r, verticalLines / 4, horizontalLines / 2, {
+    color: 0xff00ff
+}, 3 * Math.PI / 2, Math.PI / 2, Math.PI / 2, Math.PI / 2);
+quadSphere_oneEighth_right.position.x -= 50;
+scene.add(quadSphere_oneEighth_right);
+
+function createQuadSphere(r, widthSegments, heightSegments, atts, phiStart, phiLen, thetaStart, thetaLen) {
+    var sphere = new THREE.Group(),
+        material = new THREE.LineBasicMaterial(atts);
+
+    if (phiStart === undefined) {
+        phiStart = Math.PI / 2;
+    }
+    if (phiLen === undefined) {
+        phiLen = 2 * Math.PI;
+    }
+    if (thetaStart === undefined) {
+        thetaStart = 0;
+    }
+    if (thetaLen === undefined) {
+        thetaLen = Math.PI;
+    }
+
+    /* width segments (longitude) */
+    for (var phiDelta = phiLen / widthSegments, phi = phiStart, arc = createVerticalArc(r, heightSegments, thetaStart + Math.PI / 2, thetaLen); phi <= phiStart + phiLen + phiDelta; phi += phiDelta) {
+        var arcTmpGeometry = arc.clone();
+        arcTmpGeometry.rotateY(phi);
+        var arcLine = new THREE.Line(arcTmpGeometry, material);
+        sphere.add(arcLine);
+    }
+
+    /* height segments (latitude) */
+    for (var thetaDelta = thetaLen / heightSegments, theta = thetaStart; theta < thetaStart + thetaLen - thetaDelta; theta += thetaDelta) {
+        if (theta === 0) {
+            continue;
+        }
+        var arcR = r * Math.sin(theta),
+            arcH = r * Math.cos(theta),
+            arcTmpGeometry = createHorizontalArc(arcR, widthSegments, phiStart, phiLen);
+        arcTmpGeometry.rotateX(Math.PI / 2);
+        arcTmpGeometry.rotateY(Math.PI / 2);
+        arcTmpGeometry.translate(0, arcH, 0);
+        var arcLine = new THREE.Line(arcTmpGeometry, material);
+        sphere.add(arcLine);
+    }
+
+    return sphere;
+}
+
+function createVerticalArc(r, segments, thetaStart, thetaLen) {
+    var geometry = new THREE.CircleGeometry(r, segments, thetaStart, thetaLen);
+    geometry.vertices.shift();
+    return geometry;
+}
+
+function createHorizontalArc(r, segments, phiStart, phiLen) {
+    var geometry = new THREE.CircleGeometry(r, segments, phiStart, phiLen);
+    geometry.vertices.shift();
+    if (phiLen >= 2 * Math.PI) {
+        geometry.vertices.push(geometry.vertices[0].clone());
+    }
+    return geometry;
+}
+
+render();
+
+function render() {
+    requestAnimationFrame(render);
+    renderer.render(scene, camera);
+}
+
+</script>
+
+</html>

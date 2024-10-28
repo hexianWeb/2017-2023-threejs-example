@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<!-- -->
+<head>
+	<title> LoadGLTFmove </title>
+	<meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+<body> </body>
+
+<script src="../js/three.min.115.js"></script>
+<script src="../js/OrbitControls.115.js"></script>
+<script src="../js/GLTFLoader.115.js"></script>
+
+<script>
+
+'use strict'
+ 
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 1000 );
+camera.position.set( 0, 2, 8 );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+renderer.setClearColor( 0xaaaaaa, 1 );
+
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+const gridHelper = new THREE.GridHelper( 10, 10 );
+scene.add( gridHelper );
+
+const lightA = new THREE.AmbientLight( 0x404040 ); // soft white light
+scene.add( lightA );
+
+const lightP = new THREE.PointLight( 0xddff00, 1  );
+lightP.position.set( -1, 3, 5 );
+scene.add( lightP );
+
+// --- data input ---
+let yRotation = 3.21; 
+let xPosition = -1.5;	 
+let zPosition = 3.1;
+// -----         ----- 
+
+const loader = new THREE.GLTFLoader( );
+
+// konta johanna remix (CC-BY)   people (license)
+// https://poly.google.com/view/7PNIMdmMSPD
+loader.load( 'girl/google poly.gltf', process );
+
+
+let model, c, size; // model center and size
+let t = 0;
+let x0 = xPosition;
+let dx;
+
+animate();
+
+function animate( ) {
+	
+	requestAnimationFrame( animate );
+	yRotation += 0.005;
+	
+	t += 0.001;
+	dx = Math.sin( t )
+	
+	xPosition = x0 + dx;
+	
+	move( model );
+	renderer.render( scene, camera );
+	
+}
+
+function process( gltf ) {	
+		
+	const box = new THREE.Box3( ).setFromObject( gltf.scene );		 
+	const boxHelper = new THREE.Box3Helper( box, 0xffff00 );
+    scene.add( boxHelper );
+	
+	c = box.getCenter( new THREE.Vector3( ) );
+	size = box.getSize( new THREE.Vector3( ) );
+	
+	move( gltf );
+
+	scene.add( gltf.scene );
+	
+	model = gltf;
+
+}
+ 
+function move( gltf ) {
+
+	gltf.scene.rotation.set( 0, yRotation, 0 );
+	
+	// rotate center
+	const cz = c.z * Math.cos( yRotation ) - c.x * Math.sin( yRotation );
+	const cx = c.z * Math.sin( yRotation ) + c.x * Math.cos( yRotation );
+	
+	gltf.scene.position.set( xPosition - cx, size.y / 2 - c.y, zPosition - cz );
+
+}
+	
+</script>
+
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-a-2d-border-with-the-same-thickness-around-the-entire-perimeter/28487 -->
+<!-- https://jsfiddle.net/felixmariotto/ozds3yxa/16/ -->
+<head>
+  <title> ThickBorder2D </title>
+  <meta charset="utf-8" />
+	<style>
+	body {	margin: 0; }
+	</style>
+</head>
+<body></body>
+<script type="module">
+
+// @author felixmariotto
+
+import * as THREE from "../jsm/three.module.129.js";
+import { OrbitControls } from "../jsm/OrbitControls.129.js";
+
+const WIDTH = window.innerWidth;
+const HEIGHT = window.innerHeight;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 75, WIDTH / HEIGHT, 0.1, 1000 );
+camera.position.z = 5;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+//
+
+
+const vertexShader = `
+	varying vec4 vPos;
+  varying vec3 vNormal;
+  varying vec2 vUv;
+
+	void main() {
+  	vUv = uv;
+		vNormal = normalMatrix * normal;
+		vPos = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+		gl_Position = vPos;
+	}
+`;
+
+const fragmentShader = `
+	varying vec4 vPos;
+  varying vec3 vNormal;
+  varying vec2 vUv;
+  
+  uniform float borderRadius;
+  uniform float borderWidth;
+  uniform vec2 size;
+  uniform vec3 color;
+  uniform vec3 borderColor;
+  
+  float getEdgeDist() {
+  	vec2 ndc = vec2( vUv.x * 2.0 - 1.0, vUv.y * 2.0 - 1.0 );
+    vec2 planeSpaceCoord = vec2( size.x * 0.5 * ndc.x, size.y * 0.5 * ndc.y );
+    vec2 corner = size * 0.5;
+    vec2 offsetCorner = corner - abs( planeSpaceCoord );
+    float innerRadDist = min( offsetCorner.x, offsetCorner.y ) * -1.0;
+    float roundedDist = length( max( abs( planeSpaceCoord ) - size * 0.5 + borderRadius, 0.0 ) ) - borderRadius;
+    float s = step( innerRadDist * -1.0, borderRadius );
+    return mix( innerRadDist, roundedDist, s );
+  }
+  
+  void main() {
+  	float edgeDist = getEdgeDist();
+  	if ( edgeDist > 0.0 ) discard;
+    vec3 finalColor = color;
+    if ( edgeDist * -1.0 < borderWidth ) finalColor = borderColor;
+    gl_FragColor = vec4( finalColor, 1 );
+  }
+`;
+
+const rectSize = new THREE.Vector2( 2, 5 );
+
+const uniforms = {
+	borderRadius: { value: 0.5 },
+  borderWidth: { value: 0.5 },
+  size: { value: rectSize },
+  color: { value: new THREE.Color( "blue" ) },
+  borderColor: { value: new THREE.Color( "orange" ) }
+}
+
+const material = new THREE.ShaderMaterial({
+	vertexShader,
+  fragmentShader,
+  uniforms
+});
+
+const mesh = new THREE.Mesh(
+	new THREE.PlaneGeometry( rectSize.x, rectSize.y ),
+  material
+);
+
+scene.add( mesh );
+
+//
+
+const animate = function () {
+	material.uniforms.borderRadius.value = 0.5 + 0.5 * Math.sin( Date.now() / 500 );
+ 	material.uniforms.borderWidth.value = 0.5 - 0.2 * Math.sin( Date.now() / 500 );
+ 	material.uniformsNeedUpdate = true;
+  requestAnimationFrame( animate );
+  renderer.render( scene, camera );
+};
+
+animate();
+
+</script>
+</html>

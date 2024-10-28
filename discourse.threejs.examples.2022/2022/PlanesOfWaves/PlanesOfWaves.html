@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/computing-smoothed-normals-for-vertices-along-the-edge-of-a-plane/43169/8 -->
+<!-- https://codepen.io/prisoner849/pen/OJZwWVN   and   https://codepen.io/Phil_Crowther/pen/GRdGVaY-->
+<head>
+  <title> PlanesOfWaves (dynamic) </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+<script type="x-shader/x-vertex" id="vertexShader">
+	varying vec2 vUv;
+	varying vec3 vNormal;
+	uniform float uTime;
+	float amp = 5.0;			// Height
+	float mul = 100.0;			// Speed multiplier
+	float dsz = -0.5;
+	float val = 0.0;
+	vec3 p;
+	vec3 moveWave(vec3 p){
+		val = mul*uTime + 0.5*dsz*360.0*p.z/30.0;
+		if (val>360.0) val = val-360.0;
+		val = val*3.14159265/180.0;		// convert to radians: 360 deg = pi/180
+		val = sin(val)*amp;
+		p.y = val;
+		return p;
+	}
+	void main() {
+		vUv = uv;
+		p = position;
+		vec3 pos = moveWave(p);
+		p = position;
+		p.x = p.x+1.0;
+		vec3 pos2 = moveWave(p);
+		p = position;
+		p.z = p.z+1.0;
+		vec3 pos3 = moveWave(p);
+    //
+    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+		gl_Position = projectionMatrix * mvPosition;
+		vNormal = normalize(cross(normalize(pos3-pos), normalize(pos2-pos)));
+	}
+</script>
+
+<script type="x-shader/x-fragment" id="fragmentShader">
+	varying vec2 vUv;
+	varying vec3 vNormal;
+	uniform vec3 uSunDirection;
+  uniform float uAmbient;
+	uniform vec3 uColor;
+	void main() {
+		vec3 light = normalize(uSunDirection);	// Normalize light
+		float diffuse = max(0.0,dot(vNormal, light)); //Calculate 'dot product' and clamp 0->1 instead of -1->1
+    float ambient = uAmbient;
+		gl_FragColor = vec4((ambient + diffuse) * uColor, 1.0);  //RGBA
+	}	
+</script>
+
+<script type="module">
+
+// @author  phil_crowther + prisoner849 
+ 
+import {
+  AmbientLight,
+  Clock,
+	Color,
+	DirectionalLight,
+	MathUtils,
+	Mesh,
+	Object3D,
+	PerspectiveCamera,
+	PlaneGeometry,
+	RGBAFormat,
+	Scene,
+  ShaderMaterial,
+	sRGBEncoding,
+  Vector3,
+	WebGLRenderer
+} from'../jsm/three.module.140.js';
+import {OrbitControls} from '../jsm/OrbitControls.140.js';
+
+/* = Constants ===============================================================*/
+/* = Variables ===============================================================*/
+let geometry, material, mesh;
+let dtSize = 1200;	// Test Size
+let PlnPtr = [0];
+// Geometry --------------------------------------------------------------------
+let SegNum = 50;
+let SegRCs = SegNum+1;
+// Wave Data
+let dtWav1 = 10;					// Number of waves per Plane
+let SgWav1 = SegNum/dtWav1;			// Segments per wave (50/10 = 5)
+let DgSeg1 = 360/SgWav1;			// Degrees per segment (360/5 = 72)
+let WvAmp1 = 5;						// Amplitude
+let TmWav1 = 10;					// Period (seconds) to complete cycle
+
+/* = Basic Values ============================================================*/
+// Display
+let	scene = new Scene();
+	scene.background = new Color(0x1732c1);
+let	renderer = new WebGLRenderer({antialias: true});
+	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setSize(window.innerWidth, window.innerHeight);
+	renderer.outputEncoding = sRGBEncoding;
+	document.body.appendChild(renderer.domElement);
+// Light
+let dirLight = new DirectionalLight(0xffffff,1);
+	dirLight.position.set(0,1000,-1000);	// Default position
+	scene.add(dirLight);
+let ambLight = new AmbientLight(0xffffff,1);
+  scene.add(ambLight);
+// Camera (substitute for Orbit Control)
+let	camera = new PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 15000);
+	scene.add(camera);
+	camera.position.set(1500,100,0)
+// Controls
+let	controls = new OrbitControls(camera, renderer.domElement);
+	controls.update();
+// Clock
+let clock = new Clock();
+let	etime;
+
+/* = Main Program ============================================================*/
+	// Set Geometry
+	geometry = new PlaneGeometry(dtSize, dtSize, SegNum, SegNum);
+	geometry.rotateX(-Math.PI * 0.5);
+		material = new ShaderMaterial({
+		vertexShader: document.getElementById('vertexShader').textContent,
+		fragmentShader: document.getElementById('fragmentShader').textContent,
+		uniforms: {
+			uTime: {value: 0.0},
+      uColor: {value: new Color(0x2288ff)},
+      uSunDirection: {value: new Vector3(0.0,0.5,2.0)},
+      uAmbient: {value: 0.5}
+		}
+	});
+	// Create and Position 4 Grids
+	for (let n = 0; n < 4; n++) {
+		PlnPtr[n] = new Mesh(geometry, material);
+		scene.add(PlnPtr[n]);
+	}
+	// Create 4 Adjacent Meshes
+	PlnPtr[0].position.set(-dtSize/2,0,-dtSize/2);
+	PlnPtr[1].position.set(dtSize/2,0,-dtSize/2);
+	PlnPtr[2].position.set(-dtSize/2,0,dtSize/2);
+	PlnPtr[3].position.set(dtSize/2,0,dtSize/2);
+	// Render
+	rendAll();
+
+/* 2 Render ==================================================================*/
+function rendAll() {
+	requestAnimationFrame(rendAll);
+	etime = clock.getElapsedTime();
+	material.uniforms.uTime.value = etime;
+	controls.update();
+   	renderer.render(scene, camera);				// Render
+}
+
+</script>
+</html>

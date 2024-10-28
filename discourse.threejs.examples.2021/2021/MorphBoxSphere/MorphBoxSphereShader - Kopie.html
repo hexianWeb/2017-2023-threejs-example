@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!--  -->
+<head>
+	<title> CubeToSphere </title>
+	<meta charset="utf-8" />
+	<style>
+      body { margin: 0; }
+    </style>
+</head>
+<body> </body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.135.js';
+import {OrbitControls} from '../jsm/OrbitControls.135.js';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 0, 0, 2 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );	
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+
+const controls = new  OrbitControls( camera, renderer.domElement );
+const axesHelper = new THREE.AxesHelper( 0.5 );
+scene.add( axesHelper );
+
+const size = 1.0; 
+const seg = 20; //  segments
+
+const seg1 = seg + 1;
+
+const faceCount = seg * seg * 2;
+const vertexCount = seg1 * seg1;
+
+const g = new THREE.BufferGeometry( );
+
+g.faceIndices = new Uint32Array( faceCount * 3 );
+g.vertices = new Float32Array( vertexCount * 3 );  
+
+g.setIndex( new THREE.BufferAttribute( g.faceIndices, 1 ) );	
+g.setAttribute( 'position', new THREE.BufferAttribute( g.vertices, 3 ).setUsage( THREE.DynamicDrawUsage) );
+
+let idxCount = 0;
+
+let a, b1, b2, c1, c2;
+
+for ( let j = 0; j < seg; j ++ ) {
+		
+	for ( let i = 0; i < seg; i ++ ) {
+		
+		// 2 faces / segment,  3 vertex indices
+		a =  seg1 * j + i;
+		b1 = seg1 * ( j + 1 ) + i;		// right-bottom
+		c1 = seg1 * ( j + 1 ) + 1 + i;
+		b2 = seg1 * ( j + 1 ) + 1 + i;	// left-top
+		c2 = seg1 * j + 1 + i;
+		
+		g.faceIndices[ idxCount     ] = a; // right-bottom
+		g.faceIndices[ idxCount + 1 ] = b1;
+		g.faceIndices[ idxCount + 2 ] = c1; 
+		
+		g.faceIndices[ idxCount + 3 ] = a; // left-top
+		g.faceIndices[ idxCount + 4 ] = b2,
+		g.faceIndices[ idxCount + 5 ] = c2; 
+		
+		idxCount += 6;
+		
+	}
+		
+}
+
+let x, y, z;
+let vIdx = 0; // vertex index
+let posIdx; // position  index
+ 
+calculateCoordinates( 0 );
+
+const shaderMaterial  = new THREE.ShaderMaterial({
+    uniforms: {
+        u_time: { value: 0.0 },
+        
+    },   
+    vertexShader: vertexShader( ), 
+    fragmentShader: fragmentShader( ),
+    wireframe: true,
+    side: THREE.DoubleSide,
+});
+ 
+//const mesh = new THREE.Mesh( g, shaderMaterial );
+//scene.add( mesh );
+
+const boxGeometry = new THREE.BoxBufferGeometry( size, size, size, 20, 20, 20 );
+const boxMesh = new THREE.Mesh( boxGeometry, shaderMaterial );
+scene.add( boxMesh );
+ 
+
+animate();
+
+function animate( ) {
+
+	requestAnimationFrame( animate );
+    shaderMaterial.uniforms.u_time.value += 0.04;
+	renderer.render( scene, camera );
+ 
+}
+
+function calculateCoordinates( ) { 
+	
+	vIdx = 0;
+
+	for ( let i = 0; i < seg1; i ++ ) {
+			
+		for ( let j = 0; j < seg1; j ++ ) {
+			
+			x = -0.5 * size + j / seg ; 
+			y = -0.5 * size + i / seg;
+			z = 0.5 * size;
+			
+			xyzSet( );
+			
+			vIdx ++;
+			
+		}
+		
+	}
+	
+ }
+ 
+// set vertex position
+function xyzSet() {
+	
+	posIdx = vIdx * 3;
+	
+	g.vertices[ posIdx ]  = x;
+	g.vertices[ posIdx + 1 ]  = y;
+	g.vertices[ posIdx + 2 ]  = z;
+	
+}
+
+
+function vertexShader( ) {
+    return `
+        uniform float u_time;
+ 
+        void main() {
+        
+            vec3 pos = position;
+            pos += 0.5 * ( 1.0 + sin( u_time ) ) * ( normalize( pos ) - pos ) ;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );
+            
+        }
+    `;
+}
+
+function fragmentShader( ) { 
+    return `
+    void main( ) {
+        gl_FragColor = vec4( 0.1, 0.1, 0.1, 1.0 );
+    }
+    `;
+}
+
+
+</script>
+
+</html>

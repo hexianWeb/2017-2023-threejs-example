@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/tween-instancedmesh-positions/17778/4 -->
+<!-- https://codepen.io/prisoner849/pen/ZEWbvMP -->
+<head>
+  <title> AlphabetInstancedMesh </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.119.js"; 
+import {OrbitControls} from "../jsm/OrbitControls.119.js";
+
+let scene, camera, renderer, controls, font, letters = [];
+let dummy = new THREE.Object3D();
+let mat4 = new THREE.Matrix4();
+let alphabet = `abcdefghijklmnopqrstuvwxyz`;
+
+let clock = new THREE.Clock();
+
+let loader = new THREE.FontLoader();
+//https://threejs.org/examples/fonts/helvetiker_regular.typeface.json
+loader.load(
+  "../js/helvetiker_regular.typeface.json", fnt => {
+    font = fnt;
+    init();
+  }
+);
+
+function init() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+  camera.position.set(50, 75, 100);
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(0x444444);
+  document.body.appendChild(renderer.domElement);
+  
+  let controls = new OrbitControls(camera, renderer.domElement);
+
+  let instCount = 100;
+  for (let i = 0; i < alphabet.length; i++) {
+    let char = alphabet[i];
+    console.log(char);
+    let shapes = font.generateShapes(char, 5);
+    let geometry = new THREE.ShapeBufferGeometry( shapes );
+    let instMesh = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial({vertexColors: true}), instCount);
+    let clr1 = new THREE.Color(0x00ffff);
+    let clr2 = new THREE.Color(0xff00ff);
+    let clrt = new THREE.Color();
+    let colors = [];
+
+    for(let l = 0; l < instCount; l++){
+      dummy.position.set( (-alphabet.length * 0.5 + i) * 5.5, 0, (-instCount + l) * 2);
+      dummy.updateMatrix();
+      instMesh.setMatrixAt(l, dummy.matrix);
+      clrt.copy(clr1).lerp(clr2, l / (instCount - 1));
+      colors.push(clrt.r, clrt.g, clrt.b);
+    }
+    geometry.setAttribute("color", new THREE.InstancedBufferAttribute(new Float32Array(colors), 3));
+    geometry.getAttribute("color").setXYZ(instCount - 1, 1, 1, 0);
+    
+    letters.push(instMesh);
+    scene.add(instMesh);
+  }
+
+  renderer.setAnimationLoop(() => {
+    let t = clock.getElapsedTime();
+    letters.forEach((ltr, idx) => {
+      for(let i = 0; i < instCount; i++){
+        ltr.getMatrixAt(i, mat4);
+        mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
+        dummy.position.y = Math.sin(t + dummy.position.z * 0.1) * Math.sin( t + idx * 0.5) * 3;
+        dummy.updateMatrix();
+        ltr.setMatrixAt(i, dummy.matrix);
+      }
+      ltr.instanceMatrix.needsUpdate = true;
+    })
+    renderer.render(scene, camera);
+  });
+}
+
+
+</script>
+
+</html>

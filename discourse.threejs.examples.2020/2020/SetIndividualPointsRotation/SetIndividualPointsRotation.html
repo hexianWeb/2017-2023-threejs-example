@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/set-rotation-for-individual-points-in-a-pointsmaterial/21690/6 -->
+<!-- https://jsfiddle.net/prisoner849/1wpo8t92/ -->
+<head>
+  <title> SetIndividualPointsRotation </title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.123.js"; 
+import { OrbitControls } from "../jsm/OrbitControls.123.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(10, 10, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x444444);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+window.addEventListener("resize", onWindowResize, false);
+
+scene.add(new THREE.GridHelper(10, 10, "white", "white"));
+
+let pts = [];
+let clr = [];
+let color = new THREE.Color();
+let rot = [];
+for(let i = 0; i < 100; i++){
+	pts.push(
+  	new THREE.Vector3().random().subScalar(0.5).multiplyScalar(10)
+  );
+  color.set(Math.random() * 0x7f7f7f + 0x7f7f7f);
+  clr.push(color.r, color.g, color.b);
+  rot.push(Math.random() * Math.PI * 2);
+}
+
+let g = new THREE.BufferGeometry().setFromPoints(pts);
+g.setAttribute("color", new THREE.Float32BufferAttribute(clr, 3));
+g.setAttribute("rotation", new THREE.Float32BufferAttribute(rot, 1));
+
+let m = new THREE.PointsMaterial({
+	vertexColors: true, 
+  map: createArrow(), 
+  alphaTest: 0.5,
+	onBeforeCompile: shader => {
+  	shader.vertexShader = `
+    	attribute float rotation;
+      varying float vRotation;
+      ${shader.vertexShader}
+    `.replace(
+    	`#include <fog_vertex>`,
+      `#include <fog_vertex>
+      vRotation = rotation;
+      `
+    );
+    console.log(shader.vertexShader);
+    shader.fragmentShader = `
+    	varying float vRotation;
+      ${shader.fragmentShader}
+    `.replace(
+    	`#include <map_particle_fragment>`,
+      `
+      #if defined( USE_MAP ) || defined( USE_ALPHAMAP )
+        vec2 uv = ( uvTransform * vec3( gl_PointCoord.x, 1.0 - gl_PointCoord.y, 1 ) ).xy;
+      #endif
+      #ifdef USE_MAP
+      	// MODIFICATION =======================================================
+      	float mid = 0.5;
+        uv = vec2(
+          cos(vRotation) * (uv.x - mid) + sin(vRotation) * (uv.y - mid) + mid,
+          cos(vRotation) * (uv.y - mid) - sin(vRotation) * (uv.x - mid) + mid
+        );
+        // ====================================================================
+        vec4 mapTexel = texture2D( map, uv );
+        diffuseColor *= mapTexelToLinear( mapTexel );
+      #endif
+      #ifdef USE_ALPHAMAP
+        diffuseColor.a *= texture2D( alphaMap, uv ).g;
+      #endif
+      `
+    );
+    console.log(shader.fragmentShader);
+  }  
+});
+
+let p = new THREE.Points(g, m);
+scene.add(p);
+
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( innerWidth, innerHeight );
+
+}
+
+function createArrow(){
+
+	let c = document.createElement("canvas");
+  c.width = c.height = 32;
+ 	let ctx = c.getContext("2d");
+  
+  ctx.clearRect(0, 0, c.width, c.height);
+  
+  ctx.beginPath();
+  ctx.moveTo(16, 8);
+  ctx.lineTo(8, 27);
+  ctx.lineTo(24, 27);
+  ctx.closePath();
+
+  // the outline
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = '#000';
+  ctx.stroke();
+
+  // the fill color
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  
+  return new THREE.CanvasTexture(c);
+
+}
+
+</script>
+</html>

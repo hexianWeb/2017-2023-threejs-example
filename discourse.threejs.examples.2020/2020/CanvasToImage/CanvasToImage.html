@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/converting-canvas-to-image-doesnt-work/16831 -->
+<!-- https://jsfiddle.net/h6grw9a8/3/ -->
+<head>
+  <title> CanvasToImage </title>
+  <meta charset="utf-8" />
+    <style>
+	body {
+		margin: 0;
+	}
+	canvas {
+		display: block;
+	}
+	</style>
+ 
+
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.117.js"></script>
+
+<script>
+
+//@author Amir_zare + Mugen87
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+		
+		var loader = new THREE.TextureLoader();
+		// https://threejs.org/examples/textures/crate.gif
+		var texture = loader.load( 'crate.gif' );
+
+    scene = new THREE.Scene();
+		scene.background = texture;
+
+    geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
+    material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true, preserveDrawingBuffer: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		setTimeout( function() {
+		
+			var dataURL = renderer.domElement.toDataURL();
+			
+			var link = document.createElement("a");
+			link.download = "demo.png";
+			link.href = dataURL;
+			link.target = "_blank";
+			link.click();
+		
+		}, 1000 );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+
+    mesh.rotation.x += 0.01;
+    mesh.rotation.y += 0.02;
+
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/is-it-possible-to-know-at-what-distance-of-the-camera-from-the-cube-the-height-of-the-perspective-projection-of-the-cube-will-be-equal-to-the-height-of-the-screen/40449/6 -->
+<!-- https://jsfiddle.net/tfoller/yt9vLo6j/ -->
+<head>
+  <title>CalculateCameraDistance</title>
+  <meta charset="utf-8" />
+    <style>
+     canvas {
+     display: block;
+     margin: 10px;
+    }
+  </style>
+</head>
+
+<body>
+    <button id="mw">match width</button>
+    <button id="mh">match height</button>
+    <canvas id="canvas" width="500" height="300"></canvas>
+</body>
+
+<script type="module">
+
+// @author tfoller
+
+import * as THREE from '../jsm/three.module.140.js';
+
+const get = id => document.getElementById(id);
+const canvas = get('canvas');
+const [w, h] = [canvas.width, canvas.height];
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 100);
+
+
+const renderer = new THREE.WebGLRenderer({canvas});
+renderer.setSize(w, h);
+
+const [box_w, box_h, box_l] = [1.5, 2.3, 1];
+
+const mesh = new THREE.Mesh(
+	new THREE.BoxGeometry(box_w, box_h, box_l),
+  new THREE.MeshBasicMaterial({color: 0xa000a0}),
+);
+
+mesh.position.set(0, 0, -50);
+
+scene.add(mesh);
+
+const render = () => { renderer.render(scene, camera) };
+
+const degToRad = Math.PI / 180;
+
+get('mh').addEventListener('click', ()=> {
+	const d = box_h / (2 * Math.tan(degToRad * camera.fov / 2));
+  mesh.position.z = - d - box_l / 2 - 0.01;
+  render();
+});
+
+get('mw').addEventListener('click', ()=> {
+	const d = box_w / (camera.aspect * 2 * Math.tan(degToRad * camera.fov / 2));
+  mesh.position.z = - d - box_l / 2 - 0.01;
+  render();
+});
+
+render();
+
+</script>
+</html>

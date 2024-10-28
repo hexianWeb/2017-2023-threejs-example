@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/is-it-possible-to-add-a-button-into-the-scene/12139/8 -->
+<!-- https://codepen.io/trusktr/pen/oNXpMgX  -->
+<head>
+  <title> BUTTONinScene </title>
+  <meta charset="utf-8" />
+ 	<style>
+		html, body {
+		height: 100%;
+		margin: 0;
+		}
+		a{
+		text-decoration: none;
+		color: black
+		}
+		canvas {
+		width: 100%;
+		height: 100%;
+		display: block;
+		pointer-events: none;
+		}
+		#info{
+		height: 100vh;
+		}
+		
+		#mybutton{
+		cursor:pointer;
+		position: absolute;
+		bottom: 10%;
+		left: 20px;
+		text-align: center;
+		z-index: 100;
+		display:flex;
+		align-items: center;
+		}
+		
+		/* have fun! */
+		button {
+		background: royalblue;
+		}
+	</style>
+	
+
+</head>
+
+<body>
+	<div id="info">
+		<div id="mybutton">
+		<img src="mouse.png" alt="" srcset="">
+		<a style="margin-left: 16px;" href="">scrollen</a>
+		</div>
+	</div>
+</body>
+   
+	<!-- Always include version numbers! Otherwise your examples will break. -->
+	<!-- <script src="https://unpkg.com/three@0.114.0"></script> -->
+	<!-- 	NOT NEEDED <script src="https://threejs.org/build/three.min.js"></script> -->  
+	<!-- <script src="https://unpkg.com/@seregpie/three.text-texture@2.0.1"></script> -->
+	<!-- <script src="https://unpkg.com/@seregpie/three.text-sprite@2.0.0"></script> -->
+	<!-- <script src="//unpkg.com/three@0.114.0/examples/js/renderers/CSS3DRenderer.js"></script> -->
+	<!-- <script src="//unpkg.com/three@0.114.0/examples/js/controls/OrbitControls.js"></script> -->
+	
+
+<script src="../js/three.min.114.js"></script>
+
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/CSS3DRenderer.114.js"></script>
+
+<script src="texture.2.0.1.js"></script>
+<script src="sprite.2.0.0.js"></script>
+
+<script>
+
+ // @authors shonsirsha + trusktr
+ 
+
+var scene = new THREE.Scene();
+
+var loader = new THREE.FontLoader();
+loader.load( 'https://raw.githubusercontent.com/shonsirsha/sandbox/master/din.json', function ( font ) {
+  var geometry = new THREE.TextGeometry( 'Für die Kinder, die', {
+    font: font,
+    size: 150,
+    height: 7,
+    curveSegments: 3,
+  } );
+  geometry.center();
+  var material = new THREE.MeshPhongMaterial({color: 0x000000});
+  var mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set( 2 , 2500 ,50);
+  mesh.rotation.y -= Math.PI/2;
+
+  var geometry2 = new THREE.TextGeometry( 'morgens zur Schule müssen, die', {
+    font: font,
+    size: 150,
+    height: 7,
+    curveSegments: 3,
+  } );
+  geometry2.center();
+  var material2 = new THREE.MeshPhongMaterial({color: 0x000000});
+  var mesh2 = new THREE.Mesh( geometry2, material2 );
+  mesh2.position.set( 2 , 2200 , 500);
+  mesh2.rotation.y -= Math.PI/2;
+
+  var geometry3 = new THREE.TextGeometry( 'Eltern, die zur Arbeit fahren und', {
+    font: font,
+    size: 150,
+    height: 7,
+    curveSegments: 3,
+  } );
+  geometry3.center();
+  var material3 = new THREE.MeshPhongMaterial({color: 0x000000});
+  var mesh3 = new THREE.Mesh( geometry3, material3 );
+  mesh3.position.set( 2 , 1900 , 470);
+  mesh3.rotation.y -= Math.PI/2;
+
+  var geometry4 = new THREE.TextGeometry( 'die Betriebe, die ihre Waren und', {
+    font: font,
+    size: 150,
+    height: 7,
+    curveSegments: 3,
+  } );
+  geometry4.center();
+  var material4 = new THREE.MeshPhongMaterial({color: 0x000000});
+  var mesh4 = new THREE.Mesh( geometry4, material4 );
+  mesh4.position.set( 2 , 1600 , 490);
+  mesh4.rotation.y -= Math.PI/2;
+
+  var geometry5 = new THREE.TextGeometry( 'Dienstleistungen in ganz Europa', {
+    font: font,
+    size: 150,
+    height: 7,
+    curveSegments: 3,
+  } );
+  geometry5.center();
+  var material5 = new THREE.MeshPhongMaterial({color: 0x000000});
+  var mesh5 = new THREE.Mesh( geometry5, material5 );
+  mesh5.position.set( 2 , 1300 , 490);
+  mesh5.rotation.y -= Math.PI/2;
+
+  var geometry6 = new THREE.TextGeometry( 'anbieten möchten.', {
+    font: font,
+    size: 150,
+    height: 7,
+    curveSegments: 3,
+  } );
+  geometry6.center();
+  var material6 = new THREE.MeshPhongMaterial({color: 0x000000});
+  var mesh6 = new THREE.Mesh( geometry6, material6 );
+  mesh6.position.set( 2 , 1000 , 27);
+  mesh6.rotation.y -= Math.PI/2;
+
+  scene.add( mesh, mesh2,mesh3,mesh4,mesh5,mesh6 );
+} );
+
+loader.load( 'https://raw.githubusercontent.com/shonsirsha/sandbox/master/din_alternate.json', function ( font ) {
+  var geometry = new THREE.TextGeometry( 'Für innovative und vielfältige Mobilität', {
+    font: font,
+    size: 65,
+    height: 7,
+    curveSegments: 3,
+  } );
+
+  geometry.center();
+  var material = new THREE.MeshPhongMaterial({color: 0x007EC9});
+  var mesh = new THREE.Mesh( geometry, material );
+  mesh.position.set( 2 , 560 ,160);
+  mesh.rotation.y -= Math.PI/2;
+
+  scene.add(mesh)
+});
+
+class Wall {
+  constructor( sizeX , sizeY , position ){
+    var wall = new THREE.Mesh(
+      new THREE.PlaneBufferGeometry( sizeX ,  sizeY ), 
+      new THREE.MeshStandardMaterial({ 
+        color: 0xf2f2f2
+      })
+    );
+    if( position != undefined ) wall.position.copy( position );
+    wall.castShadow = wall.receiveShadow = true;
+    return wall;
+  }
+}
+
+class WhiteWall {
+  constructor( sizeX , sizeY , position ){
+    var wall = new THREE.Mesh(
+      new THREE.PlaneBufferGeometry( sizeX ,  sizeY ), 
+      new THREE.MeshStandardMaterial({ 
+        color: 0xffffff
+      })
+    );
+    if( position != undefined ) wall.position.copy( position );
+    wall.castShadow = wall.receiveShadow = true;
+    return wall;
+  }
+}
+
+class Floor {
+  constructor( sizeX , sizeY , position ){
+    var wall = new THREE.Mesh(
+      new THREE.PlaneBufferGeometry( sizeX ,  sizeY ), 
+      new THREE.MeshStandardMaterial({ 
+        color: 0xffffff
+      })
+    );
+    if( position != undefined ) wall.position.copy( position );
+    wall.castShadow = wall.receiveShadow = true;
+    return wall;
+  }
+}
+
+class PLHelper {
+  constructor( diameter , color , position ){
+    var helper = new THREE.Mesh(
+      new THREE.SphereBufferGeometry( diameter/2 , 5 , 5 ), 
+      new THREE.MeshBasicMaterial({ 
+        color: color
+      })
+    );
+    if( position != undefined ) helper.position.copy( position );
+    return helper;
+  }
+}
+
+root = new THREE.Object3D()
+root.position.y = 20000
+root.rotation.y = Math.PI / 3
+scene.add(root)
+
+
+
+
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000000);
+camera.position.set(-1400, 1500, 1800);
+
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.shadowMap.enabled = true;
+// renderer.shadowMap.type = THREE.VSMShadowMap;	
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;	
+// renderer.physicallyCorrectLights = true;
+
+var canvas = renderer.domElement
+document.getElementById('info').appendChild(canvas);
+//var controls = new THREE.OrbitControls(camera, document); // error in console ... Please use "renderer.domElement" instead.
+var controls = new THREE.OrbitControls(camera, renderer.domElement); // changed hofk
+
+var cssRenderer = new THREE.CSS3DRenderer({});
+cssRenderer.setSize( window.innerWidth, window.innerHeight );
+
+// make it lay on top of the WebGLRenderer canvas
+cssRenderer.domElement.style.position = 'absolute';
+cssRenderer.domElement.style.top = 0;
+
+document.querySelector('#info').appendChild( cssRenderer.domElement );
+
+
+var targetPos = new THREE.Vector3( 1500 , 1400 , 0 );
+camera.lookAt( targetPos );
+controls.target.copy(  targetPos );
+
+controls.enablePan = false;
+controls.enableRotate = false;
+controls.enableZoom = false;
+// GROUND
+var ground = new Floor( 20000 , 20000 );
+ground.geometry.rotateX(-Math.PI * 0.5);
+
+// WALLS
+var wallLeft = new WhiteWall( 20000 , 10000 );
+wallLeft.position.set(0, 5000, -7000);
+var wallRight = new WhiteWall( 10000 , 10000 );
+wallRight.position.set( 2000 , 4000 , 4000 );
+wallRight.rotation.y -= Math.PI/2;
+
+scene.add( ground , wallLeft , wallRight );
+
+var clock = new THREE.Clock();
+var t = 0;
+
+// Lights
+var ambientL = new THREE.AmbientLight(0xffffff, 0.8);
+var pointL = new THREE.PointLight( 0x005070 ,  9 , 19 , 2 );
+var pointL2 = new THREE.PointLight( 0x005070 ,  9 , 19 , 2 );
+var pointB = new THREE.PointLight( 0x005070 ,  2 , 10 , 2 );
+
+pointL.castShadow = true;
+pointL.shadow.bias = 0.005;
+pointL2.castShadow = true;
+pointL2.shadow.bias = 0.005;
+
+pointL.position.set( 15000 , 2000 , -6000 );
+pointL2.position.set( 15000 , 2000 , -6000 );
+pointB.position.set( 2300 ,1400 , 2000 );
+
+var pHelper = new PLHelper( 500 , 0xff55dd );
+var pHelper2 = new PLHelper( 500 , 0xfffff );
+var pHelper3 = new PLHelper( 500 , 0xfffff );
+var pHelper4 = new PLHelper( 500 , 0xfffff );
+var pHelper5 = new PLHelper( 500 , 0xff5733  );
+
+// pointL.add( pHelper );
+pointB.add( pHelper2 );
+//pointD.add(pHelper3)
+
+var compensationDirL = new THREE.DirectionalLight( 0xffffff , 0.0 );
+compensationDirL.position.set( -300 , 1000 , 4000 );
+compensationDirL.target = wallLeft;
+
+var compensationDirL2 = new THREE.DirectionalLight( 0xffffff , 0.4 );
+compensationDirL2.position.set( -300 , 2000 , 5000 );
+compensationDirL2.target = wallRight;
+
+const button = makeElementObject('button', 700, 200)    
+button.css3dObject.element.textContent = "Click me!"
+button.css3dObject.element.style.fontSize = '100px'
+button.css3dObject.element.addEventListener('click', () => alert('Button clicked!'))
+button.position.y = -3440
+button.position.z = -490
+button.position.x = -2700
+wallRight.add(button)
+
+var blueDirL = new THREE.DirectionalLight( 0x005070 , 1);
+blueDirL.position.set( -300 , 2000 , 2000 );
+blueDirL.target = wallLeft;
+
+scene.add(ambientL, pointL, pointL2 ,pointB, compensationDirL2,blueDirL);
+
+render();
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  
+  controls.update()
+  
+  renderer.render(scene, camera);
+  cssRenderer.render(scene, camera);
+  
+  requestAnimationFrame(render); 
+}
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+    cssRenderer.setSize(width, height);
+  }
+  return needResize;
+}
+
+function makeElementObject(type, width, height) {
+  const obj = new THREE.Object3D
+
+  const element = document.createElement( type );
+  element.style.width = width+'px';
+  element.style.height = height+'px';
+  element.style.opacity = 0.999;
+
+  var css3dObject = new THREE.CSS3DObject( element );
+  obj.css3dObject = css3dObject
+  obj.add(css3dObject)
+
+  // make an invisible plane for the DOM element to chop
+  // clip a WebGL geometry with it.
+  var material = new THREE.MeshPhongMaterial({
+    opacity	: 0,
+    color	: new THREE.Color( 0x02A0FE ),
+    blending: THREE.NoBlending
+  });
+
+  var geometry = new THREE.BoxGeometry( width, height, 1 );
+  var mesh = new THREE.Mesh( geometry, material );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  obj.lightShadowMesh = mesh
+  obj.add( mesh );
+
+  return obj
+}
+
+</script>
+</html>

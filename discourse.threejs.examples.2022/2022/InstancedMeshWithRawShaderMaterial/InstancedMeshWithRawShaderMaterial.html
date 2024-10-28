@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-can-i-use-instancedmesh-with-rawshadermaterial/36963/2 -->
+<!-- https://codepen.io/prisoner849/pen/oNpMBpR -->
+<head>
+  <title> InstancedMeshWithRawShaderMaterial </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<!-- <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+
+    <script type="importmap">
+    {
+        "imports": {
+        "three": "https://cdn.skypack.dev/three@0.139.2",
+        "three/": "https://cdn.skypack.dev/three@0.139.2/"
+        }
+    }
+    </script>
+-->
+
+<!-- @author  prisoner849  -->
+
+<script id="vertexShader" type="x-shader/x-vertex">
+
+  precision mediump float;
+			precision mediump int;
+
+			uniform mat4 modelViewMatrix; // optional
+			uniform mat4 projectionMatrix; // optional
+
+			attribute vec3 position;
+			attribute vec4 color;
+      
+      attribute mat4 instanceMatrix;
+      attribute vec3 instanceColor;
+
+			varying vec3 vPosition;
+			varying vec4 vColor;
+
+			void main()	{
+
+				vPosition = position;
+				vColor = color;
+        vColor.rgb *= instanceColor;
+
+				gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4( position, 1.0 );
+
+			}
+
+		</script>
+        
+<script id="fragmentShader" type="x-shader/x-fragment">
+
+  precision mediump float;
+			precision mediump int;
+
+			uniform float time;
+
+			varying vec3 vPosition;
+			varying vec4 vColor;
+
+			void main()	{
+
+				vec4 color = vec4( vColor );
+				color.r += sin( vPosition.x * 10.0 + time ) * 0.5;
+
+				gl_FragColor = color;
+
+			}
+
+		</script>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.139.js';
+import {OrbitControls} from '../jsm/OrbitControls.139.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(
+  60,
+  innerWidth / innerHeight,
+  0.1,
+  1000
+);
+camera.position.set(0, 0, 10).setLength(10);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x002040);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false;
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed *= 0.5;
+
+const MAX_COUNT = 100;
+let g = new THREE.BoxGeometry();
+let m = new THREE.RawShaderMaterial({
+  uniforms: {time: {value: 0}},
+  vertexShader: document.getElementById( 'vertexShader' ).textContent,
+	fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+});
+let im = new THREE.InstancedMesh(g, m, MAX_COUNT);
+let dummy = new THREE.Object3D();
+for (let i = 0; i < MAX_COUNT; i++){
+  dummy.position.random().subScalar(0.5).multiplyScalar(10);
+  dummy.rotation.setFromVector3(new THREE.Vector3().random().multiplyScalar(Math.PI * 2));
+  dummy.updateMatrix();
+  im.setMatrixAt(i, dummy.matrix);
+  im.setColorAt(i, new THREE.Color(Math.random() * 0xffffff));
+}
+scene.add(im);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  m.uniforms.time.value = t;
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

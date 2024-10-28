@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/draw-grid-on-top-of-model-on-each-face/5156/17 -->
+<!-- http://threejs.hofk.de/geometrie/cell.html -->
+
+<head>
+	<title> cell </title>
+	<meta charset="utf-8">
+</head>
+<body>
+	<div id="container"></div>			
+</body>
+<script src="../js/three.min.98.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/THREEx.WindowResize.js"></script>
+
+<script>
+
+// @author hofk
+
+'use strict'
+var container, camera, scene, renderer, geometryMesh, geometryLines, materialMesh, materialLines, mesh, lines;
+
+init();
+animate();
+//--------
+
+function init() {
+
+	container = document.getElementById( 'container' );
+
+	camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 20 );
+  	camera.position.y = 2;
+	camera.position.z = 10;
+
+	scene = new THREE.Scene();
+
+	renderer = new THREE.WebGLRenderer( { antialias: false } );
+	
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.setClearColor( 0x777777, 1 );	
+
+	container.appendChild( renderer.domElement );
+	var controls = new THREE.OrbitControls( camera, renderer.domElement );
+	THREEx.WindowResize( renderer, camera );
+	
+	materialMesh = new THREE.MeshBasicMaterial( { color: 0xffff00, transparent: true, opacity: 0.05, side: THREE.DoubleSide, } );
+	materialLines = new THREE.LineBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide, } );
+
+	geometryMesh = new THREE.BufferGeometry();
+	
+	var verticesMesh = new Float32Array( [
+		// first triangle
+	   -1, -1, 0,
+	    1, -1, 0,
+	    1,  1, 0,
+	    // second triangle
+	    1,  1, 0,
+	   -1,  1, 0,
+	   -1, -1, 0
+		
+	] );
+	
+	geometryMesh.addAttribute( 'position', new THREE.BufferAttribute( verticesMesh, 3 ) );
+	
+	geometryLines = new THREE.BufferGeometry();
+	
+	var verticesLines = new Float32Array( [
+	
+		// four lines
+	   -1, -1, 0,
+	    1, -1, 0,
+		
+	    1, -1, 0,
+	    1,  1, 0,
+		
+	    1,  1, 0,
+	    -1, 1, 0,
+			
+	   -1,  1, 0,
+	   -1, -1, 0,
+		
+	] );
+		
+	geometryLines.addAttribute( 'position', new THREE.BufferAttribute( verticesLines, 3 ) );
+	
+	mesh = new THREE.Mesh( geometryMesh, materialMesh );
+	lines =  new THREE.LineSegments( geometryLines, materialLines )
+	
+	scene.add( mesh );
+	scene.add( lines );
+}
+
+function animate() {
+
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

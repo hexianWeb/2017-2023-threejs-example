@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/three-drawcallinspector-visualize-draw-call-cost-experimental/22503 -->
+<!-- https://codepen.io/Fyrestar/pen/PoGXVZv -->
+<head>
+  <title> DrawCallInspector </title>
+  <meta charset="utf-8" />
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script src="../js/three.min.124.js"></script>
+
+<!--  https://github.com/Fyrestar/THREE.DrawCallInspector/blob/main/DrawCallInspector.js -->
+<script src="DrawCallInspector.js"></script>
+
+<script>
+
+// @author Fyrestar
+
+// author: Fyrestar <info@mevedia.com>
+// https://github.com/Fyrestar/THREE.DrawCallInspector
+var camera, scene, renderer, mesh, goal, keys, follow;
+
+var time = 0;
+var newPosition = new THREE.Vector3();
+var matrix = new THREE.Matrix4();
+
+var stop = 1;
+var DEGTORAD = 0.01745327;
+var temp = new THREE.Vector3;
+var dir = new THREE.Vector3;
+var eye = new THREE.Vector3;
+var a = new THREE.Vector3;
+var b = new THREE.Vector3;
+var raycaster = new THREE.Raycaster;
+var mouse = new THREE.Vector2;
+var environment = [];
+var coronaSafetyDistance = 0.7;
+var goalDistance = coronaSafetyDistance;
+var velocity = 0.0;
+var speed = 0.0;
+
+init();
+
+const dci = new THREE.DrawCallInspector( renderer, scene, camera );
+
+dci.mount();
+
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.set( 0, .2, 0 );
+    
+    scene = new THREE.Scene();
+    camera.lookAt( scene.position );
+
+    var geometry = new THREE.BoxBufferGeometry( 0.2, 0.2, 0.2 );
+    var material = new THREE.MeshBasicMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+  
+    var rand = Math.random;
+  
+    for ( var x = 0; x < 10; x ++ )
+    for ( var y = 0; y < 10; y ++ ) {
+      
+      var clone = mesh.clone();
+
+
+	    if ( x === -3 && y === 5 ) {
+
+		    clone.geometry = new THREE.SphereBufferGeometry( 1, 120, 120 );
+		    clone.material = clone.material.clone();
+		    clone.material.wireframe = true;
+
+	    } else if ( x === -3 && y === 6 ) {
+
+		    clone.material = new THREE.MeshBasicMaterial;
+
+	    } else if ( x === 2 && y === 2 ) {
+
+      	  clone.geometry = new THREE.SphereBufferGeometry( 1.2, 11, 8 );
+
+	      clone.material = new THREE.ShaderMaterial( {
+		      vertexShader: `
+    		varying vec3 eye;
+    		varying vec3 pos;
+    		void main () {
+                vec4 mvp = modelViewMatrix * vec4 (position, 1.0);
+
+                pos = position;
+                eye = vec3(mvp) * normalMatrix;
+
+                gl_Position = projectionMatrix * mvp;
+    		}
+    	`,
+		      fragmentShader: `
+    		// https://www.shadertoy.com/view/XsdXRs
+    		#define BOUNDING_RADIUS 1.1
+    		#define COLOR1 vec3(.5,.5,.5)
+			#define COLOR2 vec3(0.5, 0.1, 0.0)
+float mandelbulb(vec3 pos){
+    vec3 w = pos;
+    float dr = 1.0,r;
+    vec3 p,p2,p4;
+    float k1,k2,k3,k4,k5;
+
+    for (int i = 0; i < 10; i++){
+        r = dot(w, w);
+        if (r > 4.0) break;
+        dr =  pow(r, 3.5)*8.0*dr + 1.0;
+
+        p = w;
+        p2 = w * w;
+        p4 = p2 * p2;
+
+        k3 = p2.x + p2.z;
+        k2 = inversesqrt( k3*k3*k3*k3*k3*k3*k3 );
+        k1 = dot(p4, vec3(1)) - 6.0 * dot(p2, vec3(p2.y, p2.z, -p2.x / 3.0));
+        k4 = dot(p2, vec3(1, -1, 1));
+        k5 = 8.0*p.y*k4*k1*k2;
+
+        w = pos + vec3(8.0*k5*p.x*p.z*(p2.x-p2.z)*(p4.x-6.0*p2.x*p2.z+p4.z),
+                       -16.0*p2.y*k3*k4*k4 + k1*k1,
+                       -k5*(p4.x*p4.x - 28.0*p4.x*p2.x*p2.z +
+                            70.0*p4.x*p4.z - 28.0*p2.x*p2.z*p4.z + p4.z*p4.z));
+    }
+    return log(r)*sqrt(r)/dr;
+}
+
+float dist(vec3 p) {
+    return 0.385*mandelbulb(p);
+}
+
+bool bounding(in vec3 ro, in vec3 rd){
+    float b = dot(rd,ro);
+    return dot(ro,ro) - b*b < BOUNDING_RADIUS * BOUNDING_RADIUS;
+}
+
+vec2 march(vec3 ro, vec3 rd){
+    if (bounding(ro, rd)){
+        float t = 0.01, d;
+        for (int i = 0; i < 296; i++){
+            d = dist(ro + rd * t);
+            t += d;
+
+            if (d < 0.002) return vec2(t, d);
+            if (d > 0.4) return vec2(-1.0);
+        }
+    }
+
+    return vec2(-1.0);
+}
+
+vec3 normal(vec3 p){
+    const float eps = 0.005;
+    return normalize(vec3(dist(p+vec3(eps,0,0))-dist(p-vec3(eps,0,0)),
+                          dist(p+vec3(0,eps,0))-dist(p-vec3(0,eps,0)),
+                          dist(p+vec3(0,0,eps))-dist(p-vec3(0,0,eps))));
+}
+    		varying vec3 eye;
+    		varying vec3 pos;
+    		void main () {
+    			vec3 rd = normalize(eye);
+    			vec2 res = march(pos, rd);
+    			if (res.x > 0.0) {
+    		        vec3 end = pos + rd * res.x;
+
+			        vec3 norm = normal(end-rd*0.001);
+
+			        float ao = clamp((dist(end + norm * 0.02) - res.y) / 0.02, 0.0, 1.0);
+			        //norm.xz *= rrot;
+
+			        float m = clamp(dot(end, end), 0.0, BOUNDING_RADIUS) / BOUNDING_RADIUS;
+			        vec3 col = COLOR1; //mix(COLOR1, COLOR2, m*m*m);
+
+			        float d = max(dot(norm, vec3(-0.57735)), 0.0);
+			        vec3 light = col * ao + 0.2 * d + 0.4 * d*d*d*d*d*d*d*d;
+
+			        gl_FragColor = vec4(light, 1.0);
+			    } else {
+			    	discard;
+			    }
+    		}
+    	`
+	      } );
+
+	  } else {
+	      clone.scale.set( 1 + rand() * 4, 2, 1 + rand() * 4 );
+
+	  }
+      clone.position.set(  (( x - 5 ) / 10) * 15, 0, (( y - 5 ) / 10) * 15 );
+      scene.add( clone );
+      
+      environment.push( clone );
+      
+    }
+    
+    goal = new THREE.Object3D;
+    follow = new THREE.Object3D;
+    follow.position.z = -coronaSafetyDistance;
+    mesh.add( follow );
+    
+    goal.add( camera );
+    scene.add( mesh );
+
+    //scene.add( new THREE.Mesh( new THREE.SphereBufferGeometry( 0.3, 120, 80 )));
+
+    
+    var gridHelper = new THREE.GridHelper( 40, 40 );
+    scene.add( gridHelper );
+    
+    scene.add( new THREE.AxesHelper() );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+  
+keys = {
+    a: false,
+    s: false,
+    d: false,
+    w: false
+  };
+  
+  
+  document.body.addEventListener( 'mousemove', function(e) {
+    mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+	  mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+    
+  });
+
+  document.body.addEventListener( 'keydown', function(e) {
+    
+    var key = e.code.replace('Key', '').toLowerCase();
+    if ( keys[ key ] !== undefined )
+      keys[ key ] = true;
+    
+  });
+  document.body.addEventListener( 'keyup', function(e) {
+    
+    var key = e.code.replace('Key', '').toLowerCase();
+    if ( keys[ key ] !== undefined )
+      keys[ key ] = false;
+    
+  });
+
+}
+
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    
+  speed = 0.0;
+  
+  if ( keys.w )
+    speed = 0.01;
+  else if ( keys.s )
+    speed = -0.01;
+
+  velocity += ( speed - velocity ) * .3;
+  mesh.translateZ( velocity );
+
+  if ( keys.a )
+    mesh.rotateY(0.05);
+  else if ( keys.d )
+    mesh.rotateY(-0.05);
+		
+  
+  
+  a.lerp(mesh.position, 0.4);
+  b.copy(goal.position);
+  
+  temp.setFromMatrixPosition(camera.matrixWorld);
+  
+  
+  
+    dir.copy( a ).sub( b ).normalize();
+  
+    eye.copy(dir).negate();
+    raycaster.set( a, eye );
+    var intersects = raycaster.intersectObjects( environment );
+
+    var distance = coronaSafetyDistance;
+  
+    if ( intersects && intersects.length ) {
+      var space = intersects[0].distance;
+      var radius = .2;
+      
+      // Pick the shorter distance
+      distance = Math.min( distance, space - radius );
+      
+    }
+  
+    goalDistance += ( distance - goalDistance ) * 0.2;
+  
+    let dis = a.distanceTo( b ) - goalDistance;
+  
+    goal.position.addScaledVector( dir, dis );
+    temp.setFromMatrixPosition(follow.matrixWorld);
+    goal.position.lerp(temp, 0.02);
+    
+    camera.lookAt( mesh.position );
+
+dci.update();
+
+dci.begin();
+renderer.render( scene, camera );
+dci.end();
+
+
+}
+
+</script>
+</html>

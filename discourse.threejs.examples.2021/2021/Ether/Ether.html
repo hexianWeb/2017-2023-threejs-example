@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/best-approach-to-re-create-this-ethereum-logo-custom-octahedron/33040/5 -->
+<!-- https://codepen.io/prisoner849/pen/dyVJezb -->
+<head>
+  <title> Ether </title>
+  <meta charset="utf-8" />
+ <style>
+    body {
+    overflow: hidden;
+    margin: 0;
+    }
+   </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from '../jsm/three.module.135.js';
+import {OrbitControls} from '../jsm/OrbitControls.135.js';
+import * as BufferGeometryUtils from '../jsm/BufferGeometryUtils.135.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let gPartTop = makePart([
+  [0, 1, 1], // pinnacle
+  [0, -1, 0],
+  [2, 0, 0],
+  [0, 4, 0],
+  [-2, 0, 0]
+]);
+
+let gPartBottom = makePart([
+  [0, -1.125, 0.5], // pinnacle
+  [0, -3, 0],
+  [2, 0, 0],
+  [0, -1, 0],
+  [-2, 0, 0]
+]);
+gPartBottom.translate(0, -0.5, 0);
+
+let gFront = BufferGeometryUtils.mergeBufferGeometries([gPartTop, gPartBottom]);
+let gBack = gFront.clone();
+gBack.rotateY(Math.PI);
+let g = BufferGeometryUtils.mergeBufferGeometries([gFront, gBack]);
+g = g.toNonIndexed();
+g.computeVertexNormals();
+
+let m = new THREE.MeshLambertMaterial({color: 0xffaaff});
+
+let eth = new THREE.Mesh(g, m);
+scene.add(eth);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+function makePart(pts){
+  let g = new THREE.BufferGeometry().setFromPoints(pts.map(p => {return new THREE.Vector3(p[0], p[1], p[2])}));
+  let index = [
+    0, 1, 2,
+    0, 2, 3,
+    0, 3, 4,
+    0, 4, 1
+  ];
+  g.setIndex(index);
+  g.computeVertexNormals();
+  return g;
+}
+</script>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/when-i-rotate-an-object-how-do-i-know-its-true-angle-of-rotation/4573/8 -->
+<!-- https://jsfiddle.net/f2Lommf5/15328/  -->
+
+<!-- see also https://jsfiddle.net/f2Lommf5/15329/  -->
+<head>
+  <title> RotationAngle 2 </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.97.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 5;
+
+    scene = new THREE.Scene();
+
+    geometry = new THREE.ConeBufferGeometry( 0.2, 1 );
+		geometry.rotateX( Math.PI * 0.5 );
+    material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+		
+		scene.add( new THREE.AxesHelper() );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+		
+    mesh.rotateY( 0.01 );
+		
+		console.log( mesh.rotation );
+
+    renderer.render( scene, camera );
+
+}
+</script>
+</html>

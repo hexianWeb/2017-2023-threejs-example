@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/update-old-three-js-code/35113 -->
+<!-- https://jsfiddle.net/38nx4jgq/ -->
+<head>
+  <title> fisheye  </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        margin: 0;
+    }
+   
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  Mugen87 
+
+import * as THREE from '../jsm/three.module.137.js';
+import {OrbitControls} from '../jsm/OrbitControls.137.js';
+
+let camera, scene, renderer;
+
+init();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
+  camera.position.z = 4;
+
+  scene = new THREE.Scene();
+
+  const geometry = new THREE.SphereBufferGeometry(1, 64, 32).toNonIndexed();
+  geometry.computeBoundingSphere();
+  const radius = geometry.boundingSphere.radius;
+
+  const positionAttribute = geometry.getAttribute('position');
+  const uvAttribute = geometry.getAttribute('uv');
+  const vertex = new THREE.Vector3();
+
+  for (let i = 0; i < positionAttribute.count; i++) {
+
+    vertex.fromBufferAttribute(positionAttribute, i);
+
+    const u = (vertex.x + radius) / (2 * radius);
+    const v = (vertex.y + radius) / (2 * radius);
+
+    uvAttribute.setXY(i, u, v);
+
+  }
+
+  const loader = new THREE.TextureLoader(); 
+  const texture = loader.load('uv_grid_opengl.jpg', render); // https://threejs.org/examples/textures/uv_grid_opengl.jpg
+  const material = new THREE.MeshBasicMaterial({
+    map: texture
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.addEventListener('change', render);
+
+}
+
+function render() {
+
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

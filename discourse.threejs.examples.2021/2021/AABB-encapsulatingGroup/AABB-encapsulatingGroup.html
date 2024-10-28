@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/weird-box3-behavior/25921/2 -->
+<!-- https://jsfiddle.net/vLtq1dhw/ -->
+<head>
+  <title> AABB-encapsulatingGroup </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+	body {
+		margin: 0;
+	}
+</style>
+<body> </body>
+
+<script type="module">
+
+// @author Mugen87
+
+import * as THREE from "../jsm/three.module.128.js";
+
+let camera, scene, renderer;
+
+let group, helper;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 6;
+
+    scene = new THREE.Scene();
+		
+		group = new THREE.Group();
+
+    const geometry = new THREE.BoxGeometry();
+
+    const mesh1 = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: 'red' } ) );
+		mesh1.position.x = 1;
+    group.add( mesh1 );
+		
+		const mesh2 = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: 'blue' } ) );
+		mesh2.position.x = - 1;
+    group.add( mesh2 );
+		
+		scene.add( group );
+		
+		helper = new THREE.BoxHelper( group );
+		scene.add( helper );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+
+    group.rotation.x += 0.01;
+    group.rotation.y += 0.02;
+		
+		helper.update();
+
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

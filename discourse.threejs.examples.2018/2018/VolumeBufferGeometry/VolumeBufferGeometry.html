@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/volume-of-three-buffergeometry/5109 -->
+<!-- https://codepen.io/prisoner849/pen/QJxgjb -->
+<head>
+  <title> VolumeBufferGeometry </title>
+  <meta charset="utf-8" />
+  <style>
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.98.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner 849
+
+function getVolume(geometry) {
+if (!geometry.isBufferGeometry) {
+  console.log("'geometry' must be an indexed or non-indexed buffer geometry");
+  return 0;
+}
+var isIndexed = geometry.index !== null;
+let position = geometry.attributes.position;
+let sum = 0;
+let p1 = new THREE.Vector3(),
+  p2 = new THREE.Vector3(),
+  p3 = new THREE.Vector3();
+if (!isIndexed) {
+  let faces = position.count / 3;
+  for (let i = 0; i < faces; i++) {
+    p1.fromBufferAttribute(position, i * 3 + 0);
+    p2.fromBufferAttribute(position, i * 3 + 1);
+    p3.fromBufferAttribute(position, i * 3 + 2);
+    sum += signedVolumeOfTriangle(p1, p2, p3);
+  }
+}
+else {
+  let index = geometry.index;
+  let faces = index.count / 3;
+  for (let i = 0; i < faces; i++){
+    p1.fromBufferAttribute(position, index.array[i * 3 + 0]);
+    p2.fromBufferAttribute(position, index.array[i * 3 + 1]);
+    p3.fromBufferAttribute(position, index.array[i * 3 + 2]);
+    sum += signedVolumeOfTriangle(p1, p2, p3);
+  }
+}
+return sum;
+}
+
+function signedVolumeOfTriangle(p1, p2, p3) {
+return p1.dot(p2.cross(p3)) / 6.0;
+}
+
+//...............................................................
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.setScalar(30);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+
+var contorls = new THREE.OrbitControls(camera, canvas);
+
+var radius = 10;
+var widthSegments = 36;
+var heightSegments = 18;
+var indexedGeom = new THREE.SphereBufferGeometry(radius, widthSegments, heightSegments);
+var indexed = new THREE.Mesh(indexedGeom, new THREE.MeshBasicMaterial({color: 0xff00ff, wireframe: true}));
+indexed.position.x = -15;
+scene.add(indexed);
+
+var nonIndexedGeom = new THREE.SphereBufferGeometry(radius, widthSegments, heightSegments).toNonIndexed();
+var nonIndexed = new THREE.Mesh(nonIndexedGeom, new THREE.MeshBasicMaterial({color: 0x00ffff, wireframe: true}));
+nonIndexed.position.x = 15;
+scene.add(nonIndexed);
+
+console.log("Pre-computed known volume of a sphere (4/3*PI*r^3): " + 4 / 3 * Math.PI * Math.pow(radius, 3));
+console.log("volume of the indexed geometry: " + getVolume(indexedGeom));
+console.log("volume of the non-indexed geometry: " + getVolume(nonIndexedGeom));
+
+render();
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+</script>
+</html>

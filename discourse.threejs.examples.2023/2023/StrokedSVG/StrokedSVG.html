@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/svg-extrude-without-filling-the-path/48032/5 -->
+<!-- https://codepen.io/boytchev/pen/jOvWGPN -->
+<head>
+  <title>StrokedSVG</title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script>
+    let svgText = `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="1000"
+    height="1000" >
+    <path d="M 10,10 L 10,300 A 200,200 0,0,1 210,500 L 300,500 A 200,200 0,0,1 500,300 L 500,10 L 10,10 "
+        stroke="green" stroke-width="4" fill="none" />
+    </svg>`;
+</script>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+import { SVGLoader } from '../jsm/SVGLoader.149.js';
+
+// setting up the scene, nothing interesting here, scroll down
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 300 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+
+// define profile of curve
+var profileShapeFat = new THREE.Shape( [
+				new THREE.Vector2(-1,-10),
+				new THREE.Vector2(1,-10),
+				new THREE.Vector2(1,10),
+				new THREE.Vector2(-1,10),
+		] );
+
+var profileShapeThin = new THREE.Shape( [
+				new THREE.Vector2(-1,-2),
+				new THREE.Vector2(1,-2),
+				new THREE.Vector2(1,2),
+				new THREE.Vector2(-1,2),
+		] );
+
+
+var svg = new SVGLoader().parse( svgText );
+
+// traverse all shapes and extrude them
+for( var path of svg.paths )
+for( var shape of SVGLoader.createShapes(path) )
+{
+		// convert points along the shape into array of 3D points
+		var p = shape.getPoints(10);
+		var pnts = [];
+		for(var i=0; i<p.length; i++)
+				pnts.push( new THREE.Vector3(p[i].x,p[i].y,0))
+	
+		// the svg shape is made an extrude path
+		var extrudeOptions = {
+				bevelEnabled: false,
+				steps: 1000,
+				extrudePath: new THREE.CatmullRomCurve3( pnts, true, 'catmullrom', 0.01 ),
+		};
+
+		// build the fat mesh
+		var geometry = new THREE.ExtrudeGeometry( 
+					profileShapeFat,
+					extrudeOptions ),
+				mesh = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial({color: 'crimson'}) );
+				mesh.scale.set(0.1,0.1,5)
+				scene.add( mesh );
+
+		// build the thin mesh
+		geometry = new THREE.ExtrudeGeometry( 
+					profileShapeThin,
+					extrudeOptions );
+		mesh = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial({color: 'royalblue'}) );
+				mesh.scale.set(0.1,0.1,5)
+				mesh.position.x = -60;
+				scene.add( mesh );
+}
+
+
+
+function animationLoop( t )
+{
+		light.position.copy( camera.position );
+	
+    controls.update( );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

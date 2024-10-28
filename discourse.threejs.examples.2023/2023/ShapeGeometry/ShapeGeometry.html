@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/convert-blenders-2d-bezier-curve-into-a-shapepath/47532/10 -->
+<!-- https://codepen.io/orion_prime/pen/eYjQEre -->
+<head>
+  <title>ShapeGeometry</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author  prisoner849
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+console.clear();
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color("maroon");
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 0, 2);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let gu = {
+  time: { value: 0 }
+};
+
+let center = new THREE.Vector2();
+let shapePts = new Array(4).fill().map((_, idx) => { // CCW
+  return {
+    cp1: new THREE.Vector2(-0.5, -0.2).rotateAround(center, Math.PI * 0.5 * idx),
+    cp2: new THREE.Vector2(-0.5, 0.2).rotateAround(center, Math.PI * 0.5 * idx),
+    p: new THREE.Vector2(-0.5, 0).rotateAround(center, Math.PI * 0.5 * idx)
+  }
+})
+console.log(shapePts);
+
+const shape = new THREE.Shape()
+		.moveTo(-0.26, 0.3)
+		.bezierCurveTo(-0.189, 0.336, -0.213, 0.162, -0.137, 0.137)
+		.bezierCurveTo(0.031, 0.081, 0.221, 0.419, 0.3, 0.261)
+		.bezierCurveTo(0.336, 0.189, 0.162, 0.213, 0.137, 0.137)
+		.bezierCurveTo(0.081, -0.031, 0.419, -0.221, 0.261, -0.3)
+		.bezierCurveTo(0.189, -0.336, 0.213, -0.162, 0.137, -0.137)
+		.bezierCurveTo(-0.031, -0.081, -0.221, -0.419, -0.3, -0.261)
+		.bezierCurveTo(-0.336, -0.189, -0.162, -0.213, -0.137, -0.137)
+		.bezierCurveTo(-0.081, 0.031, -0.419, 0.221, -0.261, 0.3)
+
+let shapeGeometry = new THREE.ShapeGeometry(shape);
+let shapeMaterial = new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+let shapeMesh = new THREE.Mesh(shapeGeometry, shapeMaterial);
+scene.add(shapeMesh);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  gu.time.value = t;
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

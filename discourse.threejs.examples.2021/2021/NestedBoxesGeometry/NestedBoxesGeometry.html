@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/nestedboxesgeometry/29683 -->
+<!-- https://codepen.io/prisoner849/pen/jOwVJEW -->
+<head>
+  <title> NestedBoxesGeometry </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(8, 5, 3).setLength(8);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+const layers = 100;
+let dummy = new THREE.Object3D();
+let g = NestedBoxesGeometry(1, 10, layers, 0xff00ff, 0x007fff);
+let uniforms = {
+  time: {value: 0},
+  layerMatrix: {value: new Array(layers).fill(0).map(l => {return new THREE.Matrix4()}) }
+};
+let m = new THREE.MeshBasicMaterial({
+  vertexColors: true,
+  onBeforeCompile: shader => {
+    shader.uniforms.time = uniforms.time;
+    shader.uniforms.layerMatrix = uniforms.layerMatrix;
+    shader.vertexShader = `
+      uniform float time;
+      uniform mat4[${layers}] layerMatrix;
+      attribute float layer;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <project_vertex>`,
+      `
+      vec4 mvPosition = vec4( transformed, 1.0 );
+      mvPosition = layerMatrix[int(layer)] * mvPosition; // instancing-like
+      mvPosition = modelViewMatrix * mvPosition;
+      gl_Position = projectionMatrix * mvPosition;
+      `
+    );
+    //console.log(shader.vertexShader);
+  }
+});
+let l = new THREE.LineSegments(g, m);
+scene.add(l);
+
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  let t = clock.getElapsedTime() * 0.05;
+  let wave = Math.sin(t);
+  uniforms.layerMatrix.value.forEach((lm, idx) => {
+    let currWave = wave * (1. - idx / (layers - 1));
+    dummy.rotation.x = Math.PI * 4 * currWave;
+    dummy.rotation.y = Math.PI * 2 * currWave;
+    dummy.updateMatrix();
+    lm.copy(dummy.matrix);
+  })
+  
+  renderer.render(scene, camera);
+})
+
+function NestedBoxesGeometry(minSize, maxSize, layers = 2, innerColor = 0xffffff, outerColor = 0x7f7f7f){
+  
+  let cI = new THREE.Color(innerColor);
+  let cO = new THREE.Color(outerColor);
+  let cM = new THREE.Color();
+  
+  let basePts = [
+    [0, 0, 0],[1, 0, 0],[1, 0, 1],[0, 0, 1],
+    [0, 1, 0],[1, 1, 0],[1, 1, 1],[0, 1, 1]
+  ].map(p => {return new THREE.Vector3(p[0], p[1], p[2]).subScalar(0.5)});
+  let baseIndex = [
+    0, 1, 1, 2, 2, 3, 3, 0,
+    4, 5, 5, 6, 6, 7, 7, 4,
+    0, 4, 1, 5, 2, 6, 3, 7
+  ];
+  let connect = [
+    0, 8, 1, 9, 2, 10, 3, 11,
+    4, 12, 5, 13, 6, 14, 7, 15
+  ];
+  
+  let sizeStep = (maxSize - minSize) / (layers);
+  let pts = [];
+  let idx = [];
+  let col = [];
+  let layer = [];
+  for(let i = 0; i < layers; i++){
+    basePts.forEach(p => {
+      pts.push(p.clone().multiplyScalar(i * sizeStep + minSize));
+      layer.push(i);
+      cM.lerpColors(cI, cO, i / (layers - 1));
+      col.push(cM.r, cM.g, cM.b);
+    });
+    baseIndex.forEach(id => {
+      idx.push(id + i * 8)
+    })
+    
+    if (i < (layers - 1)){
+      connect.forEach(c => {
+        idx.push(c + i * 8);
+      })
+    }
+  }
+  
+  let g = new THREE.BufferGeometry().setFromPoints(pts);
+  g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute("layer", new THREE.Float32BufferAttribute(layer, 1));
+  g.setIndex(idx);
+
+  return g;
+}
+
+</script>
+</html>

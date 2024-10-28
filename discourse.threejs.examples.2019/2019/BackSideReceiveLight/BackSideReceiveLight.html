@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/back-side-of-a-buffergeometry-cant-receive-light/7711/3 -->
+<!-- https://jsfiddle.net/cq7n5f6s/ -->
+<head>
+  <title> BackSideReceiveLight </title>
+  <meta charset="utf-8" />
+      <style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.104.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author sciecode
+
+  var renderer = new THREE.WebGLRenderer();
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer.physicallyCorrectLights = true;
+  document.body.appendChild( renderer.domElement );
+  
+  
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+  var controls = new THREE.OrbitControls( camera, renderer.domElement );
+  
+  camera.position.set( 15, 25, 45 );
+  controls.target.set( 0, 0, 0 );
+  
+ 	var geometry = new THREE.BufferGeometry();
+  var indices = [];
+  var vertices = [];
+  var normals = [];
+  var size = 12;
+  var segments = 10;
+  var halfSize = size / 2;
+  var segmentSize = size / segments;
+  // generate vertices, normals and color data for a simple grid geometry
+  for ( var i = 0; i <= segments; i ++ ) {
+    var y = ( i * segmentSize ) - halfSize;
+    for ( var j = 0; j <= segments; j ++ ) {
+      var x = ( j * segmentSize ) - halfSize;
+      vertices.push( x, - y, 0 );
+      normals.push( 0, 0, 1 );
+    }
+  }
+  // generate indices (data for element array buffer)
+  for ( var i = 0; i < segments; i ++ ) {
+    for ( var j = 0; j < segments; j ++ ) {
+      var a = i * ( segments + 1 ) + ( j + 1 );
+      var b = i * ( segments + 1 ) + j;
+      var c = ( i + 1 ) * ( segments + 1 ) + j;
+      var d = ( i + 1 ) * ( segments + 1 ) + ( j + 1 );
+      // generate two faces (triangles) per iteration
+      indices.push( a, b, d ); // face one
+      indices.push( b, c, d ); // face two
+    }
+  }
+  //
+  geometry.setIndex( indices );
+  geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+  geometry.addAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
+  var material = new THREE.MeshStandardMaterial( { 
+  	color: 0x32acd7,
+    side: THREE.DoubleSide
+  } );
+  plane = new THREE.Mesh( geometry, material );
+  plane.position.set( 0, 6, 0 );
+		scene.add( plane );
+  
+  
+  material = new THREE.MeshStandardMaterial( { color: 0xacacac, side: THREE.FrontSide } );
+  var floor = new THREE.Mesh( geometry, material );
+  floor.scale.x = 20;
+  floor.scale.y = 60;
+  floor.rotation.x = -Math.PI / 2;
+  scene.add( floor );
+  
+  var ambient = new THREE.AmbientLight( 0xffffff, 1.6 );
+  scene.add( ambient );
+  
+  var spotLight = new THREE.SpotLight( 0xac8c6c, 140.4);
+  spotLight.position.set( -10, 18, 30 );
+  spotLight.target = plane;
+  scene.add( spotLight );
+
+		var animate = function () {
+			requestAnimationFrame( animate );
+    
+    controls.update();
+    
+    plane.rotation.y += 0.01;
+
+			renderer.render( scene, camera );
+		};
+
+		animate();
+
+</script>
+</html>

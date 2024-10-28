@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/color-bottom-x-of-a-boxgeometry-using-faces/18502/2 -->
+<!-- https://codepen.io/prisoner849/pen/BaKJXjb -->
+<head>
+  <title> ColorByFillLevelDynamic </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+console.clear();
+import * as THREE from "../jsm/three.module.120.js"; 
+import {
+  OrbitControls
+} from "../jsm/OrbitControls.120.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(-10, 10, 10);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1.0);
+light.position.setScalar(1);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+scene.add(new THREE.GridHelper(20, 20));
+
+let tanks = [];
+for (let i = 0; i <= 10; i++){
+  let tank = createPercentageTank(1, 5, 1, 0xFACE8D, "red", 0xff8888, i * 10);
+  tank.position.set(i * 2 - 10, 0, -2);
+  scene.add(tank);
+  tanks.push(tank);
+  
+  let tank2 = createPercentageTank(1, 5, 1, 0xFACE8D, "red", 0xff8888, i * 10);
+  tank2.position.set(i * 2 - 10, 0, 2);
+  scene.add(tank2);
+  tanks.push(tank2);
+}
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(animate);
+function animate(){
+  let t = clock.getElapsedTime();
+  tanks[7].material.userData.uniforms.fillPercentage.value = 75 + Math.sin(t) * 15;
+  tanks[9].material.userData.uniforms.fillPercentage.value = 50 + Math.sin(t * 0.5) * 45;
+  renderer.render(scene, camera);
+}
+
+function createPercentageTank(w, h, d, baseColor, fillColor, borderColor, percentage){
+  
+  let g = new THREE.BoxBufferGeometry(w, h, d);
+  g.translate(0, h * 0.5, 0);
+  
+  let m = new THREE.MeshLambertMaterial({color: baseColor});
+  m.extensions = {derivatives: true};
+  
+  m.userData.uniforms = {
+    tankHeight: {value: h},
+    fillPercentage: { value: percentage },
+    fillColor: {value: new THREE.Color(fillColor)},
+    borderColor: {value: new THREE.Color(borderColor)}
+  }
+  m.onBeforeCompile = shader => {
+    shader.uniforms.tankHeight = m.userData.uniforms.tankHeight;
+    shader.uniforms.fillPercentage = m.userData.uniforms.fillPercentage;
+    shader.uniforms.fillColor = m.userData.uniforms.fillColor;
+    shader.uniforms.borderColor = m.userData.uniforms.borderColor;
+    
+    shader.vertexShader = `
+    varying vec3 vPos;
+    ${shader.vertexShader}
+`.replace(
+    `#include <begin_vertex>`,
+    `#include <begin_vertex>
+    vPos = position.xyz;  
+`
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+    uniform float tankHeight;
+    uniform float fillPercentage;
+    uniform vec3 fillColor;
+    uniform vec3 borderColor;
+    varying vec3 vPos;
+    ${shader.fragmentShader}
+`.replace(
+    `#include <color_fragment>`,
+      `#include <color_fragment>
+    float e = fwidth(vPos.y);
+    float level = tankHeight * 0.01 * fillPercentage;
+    float smoothLevel = smoothstep(level + e * 0.1, level + e, vPos.y);
+    diffuseColor.rgb = mix(fillColor, fillPercentage < 100. ? diffuseColor.rgb : fillColor, smoothLevel);
+`
+    ).replace(
+      `#include <dithering_fragment>`,
+      `#include <dithering_fragment>
+      if (fillPercentage < 100.){
+            level += e * 0.1;
+            float border = smoothstep(0., e, abs( level - vPos.y));
+            gl_FragColor.rgb = mix(borderColor, gl_FragColor.rgb, border);
+      }
+`
+    );
+    console.log(shader.fragmentShader);
+  };
+  
+  let o = new THREE.Mesh(g, m);
+  return o;
+}
+
+</script>
+</html>

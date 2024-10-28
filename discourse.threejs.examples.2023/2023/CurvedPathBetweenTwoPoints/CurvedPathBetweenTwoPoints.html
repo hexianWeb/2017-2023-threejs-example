@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/eliptical-path-for-camera-movement/47803/2 -->
+<!-- https://codepen.io/boytchev/pen/eYjaPMz -->
+<head>
+  <title>CurvedPathBetweenTwoPoints</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 100 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix( );
+  renderer.setSize( innerWidth, innerHeight );
+});
+
+
+// the central circle, not used at all, pure aesthetic reasons
+var centralObject = new THREE.Mesh(
+			new THREE.CircleGeometry( 3 ),
+    	new THREE.MeshBasicMaterial( {color:'tan'} )
+    );	
+		scene.add( centralObject );
+
+// the starting object (randomly selected)
+var startObject = new THREE.Mesh(
+			new THREE.CircleGeometry( 1 ),
+    	new THREE.MeshBasicMaterial( {color:'royalblue'} )
+    );	
+		scene.add( startObject );
+
+// the ending object (randomly selected)
+var endObject = new THREE.Mesh(
+			new THREE.CircleGeometry( 1 ),
+    	new THREE.MeshBasicMaterial( {color:'royalblue'} )
+    );	
+		scene.add( endObject );
+
+// the moving object (from starting to ending)
+var tracer = new THREE.Mesh(
+			new THREE.CircleGeometry( 0.6 ),
+    	new THREE.MeshBasicMaterial( {color:'crimson'} )
+    );	
+		scene.add( tracer );
+
+// two temporary vector, reused during calculations
+var tempA = new THREE.Vector3();
+var tempB = new THREE.Vector3();
+
+// the trajectory is a cubic Bezier curve
+var trajectory = new THREE.CubicBezierCurve3(
+	new THREE.Vector3(),
+	new THREE.Vector3(),
+	new THREE.Vector3(),
+	new THREE.Vector3()
+); 
+    
+
+// number of steps and current step
+const STEPS = 500;
+var step = 0;
+
+// pick random position of starting and ending
+randomize( );
+
+function randomize( )
+{
+    // random position of starting object
+    startObject.position.setFromSphericalCoords(
+        5 + 20*Math.random(),
+        Math.random(),
+        Math.PI/2
+     );
+  
+    // random position of ending object
+    endObject.position.setFromSphericalCoords(
+        5 + 20*Math.random(),
+        3 + Math.random(),
+        Math.PI/2
+     );
+  
+    // normal vector (perpendicular to the direct line between start and end)
+    var normal = new THREE.Vector3();
+        normal.subVectors( endObject.position, startObject.position );
+        normal.set( normal.y, -normal.x, 0 );
+  
+    // calculate the two intermediate points of the Bezier curve
+    tempA.copy( startObject.position ).addScaledVector( normal, 1/2 );
+    tempB.copy( endObject.position ).addScaledVector( normal, 1/2 );
+
+    // set all 4 points of trajectory's the Bezier curve
+    trajectory.v0.copy( startObject.position );
+    trajectory.v1.copy( tempA );
+    trajectory.v2.copy( tempB );
+    trajectory.v3.copy( endObject.position );
+}
+
+
+
+function animationLoop( )
+{
+    step++;
+  
+    if( step > STEPS )
+    {
+        // start over
+        step = 0;
+        randomize( );
+    }
+
+    // move the tracer along the trajectory
+    trajectory.getPoint( step/STEPS, tracer.position );
+
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

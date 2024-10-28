@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/when-a-wall-appears-the-shadow-is-not-blocked/42224/8 -->
+<!-- https://jsfiddle.net/tfoller/sq2zfbet/ -->
+<head>
+  <title> BlockShadow </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        margin: 0;
+    }
+  </style>
+</head>
+<script src="../js/three.min.144.js"></script>
+<script src="../js/OrbitControls.144.js"></script>
+<body> </body>
+
+<script>
+
+// @author hy212 + tfoller 
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+init();
+animate();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set( 10, 10, 10 );
+
+  scene = new THREE.Scene();
+
+  // 创建物体
+  const geometry = new THREE.BoxGeometry(4, 4, 4); // 生成几何体
+  const material = new THREE.MeshLambertMaterial({
+    color: 0x00ff00,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.castShadow = true;
+  mesh.position.set(0, 2, 0);
+  scene.add(mesh);
+  // 遮挡物
+  const geometry2 = new THREE.BoxGeometry(6, 6, 0.1);
+  const material2 = new THREE.MeshLambertMaterial({
+    color: 0xff0000,
+  });
+  const mesh2 = new THREE.Mesh(geometry2, material2);
+  mesh2.receiveShadow = true;
+  mesh2.castShadow = true;
+  mesh2.position.set(0, 3, -4);
+  scene.add(mesh2);
+
+  // 创建地面
+  const planeGeometry = new THREE.PlaneGeometry(300, 150);
+  const planeMaterial = new THREE.MeshLambertMaterial({
+    // 生成材质
+    color: 0xcccccc,
+  });
+  const planeMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+  planeMesh.receiveShadow = false;
+  planeMesh.rotation.x = -Math.PI / 2; //绕X轴旋转90度
+  planeMesh.position.z = mesh2.position.z - 150/2;
+  scene.add(planeMesh);
+  
+  const planeMesh2 = new THREE.Mesh(planeGeometry, planeMaterial);
+  planeMesh2.receiveShadow = true;
+  planeMesh2.rotation.x = -Math.PI / 2; //绕X轴旋转90度
+  planeMesh2.position.z = mesh2.position.z + 150/2;
+  scene.add(planeMesh2);
+
+	scene.add(new THREE.AxesHelper(1));
+
+  // 创建平行光源
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(3, 8, 10);
+  light.castShadow = true; // 允许生成阴影
+  scene.add(light);
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  document.body.appendChild(renderer.domElement);
+  
+  const controls = new THREE.OrbitControls( camera, renderer.domElement);
+
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/anyone-have-any-luck-getting-shader-materials-to-respond-to-fog/17218 -->
+<!-- https://jsfiddle.net/03ref9q4/2/ -->
+<head>
+  <title> CustomShaderUsingFog </title>
+  <meta charset="utf-8" />
+  	<style>
+	body {
+		margin: 0px;
+	}
+	canvas {
+	display: block;
+	}
+	</style>  
+</head>
+
+<script id="vertexShader" type="x-shader/x-vertex">
+			#include <fog_pars_vertex>
+
+			void main()	{
+				#include <begin_vertex>
+        #include <project_vertex>
+        #include <fog_vertex>
+			}
+</script>
+
+<script id="fragmentShader" type="x-shader/x-fragment">
+			#include <fog_pars_fragment>
+
+			void main()	{
+
+        gl_FragColor = vec4( 1.0, 0.0, 0.0, 1.0 );
+        #include <fog_fragment>
+
+			}
+</script>
+
+<body> </body>
+
+<script type="module">
+
+//@author Mugen87
+
+import * as THREE from "../jsm/three.module.118.js";
+import { OrbitControls } from "../jsm/OrbitControls.118.js";
+
+var mesh, renderer, scene, camera, controls;
+
+init();
+animate();
+
+function init() {
+
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    document.body.appendChild( renderer.domElement );
+
+    scene = new THREE.Scene();
+    scene.fog = new THREE.Fog( 0xa0a0a0, 10, 50 );
+    
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set( 20, 20, 20 );
+
+    controls = new OrbitControls( camera, renderer.domElement );
+   
+    scene.add( new THREE.AxesHelper( 20 ) );
+
+    var geometry = new THREE.SphereBufferGeometry( 5, 12, 8 );
+    
+    // material
+    var material = new THREE.ShaderMaterial( {
+    	uniforms: THREE.UniformsUtils.merge( [
+				THREE.UniformsLib[ 'fog' ]
+      ] ),
+    	vertexShader: document.getElementById( 'vertexShader' ).textContent,
+      fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+      fog: true
+    } );
+    
+    // mesh
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+    
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

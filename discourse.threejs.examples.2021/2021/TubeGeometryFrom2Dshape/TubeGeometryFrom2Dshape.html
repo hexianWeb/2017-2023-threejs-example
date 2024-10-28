@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-create-3d-tube-geometry-from-2d-shape/27805 -->
+<!-- https://jsfiddle.net/uaghx80y/ -->
+<head>
+  <title> TubeGeometryFrom2Dshape </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin: 0; 
+	}
+ </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author Mugen87
+
+import * as THREE from "../jsm/three.module.130.js";
+
+let camera, scene, renderer;
+
+init();
+render()
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.z = 100;
+
+  scene = new THREE.Scene();
+
+  const testShape = new THREE.Shape();
+
+  testShape.autoClose = false;
+
+  const x = 0;
+  const y = 0;
+  const radius = 10;
+  const width = 50;
+  const height = 50;
+
+  testShape.moveTo(x, y + radius);
+  testShape.lineTo(x, y + height - radius);
+  testShape.quadraticCurveTo(x, y + height, x + radius, y + height);
+  testShape.lineTo(x + width - radius, y + height);
+  testShape.quadraticCurveTo(x + width, y + height, x + width, y + height - radius);
+  testShape.lineTo(x + width, y + radius);
+  testShape.quadraticCurveTo(x + width, y, x + width - radius, y);
+  testShape.lineTo(x + radius, y);
+
+  const arcPoints = testShape.getPoints();
+  const lines = [];
+
+  for (let i = 0; i < arcPoints.length; i += 2) {
+    const pointA = arcPoints[i];
+    const pointB = arcPoints[i + 1] || pointA;
+
+    lines.push(
+      new THREE.LineCurve3(
+        new THREE.Vector3(pointA.x, pointA.y, 0),
+        new THREE.Vector3(pointB.x, pointB.y, 0),
+      ),
+    );
+  }
+
+  const path = new THREE.CurvePath();
+
+  path.curves.push(...lines);
+
+  const geometry = new THREE.TubeGeometry(path);
+  console.log(geometry)
+  const material = new THREE.MeshNormalMaterial();
+
+  const mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+}
+
+function render() {
+
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/corrugated-ring/37359 -->
+<!-- https://codepen.io/prisoner849/pen/yLprLEZ -->
+<head>
+  <title> CorrugatedRing </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.139.js';
+import {OrbitControls} from '../jsm/OrbitControls.139.js';
+
+//let loader = new THREE.TextureLoader();
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color().setScalar(0.25);
+let camera = new THREE.PerspectiveCamera(
+  60,
+  innerWidth / innerHeight,
+  0.1,
+  5000
+);
+camera.position.set(0, 0, 10).setLength(10);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false;
+controls.enableDamping = true;
+
+let light = new THREE.DirectionalLight(0xffffff, 0.25);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.75));
+
+const minR = 0.1;
+const maxR = 3;
+const segs = 60;
+let g = new THREE.RingGeometry(minR, maxR, segs, 10);
+let v3 = new THREE.Vector3();
+let pos = g.attributes.position;
+let uvs = g.attributes.uv;
+for(let i = 0; i < pos.count; i++){
+  v3.fromBufferAttribute(pos, i);
+  let len = THREE.MathUtils.clamp(v3.length(), minR, maxR);
+  let diffR = maxR - minR;
+  let a = Math.atan2(v3.y, v3.x);
+  let z = Math.cos(a * segs * 0.5) * (len / diffR) * 0.1;
+  pos.setZ(i, z);
+  let u = (a + Math.PI) / (Math.PI * 2);
+  let v = len / diffR;
+  uvs.setXY(i, u, v);
+}
+g = g.toNonIndexed();
+g.computeVertexNormals();
+let m = new THREE.MeshLambertMaterial({map: getTexture(), wireframe: false});
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+function getTexture(){
+  let c = document.createElement("canvas");
+  c.width = 1;
+  c.height = 10;
+  let ctx = c.getContext('2d');
+  let cols = ["pink", "lightgreen", "lightblue", "lightyellow"];
+  for(let i = 0; i < c.height; i++){
+    ctx.fillStyle = cols[THREE.MathUtils.randInt(0, cols.length - 1)];
+    ctx.fillRect(0, i, 1, 1);
+  }
+  let canvas = new THREE.CanvasTexture(c);
+  canvas.minFilter = THREE.NearestFilter;
+  canvas.magFilter = THREE.NearestFilter;
+  canvas.needsUpdate = true;
+  return canvas;
+}
+
+</script>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/extruded-shape-with-hole-missing-inside-mesh/42401/3 -->
+<!-- https://jsfiddle.net/phgmrLst/1/ -->
+<head>
+  <title> ExtrudedShapeWithHole </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        margin: 0;
+    }
+  </style>
+</head>
+<script src="../js/three.min.144.js"></script>
+<script src="../js/OrbitControls.144.js"></script>
+<body> </body>
+
+<script>
+
+// @author jimtea44 + Mugen87
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+init();
+animate();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+  camera.position.z = 20;
+
+  scene = new THREE.Scene();
+
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0);
+  shape.lineTo(0, 5);
+  shape.lineTo(5, 5);
+  shape.lineTo(5, 0);
+  shape.lineTo(0, 0);
+
+  const hole = new THREE.Path();
+  hole.moveTo(0.5, 0.5);
+  hole.lineTo(0.5, 4.5);
+  hole.lineTo(4.5, 4.5);
+  hole.lineTo(4.5, 0.5);
+  hole.lineTo(0.5, 0.5);
+
+  shape.holes = [hole];
+
+  const extrudeSettings = {
+    depth: 10,
+  };
+
+  const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  geometry.center();
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshNormalMaterial({side: THREE.DoubleSide}));
+  
+  scene.add( mesh );
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+  
+  const controls = new THREE.OrbitControls(camera,renderer.domElement);
+
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

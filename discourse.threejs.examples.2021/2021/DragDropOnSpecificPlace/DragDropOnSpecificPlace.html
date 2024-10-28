@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/drag-and-drop-only-on-specific-place/27888 -->
+<!-- https://jsfiddle.net/gw6vzeux/ -->
+<head>
+  <title> DragDropOnSpecificPlace </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin: 0;
+	}
+ </style>
+</head>
+
+<script src="../js/three.min.130.js"></script>
+<script src="../js/DragControls.130.js"></script>
+ 
+<body> </body>
+
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer;
+
+const aabb = new THREE.Box3();
+const target = new THREE.Vector3(); // (0,0,0)
+let intersection = false;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 20 );
+    camera.position.set( 0, 4, 8 );
+		camera.lookAt( 0, 0, 0 );
+
+    scene = new THREE.Scene();
+		
+		// target
+		
+		const targetArea = new THREE.Box3().setFromCenterAndSize( target, new THREE.Vector3( 1, 1, 1 ) );
+		const helper = new THREE.Box3Helper( targetArea );
+		scene.add( helper );
+		
+		// box
+		
+		const geometry = new THREE.BoxGeometry();
+		geometry.computeBoundingBox();
+		const material = new THREE.MeshNormalMaterial();
+		const mesh = new THREE.Mesh( geometry, material );
+		mesh.position.set( 4, 0, 0 );
+		mesh.userData.origin = mesh.position.clone(); // save position for reset
+		scene.add( mesh );
+		
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+		renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		const controls = new THREE.DragControls( [ mesh ], camera, renderer.domElement );
+		controls.addEventListener( 'dragend', function() {
+		
+			if ( intersection === true ) {
+			
+				mesh.position.copy( target );
+			
+			} else {
+			
+				mesh.position.copy( mesh.userData.origin );
+			
+			}
+		
+		} );
+		
+		controls.addEventListener( 'drag', function() {
+		
+			aabb.copy( mesh.geometry.boundingBox ).applyMatrix4( mesh.matrixWorld );
+			
+			intersection = aabb.intersectsBox( targetArea );
+		
+		} );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

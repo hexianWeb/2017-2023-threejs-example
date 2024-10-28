@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<!-- 
+https://discourse.threejs.org/t/create-collision-with-particles-of-a-3d-model-three-js/8356/3 -->
+<!-- https://jsfiddle.net/am7qucsL/  enhanced from   https://jsfiddle.net/prisoner849/cLt80kse/ -->
+<head>
+  <title> CollisionWithParticles </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+</style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.106.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author sciecode + prioner849
+
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var scene = new THREE.Scene();
+
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+camera.position.set(0, 0, 10);
+
+var cylGeom = new THREE.CylinderBufferGeometry(1, 1, 10, 32, 50);
+
+var uniforms = {
+  mouse: {
+    value: new THREE.Vector3()
+  },
+  radius: {
+  	value: 3
+  }
+};
+
+var cylMat = new THREE.PointsMaterial({
+  size: 0.125,
+  color: "aqua"
+});
+cylMat.onBeforeCompile = shader => {
+	shader.uniforms.mouse = uniforms.mouse;
+  shader.uniforms.radius = uniforms.radius;
+  //console.log(shader.vertexShader);
+  shader.vertexShader = `
+  	uniform vec3 mouse;
+    uniform float radius;
+  ` + shader.vertexShader;
+  shader.vertexShader = shader.vertexShader.replace(
+  	`#include <begin_vertex>`,
+    `#include <begin_vertex>
+    	
+      vec3 dir = transformed - mouse;
+      
+      float dist = length(dir);
+			
+      if (dist < radius){
+        float ratio = 1. - dist / radius;
+
+        vec3 shift = dir * 2. * (ratio * ratio);
+
+        transformed += shift;
+      }
+    
+    `
+  );
+}
+
+var cyl = new THREE.Points(cylGeom, cylMat);
+scene.add(cyl);
+
+var plane = new THREE.Plane( new THREE.Vector3(0, 0, 1), 0 );
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+window.addEventListener("mousemove", event => {
+
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+  
+  raycaster.setFromCamera(mouse, camera);
+  
+  raycaster.ray.intersectPlane(plane, uniforms.mouse.value);
+  
+});
+
+controls.addEventListener("end", event => {
+
+  plane.normal.copy( camera.position );
+  plane.normal.y = 0;
+  plane.normal.normalize();
+  
+});
+
+renderer.setAnimationLoop( () => {
+
+  renderer.render(scene, camera);
+  
+} );
+</script>
+</html>

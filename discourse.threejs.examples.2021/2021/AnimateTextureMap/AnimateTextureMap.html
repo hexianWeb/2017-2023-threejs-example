@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-animate-the-texture-map-change-of-meshbasicmaterial-using-gsap-or-any-other-possible-method/32887/5 -->
+<!-- https://jsfiddle.net/prisoner849/bmda176z/ -->
+<head>
+  <title> AnimateTextureMap </title>
+  <meta charset="utf-8" />
+    <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    #imgLib {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    }
+    img{
+    border: 4px solid #aaa;
+    border-radius: 10px;
+    margin: 4px;
+    }
+    img:hover{
+    border: 6px solid white;
+    cursor: pointer;
+    margin: 2px;
+    }
+    </style>
+</head>
+
+<body> 
+    <div id="imgLib">
+    
+    </div>
+</body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from '../jsm/three.module.135.js';
+import {OrbitControls} from '../jsm/OrbitControls.135.js';
+import {TWEEN} from '../jsm/tween.module.min.135.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(-0.5, 0.5, 1).setLength(10);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+	camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let tl = new THREE.TextureLoader();
+let changingInProgress = false;
+let textures = [
+  "758px-Canestra_di_frutta_(Caravaggio).jpg",  // "https://threejs.org/examples/textures/758px-Canestra_di_frutta_(Caravaggio).jpg",
+  "uv_grid_opengl.jpg",                         // "https://threejs.org/examples/textures/uv_grid_opengl.jpg",
+  "colors.png"                                  // "https://threejs.org/examples/textures/colors.png"
+].map((t, idx) => {
+	
+  let img = new Image();
+  img.width = img.height = 100;
+  img.src = t;
+  img.addEventListener("click", event => { changeTexture(idx);})
+  imgLib.appendChild(img);
+  
+  return tl.load(t, tex => {tex.needsUpdate = true});
+});
+
+function changeTexture(idx){
+
+	if (idx === m.userData.prevIdx || changingInProgress === true) return;
+  
+  m.map = textures[idx];
+  m.userData.map0.value = textures[m.userData.prevIdx];
+  m.userData.prevIdx = idx;
+  
+  m.userData.mixVal.value = 0;
+  new TWEEN.Tween(m.userData.mixVal)
+  	.to({value: 1}, 1000)
+		.onStart(() => {changingInProgress = true;})
+    .onComplete(() => {changingInProgress = false;})
+    .start();
+}
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let g = new THREE.BoxGeometry(5, 5, 5);
+let m = new THREE.MeshLambertMaterial({
+	map: textures[0],
+	onBeforeCompile: shader => {
+  
+  	shader.uniforms.map0 = m.userData.map0;
+    shader.uniforms.mixVal = m.userData.mixVal;
+    
+    shader.fragmentShader = `
+    	uniform sampler2D map0;
+      uniform float mixVal;
+      ${shader.fragmentShader}
+    `.replace(
+    	`#include <map_fragment>`,
+      `
+      #ifdef USE_MAP
+      	vec4 texelColor0 = texture2D( map0, vUv );
+        vec4 texelColor1 = texture2D( map, vUv );
+        vec4 texelColor = mix(texelColor0, texelColor1, mixVal);
+        texelColor = mapTexelToLinear( texelColor );
+        diffuseColor *= texelColor;
+      #endif
+      `
+    );
+    console.log(shader.fragmentShader);
+  }
+});
+m.userData = {
+	prevIdx: 0,
+	map0:{
+  	value: textures[0]
+  },
+  mixVal: {
+  	value: 1
+  }
+};
+
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+renderer.setAnimationLoop(() => {
+	TWEEN.update();
+	renderer.render(scene, camera);
+})
+
+</script> 
+</html>

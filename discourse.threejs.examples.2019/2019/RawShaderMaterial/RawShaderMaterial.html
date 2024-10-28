@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/replicating-linesegments-wireframe-with-rawshadermaterial/6095 -->
+<!-- https://jsfiddle.net/70jrynts/4/ -->
+<head>
+  <title> RawShaderMaterial </title>
+  <meta charset="utf-8" />
+    <style>
+	body {
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.101.js"></script>
+
+<script id="vs" type="x-shader/x-vertex">
+	uniform mat4 modelViewMatrix;
+	uniform mat4 projectionMatrix;
+	
+	attribute vec3 position;
+	
+	void main() {
+		gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+	}
+</script>
+
+<script id="fs" type="x-shader/x-fragment">
+	void main() {
+		gl_FragColor = vec4(1, 0, 0, 1);
+	}
+</script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer, lines;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 4;
+
+    scene = new THREE.Scene();
+
+    var geometry = new THREE.BoxBufferGeometry( 1, 1, 1, 5, 5, 5 );
+		var wireframeGeometry = new THREE.WireframeGeometry( geometry );
+		
+		var material = new THREE.RawShaderMaterial( {
+				vertexShader: document.getElementById( 'vs' ).textContent,
+				fragmentShader: document.getElementById( 'fs' ).textContent
+		} );
+    
+
+    lines = new THREE.LineSegments( wireframeGeometry, material );
+    scene.add( lines );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+
+    lines.rotation.x += 0.01;
+    lines.rotation.y += 0.02;
+
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

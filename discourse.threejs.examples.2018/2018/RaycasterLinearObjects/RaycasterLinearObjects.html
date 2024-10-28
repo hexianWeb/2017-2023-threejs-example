@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/raycaster-issue-with-linear-objects/4476 -->
+<!-- https://jsfiddle.net/k1ygqz2c/2/ -->
+<head>
+  <title> RaycasterLinearObjects </title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+	<div id="scene" style="width: 600px; height: 600px;"></div>
+</body>
+
+<script src="../js/three.min.98.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author tonymihay, Mugen87 
+
+var container, scene, camera, renderer, controls, raycaster;
+var mouse = new THREE.Vector2();
+var intersected;
+
+
+init();
+
+animate();
+
+function init() {
+
+	container = document.getElementById('scene');
+  
+  var WIDTH  = container.clientWidth,
+      HEIGHT = container.clientHeight;
+  
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf7f7f7);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(WIDTH, HEIGHT);
+
+  container.appendChild(renderer.domElement);
+
+  camera = new THREE.PerspectiveCamera(45, WIDTH / HEIGHT, 0.1, 10000);
+  camera.lookAt(scene.position);
+  camera.position.set(0, 0, 15);
+  
+  raycaster = new THREE.Raycaster();
+	raycaster.linePrecision = 0.2;
+	
+  controls = new THREE.OrbitControls(camera, renderer.domElement)
+  controls.enabled = true;
+  controls.autoRotate = false;
+  
+  // Add object
+
+  var squareGeo = new THREE.Geometry();
+  var lineMat = new THREE.LineBasicMaterial({
+    color: 0x000000
+  });
+
+  squareGeo.vertices.push(
+    new THREE.Vector3(  1,  1, 0 ),
+    new THREE.Vector3(  1, -1, 0 ),
+    new THREE.Vector3( -1, -1, 0 ),
+    new THREE.Vector3( -1,  1, 0 ),
+    new THREE.Vector3(  1,  1, 0 )
+  );
+  
+  var Square = new THREE.Line(squareGeo, lineMat);
+  
+  scene.add(Square);
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  // Render the scene.
+  render();
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+function onMouseMove(event) {
+  event.preventDefault();
+
+  mouse.x = (event.clientX / container.clientWidth) * 2 - 1;
+  mouse.y = - (event.clientY / container.clientHeight) * 2 + 1;
+  
+  raycaster.setFromCamera(mouse, camera);
+  
+  var intersects = raycaster.intersectObjects(scene.children);
+  
+  if (intersects.length > 0) {
+    if (intersected != intersects[0].object) {
+      if (intersected) {
+        intersected.material.color.setHex(intersected.currentHex);
+      }
+      if (intersects[0].object.material.color === undefined) return;
+      intersected = intersects[0].object;
+      intersected.currentHex = intersected.material.color.getHex();
+      intersected.material.color.setHex(0xff0000);
+    }
+  } else {
+    if (intersected) {
+      intersected.material.color.setHex(intersected.currentHex);
+    }
+    intersected = null;
+  }
+}
+
+container.addEventListener('mousemove', onMouseMove, false);
+</script>
+</html>

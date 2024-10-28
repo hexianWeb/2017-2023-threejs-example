@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/2d-plots-with-shapebuffergeometry-performance/6259/7 -->
+<!-- https://codepen.io/prisoner849/pen/yZdqxL -->
+<head>
+  <title> 2dPlots </title>
+  <meta charset="utf-8" />
+    <style>
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+	</style>  
+</head>
+
+<body>
+
+</body>
+<script src="../js/three.min.101.js"></script>
+<script src="../js/perlin.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.set(0, 0, 100);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setClearColor(0x404040);
+var canvas = renderer.domElement;
+document.body.appendChild(canvas);
+
+var division = 1000;
+var points = [];
+for (let i = 0; i < division; i++){
+  points.push(new THREE.Vector3(i * 0.1, 0, 0));
+}
+
+var lineGeom = new THREE.BufferGeometry().setFromPoints(points);
+lineGeom.center();
+var lineMat = new THREE.LineBasicMaterial({color:"white"});
+var line = new THREE.Line(lineGeom, lineMat);
+scene.add(line);
+
+var planeGeom = new THREE.PlaneBufferGeometry(100,20, division - 1, 1);
+planeGeom.translate(0, 10, 0);
+var planeMat = new THREE.MeshBasicMaterial({color: "aqua"});
+var plane = new THREE.Mesh(planeGeom, planeMat);
+scene.add(plane);
+
+console.log(lineGeom.attributes.position.count);
+console.log(planeGeom.attributes.position.count);
+
+
+var t = 0;
+setInterval(()=>{
+  let n = noise.perlin2(-t, 10);
+  let zeroItem = n * 10;
+  newValue(zeroItem);
+  t += 0.01;
+}, 10);
+
+function newValue(val){
+  for(let i = division - 1; i > 0; i--){
+    let yVal = lineGeom.attributes.position.getY(i - 1);
+    lineGeom.attributes.position.setY(i, yVal);
+  }
+  lineGeom.attributes.position.setY(0, val);
+  
+  planeGeom.attributes.position.array.set(lineGeom.attributes.position.array, 0);
+  
+  lineGeom.attributes.position.needsUpdate = true;
+  planeGeom.attributes.position.needsUpdate = true;
+}
+
+render();
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+</script>
+
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-gradually-rotate-a-cube-to-face-another-cube-that-are-both-on-a-flat-plane-surface/27374/3 -->
+<!-- https://jsfiddle.net/r6j7yLea/1/ -->
+<head>
+  <title> RotationToTargetObject </title>
+  <meta charset="utf-8" />
+  	<style>
+		body{
+		margin: 0;
+		}
+	</style>
+</head>
+
+<body></body>
+
+<script src="../js/three.min.129.js"></script>
+<script src="../js/GLTFLoader.129.js"></script>
+<script src="../js/OrbitControls.129.js"></script>
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer, clock, model, target;
+
+//const rotationMatrix = new THREE.Matrix4();
+//const targetQuaternion = new THREE.Quaternion();
+//const speed = 2;
+
+init();
+animate();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 20);
+  camera.position.set(0, 3, 12);
+  //camera.lookAt(0, 1, 0);
+
+  clock = new THREE.Clock();
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xffffff);
+  
+ 
+
+  const light = new THREE.HemisphereLight(0xbbbbff, 0x444422);
+  light.position.set(0, 1, 0);
+  scene.add(light);
+
+  const helper = new THREE.GridHelper();
+  scene.add(helper);
+
+  const loader = new THREE.GLTFLoader();
+  		
+  loader.load('Soldier.glb', function(gltf) { // https://threejs.org/examples/models/gltf/Soldier.glb
+
+    model = gltf.scene;
+    //model.children[0].rotation.z = Math.PI;
+   // scene.add(model);
+    //generateTarget();
+
+  });
+/*
+  const targetGeometry = new THREE.SphereGeometry(0.2);
+  const targetMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000
+  });
+  target = new THREE.Mesh(targetGeometry, targetMaterial);
+  scene.add(target);
+*/
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.body.appendChild(renderer.domElement);
+  
+     const controls = new THREE.OrbitControls( camera, renderer.domElement );
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  const delta = clock.getDelta();
+/*
+  if (model !== undefined && !model.quaternion.equals(targetQuaternion)) {
+
+    const step = speed * delta;
+    model.quaternion.rotateTowards(targetQuaternion, step);
+
+  }
+*/
+  renderer.render(scene, camera);
+
+}
+
+function generateTarget() {
+
+  // generate a random point on a sphere
+
+  //target.position.x = -5 + (10 * Math.random());
+ // target.position.z = -5 + (10 * Math.random());
+
+  // compute target rotation
+/*
+  if (model !== undefined) {
+
+    rotationMatrix.lookAt(target.position, model.position, model.up);
+    targetQuaternion.setFromRotationMatrix(rotationMatrix);
+
+  }
+  
+  setTimeout(generateTarget, 2000);
+*/
+}
+
+</script>
+</html>

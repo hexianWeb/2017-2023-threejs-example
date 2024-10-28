@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/capping-clipped-planes-using-stencil-on-a-buffergeometry/18407/11 -->
+<!-- https://jsfiddle.net/dokev2hy/1/ -->
+<head>
+  <title> CappingClippedPlanesStencil </title>
+  <meta charset="utf-8" />
+</head>
+
+<body> </body>
+<script type="module">
+
+//@author rahul.pillai93 + gkjohnson
+
+import * as THREE from "../jsm/three.module.120.js"; 
+import {  OrbitControls } from "../jsm/OrbitControls.120.js";
+
+var camera, scene, renderer, geometry, material, mesh, controls;
+var frontFaceStencilMat, backFaceStencilMat, planeStencilMat;
+
+init();
+
+function init() {
+
+		var planeNormal = new THREE.Vector3(1, 0,-0.5).normalize();
+    var forwardVector = new THREE.Vector3(0, 0, -1);
+		var plane = new THREE.Plane(planeNormal, -3);
+
+    scene = new THREE.Scene();
+
+    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.position.z = 100;
+    scene.add(camera);
+    var planes = [ plane ];
+   
+    geometry = new THREE.CylinderGeometry(15, 15, 50, 64);
+    material = new THREE.MeshNormalMaterial({
+       clippingPlanes: planes,
+       side: THREE.DoubleSide
+    });
+
+    mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x += 11;
+    mesh.rotation.y += 1;
+    mesh.rotation.z += -15;
+    scene.add(mesh);
+    
+    // Set up the stencil materials
+    initStencilMaterials();
+    
+    // Clip the cylinder stencil materials
+    frontFaceStencilMat.clippingPlanes = planes;
+    backFaceStencilMat.clippingPlanes = planes;
+
+		// Add the front face stencil
+		var frontMesh = new THREE.Mesh(geometry, frontFaceStencilMat);
+    frontMesh.rotation.copy(mesh.rotation);
+    scene.add(frontMesh);
+    
+    // Add the back face stencil
+    var backMesh = new THREE.Mesh(geometry, backFaceStencilMat);
+    backMesh.rotation.copy(mesh.rotation);
+	  scene.add(backMesh);
+    
+    // Add the plane
+    var planeGeom = new THREE.PlaneBufferGeometry();
+    var planeMesh = new THREE.Mesh(planeGeom, planeStencilMat);
+    planeMesh.scale.setScalar(100);
+    plane.coplanarPoint(planeMesh.position);
+    planeMesh.quaternion.setFromUnitVectors(forwardVector, planeNormal);
+    planeMesh.renderOrder = 1;
+    scene.add(planeMesh);
+
+    renderer = new THREE.WebGLRenderer({alpha: true});
+    renderer.localClippingEnabled = true;
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    document.body.appendChild(renderer.domElement);
+    
+		controls = new OrbitControls(camera, renderer.domElement);
+
+    render();
+
+}
+
+function initStencilMaterials() {
+		// PASS 1
+    // everywhere that the back faces are visible (clipped region) the stencil
+    // buffer is incremented by 1.
+		backFaceStencilMat = new THREE.MeshBasicMaterial();
+    backFaceStencilMat.depthWrite = false;
+    backFaceStencilMat.depthTest = false;
+    backFaceStencilMat.colorWrite = false;
+    backFaceStencilMat.stencilWrite = true;
+    backFaceStencilMat.stencilFunc = THREE.AlwaysStencilFunc;
+    backFaceStencilMat.side = THREE.BackSide;
+    backFaceStencilMat.stencilFail = THREE.IncrementWrapStencilOp;
+    backFaceStencilMat.stencilZFail = THREE.IncrementWrapStencilOp;
+    backFaceStencilMat.stencilZPass = THREE.IncrementWrapStencilOp;
+
+		// PASS 2
+    // everywhere that the front faces are visible the stencil
+    // buffer is decremented back to 0.
+    frontFaceStencilMat = new THREE.MeshBasicMaterial();
+    frontFaceStencilMat.depthWrite = false;
+    frontFaceStencilMat.depthTest = false;
+    frontFaceStencilMat.colorWrite = false;
+    frontFaceStencilMat.stencilWrite = true;
+    frontFaceStencilMat.stencilFunc = THREE.AlwaysStencilFunc;
+    frontFaceStencilMat.side = THREE.FrontSide;
+    frontFaceStencilMat.stencilFail = THREE.DecrementWrapStencilOp;
+    frontFaceStencilMat.stencilZFail = THREE.DecrementWrapStencilOp;
+    frontFaceStencilMat.stencilZPass = THREE.DecrementWrapStencilOp;
+
+		// PASS 3
+    // draw the plane everywhere that the stencil buffer != 0, which will
+    // only be in the clipped region where back faces are visible.
+    planeStencilMat = new THREE.MeshNormalMaterial();
+		planeStencilMat.stencilWrite = true;
+    planeStencilMat.stencilRef = 0;
+    planeStencilMat.stencilFunc = THREE.NotEqualStencilFunc;
+    planeStencilMat.stencilFail = THREE.ReplaceStencilOp;
+    planeStencilMat.stencilZFail = THREE.ReplaceStencilOp;
+    planeStencilMat.stencilZPass = THREE.ReplaceStencilOp;
+}
+
+
+function render() {
+
+		requestAnimationFrame(render);
+
+    renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

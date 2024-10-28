@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/merged-geometry-shared-material-individual-face-opacity/22270/4 -->
+<!-- https://codepen.io/prisoner849/pen/JjRaXRg -->
+<head>
+  <title> MergedGeometryIndividualOpacity </title>
+  <meta charset="utf-8" />
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.124.js";
+import { BufferGeometryUtils } from "../jsm/BufferGeometryUtils.124.js";
+import { OrbitControls } from "../jsm/OrbitControls.124.js";
+import { TWEEN } from "../jsm/tween.module.min.124.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 100);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x222222);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+// planes
+let planeIndices = [];
+let planeGeoms = [];
+let uvs = [];
+for(let i = 0; i < 2000; i++){
+  let p = new THREE.PlaneBufferGeometry();
+  p.translate(
+    THREE.MathUtils.randInt(-50, 50),
+    THREE.MathUtils.randInt(-50, 50),
+    THREE.MathUtils.randInt(-50, 50)
+  );
+  planeGeoms.push(p);
+  let idx = i % 100;
+  let uvX = (idx % 10) * 0.1;
+  let uvY = Math.floor(idx / 10) * 0.1;
+  uvs.push(
+    uvX + 0.0, uvY + 0.1,
+    uvX + 0.1, uvY + 0.1,
+    uvX + 0.0, uvY + 0.0,
+    uvX + 0.1, uvY + 0.0
+  )
+  planeIndices.push(i, i, i, i);
+}
+let g = BufferGeometryUtils.mergeBufferGeometries(planeGeoms);
+g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+g.setAttribute("planeIndex", new THREE.Float32BufferAttribute(planeIndices, 1));
+g.computeBoundingBox();
+g.computeBoundingSphere();
+console.log(g);
+
+let uniforms = {
+  currentIndex: 
+  {
+    value: -1
+  }
+}
+let m = new THREE.MeshBasicMaterial({
+		// https://threejs.org/examples/textures/uv_grid_opengl.jpg
+  map: new THREE.TextureLoader().load("uv_grid_opengl.jpg"), 
+  transparent: true,
+  onBeforeCompile: shader => {
+    shader.uniforms.currentIndex = uniforms.currentIndex;
+    shader.vertexShader = `
+      attribute float planeIndex;
+      varying float vPlaneIndex;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <uv_vertex>`,
+      `vPlaneIndex = planeIndex;
+      #include <uv_vertex>
+      `
+    );
+    //console.log(shader.vertexShader);
+    
+    shader.fragmentShader = `
+      uniform float currentIndex;
+      varying float vPlaneIndex;
+      ${shader.fragmentShader}
+    `.replace(
+      `#include <dithering_fragment>`,
+      `#include <dithering_fragment>
+        gl_FragColor.a = floor(currentIndex + 0.01) == floor(vPlaneIndex + 0.01) ? 1. : gl_FragColor.a;
+      `
+    );
+    //console.log(shader.fragmentShader);
+  }
+})
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let intersects;
+
+window.addEventListener("pointerdown", event => {
+  
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+  
+  raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObject(o);
+  
+  if (intersects.length < 1) return;
+  
+  let pIndex = intersects[0].faceIndex % 2 > 0 ? (intersects[0].faceIndex - 1): intersects[0].faceIndex;
+  pIndex = pIndex / 2;
+  uniforms.currentIndex.value = pIndex;
+  console.log(pIndex);
+  
+  new TWEEN.Tween(m).to({opacity: 0}, 500).repeat(1).yoyo(true).start();
+})
+
+renderer.setAnimationLoop(()=>{
+  TWEEN.update();
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

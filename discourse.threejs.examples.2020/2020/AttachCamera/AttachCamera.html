@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/three-js-attach-camera-to-a-3d-object-and-rotate-move-with-the-object-and-show-in-inset-window/12343/5 -->
+<!-- https://jsfiddle.net/a2nhdqsg/ -->
+<head>
+  <title> AttachCamera </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	background-color: #000;
+	margin: 0px;
+	overflow: hidden;
+	}
+  </style>
+	<script src="../js/three.min.112.js"></script>
+	<script src="../js/OrbitControls.js"></script>	
+  </head>
+
+<body>
+ 
+    <div id="container"></div>
+
+    <script>
+	
+	// @author sciecode
+	
+      var renderer, scene, camera, camera2, controls;
+
+      var distance = 60;
+      var insetWidth, insetHeight, mesh;
+
+      init();
+      animate();
+
+      function init() {
+
+        renderer = new THREE.WebGLRenderer({
+          antialias: true
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setClearColor(0x000000, 1.0);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        scene = new THREE.Scene();
+
+        camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
+        camera.position.set( 0, 40, 120);
+
+        camera2 = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
+        camera2.position.copy(camera.position);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.minDistance = 10;
+        controls.maxDistance = 500;
+
+
+        var geometry = new THREE.BoxGeometry(20, 20, 20);
+        var material = new THREE.MeshBasicMaterial( { color: 0x12a321 } );
+
+        mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        
+        var material2 = new THREE.MeshBasicMaterial( { color: 0x666666 } );
+        
+        block1 = new THREE.Mesh(geometry, material2);
+        block1.position.set( 60, 0, -120 );
+       	scene.add( block1 );
+        
+        block2 = new THREE.Mesh(geometry, material2);
+        block2.position.set( -20, 0, -60 );
+       	scene.add( block2 );
+        
+        window.addEventListener('resize', onWindowResize, false);
+        window.addEventListener('keydown', moveRobot, false);
+        onWindowResize();
+
+      }
+
+      function onWindowResize() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        insetWidth = window.innerHeight / 4; // square
+        insetHeight = window.innerHeight / 4;
+
+        camera2.aspect = insetWidth / insetHeight;
+        camera2.updateProjectionMatrix();
+
+      }
+      
+      function moveRobot( evt ) {
+      
+        var dir = new THREE.Vector3( 0, 0, -1 );
+        dir.applyQuaternion( mesh.quaternion );
+      
+      	switch( evt.key ) {
+        
+        	case 'w':
+          	mesh.position.add( dir );
+            camera.position.add( dir );
+            controls.target.copy( mesh.position );
+            break;
+           
+          case 's':
+          	mesh.position.sub( dir );
+            camera.position.sub( dir );
+            controls.target.copy( mesh.position );
+            break;
+            
+          case 'a':
+          	mesh.rotation.y += Math.PI/30;
+            break;
+            
+          case 'd':
+          	mesh.rotation.y -= Math.PI/30;
+            break;
+        	
+        }
+      
+      }
+
+      function animate() {
+
+        requestAnimationFrame(animate);
+
+        // main scene
+     		renderer.setClearColor( 0x000000, 0 );
+        renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+        renderer.render(scene, camera);
+
+				// inset scene
+        renderer.clearDepth(); // important!
+        renderer.setScissorTest(true);
+        renderer.setScissor(20, 20, insetWidth, insetHeight);
+        renderer.setViewport(20, 20, insetWidth, insetHeight);
+        renderer.setClearColor( 0x222222, 1 );
+        
+        camera2.position.copy( mesh.position );
+        camera2.quaternion.copy( mesh.quaternion );
+        
+        renderer.render(scene, camera2);
+        
+        renderer.setScissorTest(false);
+        
+      }
+
+    </script>
+
+  </body>
+</body>
+</html>

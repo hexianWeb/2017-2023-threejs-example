@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/random-points-on-surfaces/34153 -->
+<!-- https://jsfiddle.net/prisoner849/yzx8fbqu/ -->
+<head>
+  <title> RandomPointsOnSurfaces </title>
+  <meta charset="utf-8" />
+  <style>
+        body{
+        overflow: hidden;
+        margin: 0;
+        background-color: #000;
+	    color: #fff;
+        }
+    </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0.375, 1).setLength(30);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(0.25, 0.5, 1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+// torus
+let ptsT = getRandomPointsOnTorus(9, 3, 100000);
+let gt = new THREE.BufferGeometry().setFromPoints(ptsT);
+gt.rotateX(Math.PI * -0.5);
+let mt = new THREE.PointsMaterial({size: 0.01, color: "yellow"});
+let pt = new THREE.Points(gt, mt);
+scene.add(pt);
+
+// sphere
+let ptsS = new Array(100000).fill(0).map(p => {return new THREE.Vector3().randomDirection().setLength(6)});
+let gs = new THREE.BufferGeometry().setFromPoints(ptsS);
+let ms = new THREE.PointsMaterial({size: 0.01, color: "magenta"});
+let ps = new THREE.Points(gs, ms);
+scene.add(ps);
+
+// ring
+let ptsR = getRandomPointsOnRing(18, 12, 100000);
+let gr = new THREE.BufferGeometry().setFromPoints(ptsR);
+let mr = new THREE.PointsMaterial({size: 0.01, color: "aqua"});
+let pr = new THREE.Points(gr, mr);
+scene.add(pr);
+
+window.addEventListener("resize", onWindowResize);
+
+animate();
+
+function animate() {
+
+  requestAnimationFrame(animate);
+  pt.rotation.y += 0.001;
+  pr.rotation.y -= 0.001;
+  renderer.render(scene, camera);
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth, innerHeight);
+
+}
+
+function getRandomPointsOnRing(R, r, count = 1000){
+	return new Array(count).fill(0).map(p => {
+  	let rand = Math.random();
+    let radius = Math.sqrt(R * R * rand + (1 - rand) * r * r);
+  	return new THREE.Vector3().setFromSphericalCoords(radius, Math.PI * 0.5, Math.random() * 2 * Math.PI);
+  });
+}
+
+function getRandomPointsOnTorus(R, r, count = 1000){
+	let pts = [];
+
+  let counter = 0;
+  let COUNT = count;
+  let U, V, W;
+  while(counter < COUNT){
+    U = Math.random();
+    V = Math.random();
+    W = Math.random();
+    let theta = 2 * Math.PI * U;
+    let phi = 2 * Math.PI * V;
+    if(W <= ((R + r * Math.cos(theta)) / (R + r))){
+      pts.push(new THREE.Vector3(
+        (R + r * Math.cos(theta)) * Math.cos(phi),
+        (R + r * Math.cos(theta)) * Math.sin(phi),
+        r * Math.sin(theta)
+      ))
+      counter++;
+    }
+  }
+  return pts;
+}
+</script>
+</html>

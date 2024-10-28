@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-add-spaced-and-raised-bumps-to-a-geometry/5749/4 -->
+<!-- https://codepen.io/prisoner849/pen/gZJamm -->
+<head>
+  <title> SpacedRaisedBumps </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body>
+
+</body>
+<script src="../js/three.min.100.js"></script> <!--r83-->
+<script src="../js/OrbitControls.js"></script>
+<script>
+
+// @author prisoner849
+
+var camera = new THREE.PerspectiveCamera(
+  30,
+  window.innerWidth / window.innerHeight,
+  1,
+  3000
+);
+camera.position.set(30, 5, 1000);
+
+var scene = new THREE.Scene();
+
+var light = new THREE.PointLight();
+light.position.set(0, 20, 50);
+scene.add(light);
+
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var geom = new THREE.CylinderGeometry(50, 50, 400, 100, 200, true);
+var mesh = new THREE.Mesh(
+  geom,
+  new THREE.MeshNormalMaterial({ wireframe: true })
+);
+scene.add(mesh);
+
+var plane = new THREE.GridHelper(20, 40);
+scene.add(plane);
+
+geom.translate(0, 0, 0);
+
+var raycaster = new THREE.Raycaster();
+var intersects = [];
+var localPoint = new THREE.Vector3();
+var tempNormal = new THREE.Vector3();
+var correction = new THREE.Vector3();
+
+warp(geom);
+bumps(geom, mesh);
+
+animate();
+
+function bumps(geom, mesh) {
+  console.log("bumps");
+
+  var origin = new THREE.Vector3();
+  var direction = new THREE.Vector3();
+  for (let i = 0; i <= 10; i++) {
+    for (let j = 0; j < 4; j++) {
+      let equatorialShift = j - i * Math.PI * 0.1;
+      origin.set(
+        Math.cos(equatorialShift * Math.PI * 0.5) * 1000,
+        0,
+        Math.sin(equatorialShift * Math.PI * 0.5) * 1000
+      );
+      direction
+        .copy(origin)
+        .negate()
+        .normalize();
+      origin.setY(i * 40 - 200);
+      raycaster.set(origin, direction);
+      intersects = raycaster.intersectObject(mesh);
+      setBump(
+        mesh.worldToLocal(localPoint.copy(intersects[0].point)),
+        intersects[0].face.normal,
+        10
+      );
+    }
+  }
+  geom.verticesNeedUpdate = true;
+  geom.computeVertexNormals();
+}
+
+function setBump(point, normal, radius) {
+  mesh.geometry.vertices.forEach(v => {
+    let distance = point.distanceTo(v);
+    if (distance <= radius) {
+      let shift = Math.sqrt(radius * radius - distance * distance);
+      v.add(tempNormal.copy(normal).multiplyScalar(shift));
+      // correction to radius
+      correction
+        .subVectors(v, point)
+        .setLength(radius)
+        .add(point);
+      v.copy(correction);
+    }
+  });
+}
+
+function warp(geom) {
+  var vec3 = new THREE.Vector3(); // temp vector
+  var vec3_2 = new THREE.Vector3(); // temp vector 2
+  var spherical = new THREE.Spherical();
+  geom.vertices.forEach(v => {
+    vec3.copy(v); // copy current vertex to the temp vector
+    vec3.setY(0); // leave x and z (thus the vector is parallel to XZ plane)
+    vec3.normalize(); // normalize
+    vec3.multiplyScalar(Math.sin(v.y * Math.PI * 2 * 0.01) * 8); // multiply with sin function
+
+    v.add(vec3); // add the temp vectors to the current vertex
+  });
+  geom.verticesNeedUpdate = true;
+  geom.computeVertexNormals();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

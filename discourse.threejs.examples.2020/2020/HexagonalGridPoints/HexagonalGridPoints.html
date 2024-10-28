@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/hexagonal-grid-formation/18396 -->
+<!-- https://jsfiddle.net/prisoner849/jzLdcemb/ -->
+<head>
+  <title> HexagonalGridPoints </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.120.js"; 
+import {
+  OrbitControls
+} from "../jsm/OrbitControls.120.js";
+   
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 30);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper(10, 10));
+
+let pts = [];
+pts.push(new THREE.Vector3());
+
+let unit = Math.sqrt(3);
+
+let angle = Math.PI / 3;
+let axis = new THREE.Vector3(0, 0, 1);
+
+let axisVector = new THREE.Vector3(0, -unit, 0);
+let sideVector = new THREE.Vector3(0, unit, 0).applyAxisAngle(axis, -angle);
+let circleCount = 10;
+let tempV3 = new THREE.Vector3();
+for (let seg = 0; seg < 6; seg++) {
+  for (let ax = 1; ax <= circleCount; ax++) {
+    for (let sd = 0; sd < ax; sd++) {
+      tempV3.copy(axisVector)
+      	.multiplyScalar(ax)
+        .addScaledVector(sideVector, sd)
+        .applyAxisAngle(axis, angle * seg);
+        
+      pts.push(new THREE.Vector3().copy(tempV3));
+    }
+  }
+}
+console.log(pts.length);
+
+let g = new THREE.BufferGeometry().setFromPoints(pts);
+let m = new THREE.PointsMaterial({
+  size: 0.25,
+  color: "yellow"
+});
+let o = new THREE.Points(g, m);
+scene.add(o);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+
+</script>
+
+</html>

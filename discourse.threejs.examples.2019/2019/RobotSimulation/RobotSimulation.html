@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/robot-simulation-rotation-issues/9065 -->
+<!-- https://codepen.io/seppl2019/pen/zgJVKM -->
+<head>
+  <title> RobotSimulation </title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+<!-- https://discourse.threejs.org/t/how-to-rotate-an-object-around-a-pivot-point/6838/2 -->
+<a href='https://stackoverflow.com/questions/57311356/rotating-an-object-properly-around-a-pivot-point-given-axis-and-angle/57312831#57312831'>Three.js Rotating an object properly around a pivot-point given axis and angle </a>
+</body>
+
+<script src="../js/three.min.107.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/dat.gui.min.0.7.6.js"></script>
+
+<script>
+
+// @author seppl2019
+
+// Base Part of a Structure - wraps a mesh to get size and bounding box information
+// and optionally visualize these
+class Part {
+  // construct me from the given Mesh Factory
+  // the constructor does not set size and mesh yet - use init(mesh) - later to do so
+  constructor(meshFactory) {
+    this.meshFactory = meshFactory;
+    this.mesh = null;
+    this.size = null;
+    this.debug = false;
+  }
+
+  // initialize me with the given Mesh
+  // calulate bounding box and size
+  init(mesh) {
+    this.mesh = mesh;
+    this.name = mesh.name;
+    var bbox = new THREE.Box3().setFromObject(this.mesh);
+    this.bbox = bbox;
+    this.size = new THREE.Vector3(
+      bbox.max.x - bbox.min.x,
+      bbox.max.y - bbox.min.y,
+      bbox.max.z - bbox.max.z
+    );
+    if (this.debug)
+      console.log(
+        "bounding box for " +
+          this.name +
+          "=" +
+          JSON.stringify(bbox.min) +
+          JSON.stringify(bbox.max)
+      );
+  }
+
+  // add my bounding box wire to the given mesh
+  addBoundingBoxWire(toMesh) {
+    var boxwire = new THREE.BoxHelper(this.mesh, 0xff8000);
+    this.boxwire;
+    boxwire.update();
+    toMesh.add(boxwire);
+  }
+
+  // add an AxesHelper with my size to the given mesh
+  addAxesHelper(toMesh) {
+    var axis = new THREE.AxesHelper(this.size.length());
+    toMesh.add(axis);
+  }
+
+  // add may bounding box wire and AxesHelper to the given mesh
+  addBoxWireAndAxesHelper(toMesh) {
+    this.addBoundingBoxWire(toMesh);
+    this.addAxesHelper(toMesh);
+  }
+}
+
+// Factory for Meshes with common properties e.g. same material / segments
+class MeshFactory {
+  // create me with the given default material and default segments
+  constructor(material, segments) {
+    this.material = material;
+    this.segments = segments;
+  }
+
+  // creates a cylinder with given radius and height
+  createCylinder(radius, height, cloneMaterial = false) {
+    var cylinderGeometry = new THREE.CylinderGeometry(
+      radius,
+      radius,
+      height,
+      this.segments,
+      this.segments
+    );
+    return this.createMesh(cylinderGeometry, cloneMaterial);
+  }
+
+  // creates a sphere with given radius and height
+  createSphere(radius, cloneMaterial = false) {
+    var sphereGeometry = new THREE.SphereGeometry(
+      radius,
+      this.segments,
+      this.segments
+    );
+    return this.createMesh(sphereGeometry, cloneMaterial);
+  }
+
+  // creates a mesh with the given geometry, optionally cloning Material
+  createMesh(geometry, cloneMaterial = false) {
+    var mesh = new THREE.Mesh(geometry, this.getMaterial(cloneMaterial));
+    return mesh;
+  }
+
+  // get the material of this factory - when cloned is true clone a copy of the material
+  // for further modification e.g. changing of color
+  getMaterial(cloned) {
+    var material = this.material;
+    if (cloned) material = material.clone();
+    return material;
+  }
+}
+
+// a Joint to be used as a Pivot Point for rotation
+class Joint extends Part {
+  // create me from the given mesh
+  // position me at the given x,y,z position
+  // show pivot sphere with given pivotr radius
+  constructor(meshFactory, mesh, x, y, z, pivotr) {
+    // initialize my attributes
+    super(meshFactory);
+    this.options = null;
+    this.pivotr = pivotr;
+
+    // construct the general Part details from the given mesh
+    super.init(mesh);
+
+    // create the pivot to rotate around/about
+    this.pivot = new THREE.Group();
+    this.pivot.add(this.mesh);
+    // shift the pivot position to fit my size + the size of the joint
+    this.pivot.position.set(
+      x,
+      y + this.size.y / 2 + this.pivotr,
+      z + this.size.z / 2
+    );
+    // reposition the mesh accordingly
+    this.mesh.position.set(0, this.size.y / 2, 0);
+
+    // show axes and bounding box wire frame for debugging
+    this.addBoxWireAndAxesHelper(this.pivot);
+
+    // show the pivotJoint
+    this.pivotJoint = this.createPivotJoint();
+    this.pivot.add(this.pivotJoint);
+    scene.add(this.pivot);
+    // this.shiftPivot();
+  }
+
+  createPivotJoint() {
+    var pivot = this.meshFactory.createCylinder(
+      this.pivotr,
+      this.pivotr * 2,
+      true
+    );
+    pivot=this.meshFactory.createSphere(this.pivotr,true);
+    pivot.rotation.z = THREE.Math.degToRad(90);
+    pivot.material.color.set("red");
+    return pivot;
+  }
+
+  updateFromOptions(options) {
+    this.options = options;
+    var r = this.pivot.rotation;
+    var p = this.pivot.position;
+    r.x = THREE.Math.degToRad(this.getOption("rx"));
+    r.y = THREE.Math.degToRad(this.getOption("ry"));
+    r.z = THREE.Math.degToRad(this.getOption("rz"));
+
+    p.x = this.getOption("x");
+    p.y = this.getOption("y");
+    p.z = this.getOption("z");
+
+    if (options.autoRotate) {
+      r.x += options.rx / 180;
+      r.y += options.ry / 180;
+      r.z += options.rz / 180;
+    }
+  }
+
+  getOption(suffix) {
+    return this.options[this.name + "." + suffix];
+  }
+} // Joint
+
+// a structure consisting of multiple Parts
+class Structure {
+  // construct me from the given options
+  constructor(options) {
+    this.options = options;
+    this.joints = [];
+    this.gui = null;
+  }
+
+  addJoint(joint) {
+    this.joints.push(joint);
+  }
+
+  updateGUI() {
+    for (var jointIndex in this.joints) {
+      var joint = this.joints[jointIndex];
+      this.updateOption(joint.name + ".x", joint.pivot.position.x);
+      this.updateOption(joint.name + ".y", joint.pivot.position.y);
+      this.updateOption(joint.name + ".z", joint.pivot.position.z);
+      this.updateOption(
+        joint.name + ".rx",
+        THREE.Math.radToDeg(joint.pivot.rotation.x)
+      );
+      this.updateOption(
+        joint.name + ".ry",
+        THREE.Math.radToDeg(joint.pivot.rotation.y)
+      );
+      this.updateOption(
+        joint.name + ".rz",
+        THREE.Math.radToDeg(joint.pivot.rotation.z)
+      );
+    }
+  }
+
+  updateOption(optionName, optionValue) {
+    if (this.options.debug) console.log(optionName + "=" + optionValue);
+    this.options[optionName] = optionValue;
+  }
+
+  addGUI(gui) {
+    this.gui = gui;
+    for (var jointIndex in this.joints) {
+      var joint = this.joints[jointIndex];
+      this.addOption(joint.name + ".x", joint.pivot.position.x, 0, 1, 0.01);
+      this.addOption(joint.name + ".y", joint.pivot.position.y, 0, 1, 0.01);
+      this.addOption(joint.name + ".z", joint.pivot.position.z, 0, 1, 0.01);
+      this.addOption(joint.name + ".rx", joint.pivot.rotation.x, -180, 180, 5);
+      this.addOption(joint.name + ".ry", joint.pivot.rotation.y, -180, 180, 5);
+      this.addOption(joint.name + ".rz", joint.pivot.rotation.z, -180, 180, 5);
+    }
+  }
+
+  addOption(optionName, optionValue, optionFrom, optionTo, optionStep) {
+    this.updateOption(optionName, optionValue);
+    this.gui
+      .add(this.options, optionName, optionFrom, optionTo, optionStep)
+      .listen();
+  }
+
+  updateFromOptions() {
+    for (var joint in this.joints) {
+      this.joints[joint].updateFromOptions(this.options);
+    }
+    this.updateGUI();
+  }
+}
+
+class Arm extends Part {
+  // construct me from the given meshFactory with the given name, radius and height
+  constructor(meshFactory, name, radius, height) {
+    super(meshFactory);
+    this.radius = radius;
+    this.height = height;
+    this.cylinder = meshFactory.createCylinder(radius, height);
+    this.cylinder.name = name;
+    super.init(this.cylinder);
+    // attributes to be fille later
+    this.joint=null;
+  }
+  
+  // add my joint and position me at the given x,y,z
+  addJoint(x,y,z) {
+    this.joint=new Joint(this.meshFactory, this.cylinder, x, y, z, this.radius);
+  }
+}
+
+// global variables used
+var camera, scene, renderer, options, structure;
+
+// start scene and animation
+init();
+animate();
+
+// add some arms to the given structure using the given meshfactory
+function addArms(meshFactory, structure, count) {
+  var radius = 0.1;
+  var height = 0.4;
+  
+  for (i = 1; i <= count; i++) {
+    var arm = new Arm(meshFactory, "arm" + i, radius, height);
+    var x=0;
+    var z=0;
+    var y=height/2;
+    arm.addJoint(x,y,z);
+    structure.addJoint(arm.joint);
+    if (i > 1) {
+      var previousJoint = structure.joints[i - 2];
+      arm.joint.pivot.add(previousJoint.pivot);
+    }
+  }
+}
+
+// initialize the scene
+function init() {
+  // get a camera
+  camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth / window.innerHeight,
+    0.01,
+    20
+  );
+  camera.position.set(2.05, 1.83, 1.4);
+
+  // get a scene and light
+  scene = new THREE.Scene();
+  var light = new THREE.DirectionalLight(0xffffff);
+  light.position.set(0, 1, 1).normalize();
+  scene.add(light);
+
+  // Options (DAT.GUI)
+  options = {
+    revision: THREE.REVISION,
+    controls: true,
+    autoRotate: true,
+    debug: false,
+    rx: 1,
+    ry: 1.1,
+    rz: 1.2,
+    camerax: 0.1,
+    cameray: 0.1,
+    cameraz: 1.5
+  };
+  
+  // DAT.GUI Related Stuff
+  var gui = new dat.GUI();
+  gui.add(options, "revision").listen();
+  gui.add(options, "controls").listen();
+  gui.add(options, "autoRotate").listen();
+  gui.add(options, "debug").listen();
+  rotationFolder = gui.addFolder('rotation')
+  rotationFolder.add(options, "rx", 0, 5).listen();
+  rotationFolder.add(options, "ry", 0, 5).listen();
+  rotationFolder.add(options, "rz", 0, 5).listen();
+  cameraFolder = gui.addFolder('camera')
+  cameraFolder.add(options, 'camerax', -2, 2).listen();
+  cameraFolder.add(options, 'cameray', -2, 2).listen();
+  cameraFolder.add(options, 'cameraz', -2, 2).listen();
+
+  // default material to be used in MeshFactory
+  var material = new THREE.MeshPhongMaterial({
+    color: 0x0033ff,
+    specular: 0x555555,
+    shininess: 200
+  });
+  var meshFactory = new MeshFactory(material, 64);
+
+  structure = new Structure(options);
+  addArms(meshFactory, structure, 3);
+  structure.addGUI(gui);
+
+  scene.add(new THREE.AxesHelper(1.5));
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+}
+
+// timed animation
+function animate() {
+  controls.enabled = options.controls;
+  requestAnimationFrame(animate);
+  
+  // update the structure from the options
+  structure.updateFromOptions();
+  
+  // update the camera position from the options
+  options.camerax = camera.position.x;
+  options.cameray = camera.position.y;
+  options.cameraz = camera.position.z;
+  
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

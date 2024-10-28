@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/rotating-and-scaling-a-shape/28254/4 -->
+<!-- https://codepen.io/prisoner849/pen/OJmxGOg -->
+<head>
+  <title> ShapeRotatingAndScaling </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+<body></body>
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.130.js";
+import { OrbitControls } from "../jsm/OrbitControls.130.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 15);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let c = [];
+let d = [];
+let g = new THREE.BufferGeometry().setFromPoints(
+  new Array(100).fill(0).map((p) => {
+    c.push(Math.random(), Math.random(), Math.random());
+    d.push(Math.random() < 0.5 ? -1 : 1);
+    return new THREE.Vector3().random().subScalar(0.5).multiplyScalar(10);
+  })
+);
+g.setAttribute("color", new THREE.Float32BufferAttribute(c, 3));
+g.setAttribute("data", new THREE.Float32BufferAttribute(d, 1));
+let uniforms = {
+  time: {value: 0}
+}
+let m = new THREE.PointsMaterial({ 
+  size: 2, 
+  vertexColors: true,
+  onBeforeCompile: shader => {
+    shader.uniforms.time = uniforms.time;
+    shader.vertexShader = `
+      attribute float data;
+      varying float vData;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+        vData = data;
+      `
+    );
+    console.log(shader.vertexShader);
+    shader.fragmentShader = `
+      uniform float time;
+      varying float vData;
+      mat2 rot(float a){
+          return mat2( cos(a), sin(a), -sin(a), cos(a));
+      }
+      ${shader.fragmentShader}
+    `.replace(
+      `#include <color_fragment>`,
+      `
+        #include <color_fragment>
+        vec3 col = vec3(1.) - diffuseColor.rgb;
+        vec2 uv = vec2(gl_PointCoord.x, 1. - gl_PointCoord.y) - 0.5;
+        
+        if (length(uv) > 0.5) discard; // make it round
+        
+        vec2 cUv = abs(uv * rot(${Math.PI} * time * vData)); // rotate
+
+        float shape = clamp(1. - step(0.1, min(cUv.x, cUv.y)) - step(0.45, max(cUv.x, cUv.y)), 0., 1.); // shaping function
+        col = mix(diffuseColor.rgb, col, shape); // mixing the colors
+        
+        diffuseColor = vec4( col, opacity );
+      `
+    );
+    console.log(shader.fragmentShader)
+  }
+});
+let p = new THREE.Points(g, m);
+scene.add(p);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  uniforms.time.value = t;
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

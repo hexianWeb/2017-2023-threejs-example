@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/extrude-geometry-apply-texture-to-all-faces-of-the-mesh/48246/6 -->
+<!-- https://codepen.io/boytchev/full/rNZxLLK -->
+<head>
+  <title>ManualCalculationOfUV</title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body></body>
+
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+// general setup of environment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 20, 50 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// a cnavas to generate a texture image
+
+var canvas = document.createElement( 'CANVAS' );
+    canvas.width = 32;
+    canvas.height = 32;
+
+
+// procedurally defining of a black square
+
+var context = canvas.getContext( '2d' );
+    context.fillStyle = 'linen';
+    context.fillRect( 0, 0, 32, 32 );
+    context.strokeStyle = 'black';
+    context.lineWidth = 1;
+    context.strokeRect( 3, 3, 27, 27 );
+
+
+// finally creating a canvas
+
+var texture = new THREE.CanvasTexture( canvas );
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+
+
+// rectangular object
+
+var obj1 = new THREE.Mesh(
+			new THREE.BoxGeometry( 16, 15, 4 ),
+			new THREE.MeshLambertMaterial( {color: 'tan', map: texture} )
+		);
+		obj1.position.z = -10;
+
+
+
+// triangular object
+
+var obj2 = new THREE.Mesh(
+			new THREE.BoxGeometry( 8, 10, 6 ),
+			new THREE.MeshLambertMaterial( {map: texture} )
+		);
+		obj2.position.x = 6;
+		var pos = obj2.geometry.getAttribute( 'position' );
+		for( var i=0; i<pos.count; i++ )
+				if( pos.getY(i)>0.5 ) pos.setX(i,0);
+
+
+// reversed triangular object
+
+var obj3 = new THREE.Mesh(
+			new THREE.BoxGeometry( 8, 10, 6 ),
+			new THREE.MeshLambertMaterial( {map: texture} )
+		);
+		obj3.position.x = -6;
+		var pos = obj3.geometry.getAttribute( 'position' );
+		for( var i=0; i<pos.count; i++ )
+				if( pos.getY(i)<0.5 ) pos.setX(i,0);
+
+
+// dodecahedron object
+
+var obj4 = new THREE.Mesh(
+			new THREE.DodecahedronGeometry( 4 ),
+			new THREE.MeshLambertMaterial( {color:'pink',map: texture} )
+		);
+		obj4.position.set( 0, -3, 8 );
+
+
+scene.add( obj1, obj2, obj3, obj4 );
+
+
+
+// a function that resets the UVs 
+// trying to recreate a 3D texture
+
+function resetUVs( object )
+{
+		var pos = object.geometry.getAttribute( 'position' ),
+				nor = object.geometry.getAttribute( 'normal' ),
+				uvs = object.geometry.getAttribute( 'uv' );
+	
+		for( var i=0; i<pos.count; i++ )
+		{
+				var x = 0,
+						y = 0;
+			
+				var nx = Math.abs(nor.getX(i)),
+						ny = Math.abs(nor.getY(i)),
+						nz = Math.abs(nor.getZ(i));
+
+				// if facing X
+				if( nx>=ny && nx>=nz )
+				{
+						x = pos.getZ( i );
+						y = pos.getY( i );
+				}
+
+				// if facing Y
+				if( ny>=nx && ny>=nz )
+				{
+						x = pos.getX( i );
+						y = pos.getZ( i );
+				}
+
+				// if facing Z
+				if( nz>=nx && nz>=ny )
+				{
+						x = pos.getX( i );
+						y = pos.getY( i );
+				}
+
+				uvs.setXY( i, x, y );
+		}
+}
+
+
+
+// reset the UVs of our objects
+
+resetUVs( obj1 );
+resetUVs( obj2 );
+resetUVs( obj3 );
+resetUVs( obj4 )
+
+
+
+// animation loop
+
+function animationLoop( t )
+{   
+		light.position.copy( camera.position );
+    controls.update( );
+    renderer.render( scene, camera );
+}
+</script>
+</html>

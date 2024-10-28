@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/create-card-flipping-illusion/11768/2 -->
+ <!-- https://codepen.io/Ordomo/pen/QWwMXKQ -->
+<head>
+  <title> CardFlip </title>
+  <meta charset="utf-8" />
+    <style>	
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+	
+	.info{
+	position: absolute;
+	top: 2%;
+	display: inline-block;
+	left: 0;
+	right: 0;
+	text-align: center;
+	color: #ff8844;
+	font-size: 2rem;
+	text-shadow: 0 0 3px #ffcc88;
+	} 
+  </style>
+</head>
+
+<body>
+<div class="info">Click on the card to flip it!</div>
+</body>
+
+<script src="../js/three.min.111.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+//@author DolphinIQ
+
+// This example uses THREE.CatmullRomCurve3 to create a path for a custom Keyframe Track position animation.
+// AnimationClip creation function on line 136
+// Uncomment line 173 to see the curve helper
+
+// Global Variables
+var canvas, scene, renderer, camera;
+var controls, raycaster, mouse, txtLoader, clock, delta = 0;
+var card, ground;
+
+const colorDark = new THREE.Color( 0xb0b0b0 );
+const colorLight = new THREE.Color( 0xffffff );
+const animationDuration = 1;
+
+init();
+
+function init(){
+  
+  scene = new THREE.Scene();
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.shadowMap.enabled = true;
+  canvas = renderer.domElement;
+  document.body.appendChild(canvas);
+  
+  camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+  camera.position.set( 0, 4, -1.5 );
+  controls = new THREE.OrbitControls(camera, canvas);
+  
+  window.addEventListener( 'mousemove', onMouseMove, false );
+  window.addEventListener( 'click', onMouseClick, false );
+  
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+  txtLoader = new THREE.TextureLoader();
+  clock = new THREE.Clock();
+  
+  // Lights
+  initLights()
+
+  // Card
+  initCard();
+  
+  // Ground
+  initGround();
+
+  render();
+}
+
+function render(){
+  
+  if( resize( renderer ) ) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  
+  delta = clock.getDelta();
+  card.mixer.update( delta );
+  
+  renderer.render( scene, camera );
+  requestAnimationFrame( render );
+}
+
+function initLights(){
+  var ambientLight = new THREE.AmbientLight( 0xffffff, 0.4 )
+  var dirLight = new THREE.DirectionalLight( 0xcceeff, 0.9 );
+  dirLight.castShadow = true;
+  dirLight.position.setScalar( 5 );
+  scene.add( dirLight , ambientLight );
+}
+
+function initCard(){
+  
+  // The Card
+  // https://images-na.ssl-images-amazon.com/images/I/61YXNhfzlzL._SL1012_.jpg
+  var faceUpTexture = txtLoader.load('61YXNhfzlzL._SL1012_.jpg');
+  //https://vignette3.wikia.nocookie.net/yugioh/images/9/94/Back-Anime-2.png/revision/latest?cb=20110624090942
+  var faceDownTexture = txtLoader.load('Back-Anime-2.png');
+  // faceUpTexture.flipY = false;
+  var darkMaterial = new THREE.MeshPhongMaterial({ color: 0x111111 });
+  var faceUpMaterial = new THREE.MeshPhongMaterial({ 
+    color: colorDark, 
+    map: faceUpTexture,
+    shininess: 40
+  });
+  var faceDownMaterial = new THREE.MeshPhongMaterial({ 
+    color: colorDark,
+    map: faceDownTexture,
+    shininess: 40
+  });
+  card = new THREE.Mesh( 
+    new THREE.BoxBufferGeometry( 2 , 0.04 , 2 ),
+    [
+      darkMaterial, // left
+      darkMaterial, // right
+      faceDownMaterial, // facedown
+      faceUpMaterial, // faceup
+      darkMaterial, // 
+      darkMaterial, // 
+    ]
+  );
+  card.scale.x = 0.65;
+  card.castShadow = true;
+  scene.add( card );
+
+  // Animation 
+  card.faceUp = false;
+  card.mixer = new THREE.AnimationMixer( card );
+  var flipUpsideClip = createFlipUpsideClip('faceup');
+  var flipDownsideClip = createFlipUpsideClip('facedown');
+
+  card.actions = {
+    flipUpside: card.mixer.clipAction( flipUpsideClip ),
+    flipDownside: card.mixer.clipAction( flipDownsideClip )
+  };
+  card.actions.flipUpside.loop = THREE.LoopOnce;
+  card.actions.flipDownside.loop = THREE.LoopOnce;
+  card.actions.flipUpside.clampWhenFinished = true;
+  card.actions.flipDownside.clampWhenFinished = true;
+}
+
+function initGround(){
+  
+  ground = new THREE.Mesh(
+    new THREE.PlaneBufferGeometry(5, 5), 
+	// https://threejs.org/examples/textures/hardwood2_diffuse.jpg
+    new THREE.MeshStandardMaterial({
+      map: txtLoader.load( "hardwood2_diffuse.jpg" ), 
+      metalness: 0, 
+      roughness: 1
+    })
+  );
+  ground.geometry.rotateX(-Math.PI * 0.5);
+  ground.position.set(0, -0.1, 0);
+  ground.receiveShadow = true;
+  scene.add(ground);
+}
+
+function createFlipUpsideClip( side ){ // 'faceup' or 'facedown'
+  // Create a keyframe track (i.e. a timed sequence of keyframes) for each animated property
+  // Note: the keyframe track type should correspond to the type of the property being animated
+  // Rotation
+  var zAxis = new THREE.Vector3( 0, 0, 1 );
+  
+  if( side === 'faceup' ){
+    var qInitial = new THREE.Quaternion().setFromAxisAngle( zAxis, 0 );
+    var qFinal = new THREE.Quaternion().setFromAxisAngle( zAxis, Math.PI );
+  } else if( side === 'facedown' ){
+    var qInitial = new THREE.Quaternion().setFromAxisAngle( zAxis, Math.PI );
+    var qFinal = new THREE.Quaternion().setFromAxisAngle( zAxis, 0 );
+  }
+  
+  var quaternionKF = new THREE.QuaternionKeyframeTrack( 
+    '.quaternion', 
+    [ 0, animationDuration ], 
+    [ qInitial.x, qInitial.y, qInitial.z, qInitial.w, qFinal.x, qFinal.y, qFinal.z, qFinal.w ]
+  );
+
+  // Position
+  var pointsArr = [ 
+    new THREE.Vector3( 0, 0, 0 ),
+    new THREE.Vector3( 1, 0.8, 0 ), 
+    new THREE.Vector3( 0.7, 1.5, 0 ), 
+    new THREE.Vector3( 0.15, 1.2, 0 ), 
+    new THREE.Vector3( 0, 0, 0 )
+  ];
+  if( side === 'facedown' ){
+    pointsArr.forEach( function( vec3 , i ){
+      vec3.x = -vec3.x;
+    });
+  }
+  var CRC = new THREE.CatmullRomCurve3( pointsArr, false, 'catmullrom', 0.9 );
+  var CRCPoints = CRC.getPoints( 50 );
+
+  var helper = pointsHelper( CRCPoints );
+  // scene.add( helper ); // Optional helper for position curve
+
+  var posArrFlat = [];
+  for( var i = 0; i < CRCPoints.length; i++ ){
+    posArrFlat.push( CRCPoints[i].x, CRCPoints[i].y, CRCPoints[i].z );
+  }
+
+  var timesArr = [];
+  var len = posArrFlat.length - 3;
+  for( var j = 0; j < posArrFlat.length/3; j++ ){
+    var x = ((animationDuration / len) * j * 3) + 0; // + delay
+    timesArr.push( x );
+  }
+
+  var positionKF = new THREE.VectorKeyframeTrack( 
+    '.position', 
+    timesArr, 
+    posArrFlat,
+    THREE.InterpolateSmooth
+  );
+  
+  var flipUpsideClip = new THREE.AnimationClip( 'Flip' , animationDuration , [ positionKF, quaternionKF ] );
+  
+  return flipUpsideClip;
+}
+
+function onMouseMove( evt ){
+  
+  if( raycast( card ) == true ){
+    card.material[2].color.set( colorLight );
+    card.material[3].color.set( colorLight );
+  } else {
+    card.material[2].color.set( colorDark );
+    card.material[3].color.set( colorDark );
+  }
+}
+
+function onMouseClick( evt ){
+  
+  if( raycast( card ) == true ){
+    if( card.faceUp ){ // card faceup
+      // so turn it facedown
+      card.actions.flipUpside.stop();
+      card.actions.flipDownside.play();
+      card.faceUp = false;
+      
+    } else if( !card.faceUp ) { // card facedown
+      // so turn it faceup
+      card.actions.flipDownside.stop();
+      card.actions.flipUpside.play();
+      card.faceUp = true;
+    }
+  }
+}
+
+function raycast( object ){
+  // calculate mouse position in normalized device coordinates
+	// (-1 to +1) for both components
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+  
+  // update the picking ray with the camera and mouse position
+	raycaster.setFromCamera( mouse, camera );
+
+	// calculate objects intersecting the picking ray
+	var intersects = raycaster.intersectObject( object );
+  if( intersects.length > 0 ){
+    return true;
+  } else {
+    return false;
+  }
+}
+
+function pointsHelper( pointsArray ){
+  var geometry = new THREE.BufferGeometry().setFromPoints( pointsArray );
+  var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+  var curveObject = new THREE.Line( geometry, material );
+  return curveObject;
+}
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+</script>
+
+</html>

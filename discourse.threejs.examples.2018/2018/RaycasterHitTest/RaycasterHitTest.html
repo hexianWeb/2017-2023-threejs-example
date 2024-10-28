@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/raycaster-fails-hit-test/2834/6 -->
+<!-- https://jsfiddle.net/zdy1hc9z/5/ -->
+
+<!-- see also  https://jsfiddle.net/zdy1hc9z/x/   x = 2, 3, 4 -->
+<!--  @author ramkulkarni, looeee, prisoner849 -->
+
+<head>
+  <title> RaycasterHitTest </title>
+  <meta charset="utf-8" />
+	<style>
+		.messages {
+		position: absolute;
+		height: 20px;
+		min-width: 100px;
+    }
+	</style>
+</head>
+
+<body>
+ <div id="messageDiv" class='messages'></div>
+</body>
+<script src="../js/three.min.92.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+var canvas;
+
+function setupScene() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerWidth, 0.1, 1000 );
+  scene.add(camera);
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  camera.aspect = window.innerWidth / window.innerHeight;
+  renderer.setClearColor(0xffffff);
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  document.body.appendChild( renderer.domElement );
+  canvas = renderer.domElement;
+  camera.position.set(0,0,5);
+  controls = new THREE.OrbitControls( camera );
+  camera.updateProjectionMatrix();
+}
+
+function createObjects() {
+  var cubeGeometry = new THREE.BoxGeometry( 1, 1, 1 );
+  var cubeMaterial = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+  cubeMaterial.wireframe = true;
+  var cube = new THREE.Mesh( cubeGeometry, cubeMaterial );
+  cube.name = 'cube1';
+  cube.position.x = 1.5;
+  cube.rotateX(10 * (Math.PI / 180));
+  scene.add( cube );
+
+  var cylinderGeometry = new THREE.CylinderBufferGeometry( 0.05, 0.05, 2.5, 10 );
+  var cylinderMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+  var cylinder = new THREE.Mesh( cylinderGeometry, cylinderMaterial );
+  cylinder.name = 'cylinder1';
+
+  cube.add(cylinder);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+      
+function onMouseDown(event) {
+  var mouseVec = new THREE.Vector2();
+  mouseVec.x = ( event.offsetX / event.target.clientWidth ) * 2 - 1;
+  mouseVec.y = - ( event.offsetY / event.target.clientHeight ) * 2 + 1;
+
+  raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouseVec, camera);  
+  var hits = raycaster.intersectObjects(scene.children, true);
+  console.log(hits);
+  document.getElementById("messageDiv").innerHTML = "Num hits = " + hits.length;
+}
+
+setupScene();
+createObjects();
+animate();    
+
+canvas.addEventListener('mousedown', onMouseDown, false );
+
+</script>
+</html>

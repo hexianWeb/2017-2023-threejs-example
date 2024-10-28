@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/mesh-points-to-the-camera-on-only-2-axis-with-shaders/21555/2 -->
+<!-- https://jsfiddle.net/prisoner849/w19d5km7/ -->
+<head>
+  <title> Forest </title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script src="../js/three.min.123.js"></script>
+<script src="../js/OrbitControls.123.js"></script>
+<script src="../js/InfiniteGridHelper.js"></script> <!-- https://mevedia.com/share/InfiniteGridHelper.js?c" -->
+
+//@author prisoner849
+
+<script>
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 3, 5);
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var grid = new THREE.InfiniteGridHelper(1, 10);
+grid.material.uniforms.uDistance.value = 300;
+console.log(grid);
+scene.add(grid);
+
+var tex = new THREE.TextureLoader().load("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAACACAYAAAC7gW9qAAAAAXNSR0IArs4c6QAABEZJREFUeJztnE1rE2EQx3eTSNOmb9oURCVtxYAFsb6VSoVAD8WqF/EzeOnNgwdv0oPg0Q/gNxDEi5aeCgV7EdSCoFKxTZTWQlva9B1M6jUzG3aYbpI/9pnfbfZ5dve/w8zs85Ks7ylpH8xpTznUniDghzUWP8yoLhaLJOUYYA5AC0ATmk+eF8z5keE4sadnS6ocf/8mRexb93dU7ZyR4Th5hunZEmmXaoLzEWAOQAtAk9CewHOe56yElPMSVWoEr0GkJvAaxmuC8xFgDkALQKOuAVHhOXxvbkDoP6e9BakJgXGCR2uC8xFgDkALQBOYC/D35tVL1EefvpRDx/7a9zpHqgkbT2dV96sylyDP7HwEmAPQAtCI4wCe81FznCPl/NsBNg4QxhGB/gLOR4A5AC0ATeS5QNQcjAq/n7SGyHE+AswBaAFoxLmAJ+ztaccFUWuG9nybCwiYA9AC0Pg85+OpVmKXdrZJDWgfuEbaYw+SdZJ2NPh6ASeearUaUIk5AC0Ajd90poccaDrbE5rzkxPfQy8oze85/D2uXR+Q+pdf7xO7OPeR2M5HgDkALQBNoAYcLOVJDci8e9JQQfWmcPc5sZ2PAHMAWgCaBH/vHyzlVRfg79lGzw34/X+/fBHaP3Xzss0FKjEHoAWg8dsHc6Frfp0TwzW9YaNrhlQjnI8AcwBaABrfY+v+5x4+Cj1Bylltjte7P8fmAgxzAFoAGvXvA3gO1hopx7kdtSY4HwHmALQANIFxAN8r5HOBWteAqHMBSQ8f+7eOXbH1gErMAWgBaPxk5jw5sF/4Wde5Qa3Pl+DXt7kAwxyAFoBGvR7wv2NrggxzAFoAmsB6AP8NDf+NEBqtPmmv0PkIMAegBaDx420d5EBpazN0r1A7TuA5y2l0jbFxAMMcgBaAJlHa2gztIOV8vccNUg2JivMRYA5AC0BT8+8I8fes9A1SbY7zb4FJNYrrSZxM275AJeYAtAA0gf8ON/dlib23MK/6ZijPee18XawZyu8GN/dlyTPuLcyTducjwByAFoBG/K6wRKyF/te4vLtd62+Ja1E9k/MRYA5AC0ATuQZUgdSAZ7nrpHGqsEbs25mu0HbOzOIisTuSSfIMm/u63xM4HwHmALQANOr1gFxvL7GLe9vE/ryySuzRoRPsCl2qdonY4V9il336SLxmBM5X3e0YYg5AC0CT6B4fIwfS8zSHiyvrxM7/onZPZyd779PvEURFqhFThTVy/51TLWRc0H/hBum/mk0T2/kIMAegBaBJtC0XyYHVbJrkVP8PWhNmNjaInWc2H9s/fvUnVMDo0Gli87kAb5dIre8S/YWhDGlvWy7avkAl5gC0ADR+9/gYzfnJb6QDz2kJab6v7a+9nnT9r3cuEtv5CDAHoAWgCdQA13A+AswBaAFoEl5wb+C41wSbC1RiDkALQFNtX0C7X4iuGZH2N52PAHMAWgCaf7GoSZMUiINCAAAAAElFTkSuQmCC", t => {
+	t.minFilter = THREE.NearestFilter;
+  t.magFilter = THREE.NearestFilter;
+})
+
+var planeGeom = new THREE.PlaneGeometry(1, 2);
+planeGeom.translate(0, 1, 0);
+var planeMat = new THREE.MeshBasicMaterial({map:tex, alphaTest: 0.5});
+
+var planes = [];
+for(let y = -10; y <= 10; y++){
+	for(let x = -10; x <=10; x++){
+  	let plane = new THREE.Mesh(planeGeom, planeMat);
+    plane.position.set(x, 0, y).multiplyScalar(2.5);
+    planes.push(plane);
+    scene.add(plane);
+  }
+}
+
+var t = new THREE.Vector3();
+var la = new THREE.Vector3();
+
+renderer.setAnimationLoop(() => {
+	camera.getWorldDirection(t);
+  t.negate().setY(0).normalize();
+	planes.forEach(p => {
+  	p.lookAt(la.copy(t).add(p.position));
+  })
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/assign-different-colors-to-different-parts-of-buffergeometry/6604/12 -->
+<head>
+	<title> ColorStripeChanging2 </title>
+	<meta charset="utf-8" />
+	<style>	body { margin: 0;} </style>
+</head>
+<body> 	
+  <button type="button" id="newcolors"> new colors </button> 
+</body>
+<script src="../js/three.min.102.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author hofk
+
+document.getElementById( "newcolors" ).onclick = newcolors;
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 5, -18, 30 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x111111, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+var clock = new THREE.Clock( );
+
+var stripCount = 24;
+
+var stripWidth = 1;
+var stripHeight = 12;
+var centerX = stripCount * stripWidth / 2;
+var centerY = stripHeight / 2;
+
+var faceCount = stripCount * 2;
+
+// use THREE.VertexColors
+var material = new THREE.MeshBasicMaterial( { side: THREE.DoubleSide,  vertexColors: THREE.VertexColors, wireframe: false } );
+
+var g = new THREE.BufferGeometry( ); // non indexed BufferGeometry
+
+g.positions = new Float32Array( faceCount * 9 ); // 'triangle soup'
+g.addAttribute( 'position', new THREE.BufferAttribute( g.positions, 3 ) );
+g.colors = new Float32Array( faceCount * 9 );
+g.addAttribute( 'color', new THREE.BufferAttribute( g.colors, 3 ) );
+
+for ( var i = 0, j = 0; i < stripCount; i ++, j += 18 ) { 
+
+	// left face
+		
+	g.positions[ j ]     = i * stripWidth - centerX;
+	g.positions[ j + 1 ] = 0 - centerY;
+	g.positions[ j + 2 ] = 8 * Math.sin(  Math.PI * i / 25 );
+	
+	g.positions[ j + 3 ] = ( i + 1 ) * stripWidth - centerX;
+	g.positions[ j + 4 ] = stripHeight - centerY;
+	g.positions[ j + 5 ] = 8 * Math.sin(  Math.PI * ( i + 1 ) / 25 );
+	
+	g.positions[ j + 6 ] = i * stripWidth - centerX;
+	g.positions[ j + 7 ] = stripHeight - centerY;
+	g.positions[ j + 8 ] = 8 * Math.sin(  Math.PI * i / 25 );
+	
+	// right face
+	
+	g.positions[ j +  9 ] = i * stripWidth - centerX;
+	g.positions[ j + 10 ] = 0 - centerY;
+	g.positions[ j + 11 ] = 8 * Math.sin(  Math.PI * i / 25 );
+						   
+	g.positions[ j + 12 ] = ( i + 1 ) * stripWidth - centerX;
+	g.positions[ j + 13 ] = 0 - centerY;
+	g.positions[ j + 14 ] = 8 * Math.sin(  Math.PI * ( i + 1 ) / 25 );
+						   
+	g.positions[ j + 15 ] = ( i + 1 ) * stripWidth - centerX;
+	g.positions[ j + 16 ] = stripHeight - centerY;
+	g.positions[ j + 17 ] = 8 * Math.sin(  Math.PI * ( i + 1 ) / 25 );
+	
+}
+
+var mesh = new THREE.Mesh( g, material );
+scene.add( mesh );
+
+var t1 = 0;
+var t2;
+
+var c8;
+var c = [];
+
+newcolors( );
+
+animate();
+
+//..................................
+
+function animate() {
+	
+	t2 = clock.getElapsedTime ( ); 
+
+	requestAnimationFrame( animate );	
+	renderer.render( scene, camera );
+	
+	if ( t2 - t1 > 0.4 ) {
+		
+		for ( var i = 0, j = 0; i < stripCount; i ++, j += 18 ) {
+			
+			c8 = getRandomInt( 7 ) * 3;
+			
+			for ( k = 0; k < 18; k ++ ) {   // apply color
+				
+				g.colors[ j + k ] = c[ k % 3 + c8 ];
+				
+			}
+
+		}
+		
+		t1 = t2;
+		
+	}
+	
+	g.attributes.color.needsUpdate = true;
+		
+	controls.update();
+	
+}
+
+function getRandomInt( max ) {
+
+  return Math.floor( Math.random( ) * Math.floor( max ) );
+  
+}
+
+function newcolors( ) {
+	
+	c = [];
+
+	for ( var i = 0; i < 8; i ++  ) {  // random colors
+	
+		c.push( Math.random( ), Math.random( ), Math.random( ) );
+		
+	}
+	
+}
+
+</script>
+
+</html>

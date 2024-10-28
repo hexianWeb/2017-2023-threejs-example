@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/transparency-texture-display-incorrectly/29793/2 -->
+<head>
+  <title> ShaderExamples_07 </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        overflow:hidden;
+        margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author hofk ( based on https://jsfiddle.net/prisoner849/5c9n3zsd/ @author prisoner849 )
+ 
+import * as THREE from '../jsm/three.module.135.js';
+import {OrbitControls} from '../jsm/OrbitControls.135.js';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.01, 1000 );
+camera.position.set( -5, 1, 5 );
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xfefefe );
+document.body.appendChild( renderer.domElement );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const circleGeometry = new THREE.CircleBufferGeometry( 4, 64 );
+const circleMesh = new THREE.Mesh( circleGeometry, new THREE.MeshBasicMaterial( { color: 0xff0000 } ) );
+circleMesh.position.z = -4.0;
+scene.add( circleMesh );
+
+const planeWidth =  5;
+const planeHeight = 4;
+  
+const shaderMaterial = new THREE.ShaderMaterial( {
+
+    uniforms: { 
+            v_Uv: { value: new THREE.Vector2( ) },
+            planeMouseUv: { value: new THREE.Vector2( ) },
+            planeAspect: { value: new THREE.Vector2( planeWidth, planeHeight ) }
+    },
+    vertexShader: vertexShader( ), 
+    fragmentShader: fragmentShader( ),
+    side: THREE.DoubleSide,
+    transparent: true,
+    
+} );
+
+const planeGeometry = new THREE.PlaneBufferGeometry( planeWidth, planeHeight );
+const planeMesh = new THREE.Mesh( planeGeometry, shaderMaterial );
+
+scene.add( planeMesh );
+
+let mouse = new THREE.Vector2( );
+let raycaster = new THREE.Raycaster( );
+let intersects = [];
+
+window.addEventListener( "pointermove",  onPointerMove );  
+window.addEventListener( "resize", onWindowResize);
+
+animate( );
+
+function animate( ) {
+
+    requestAnimationFrame( animate );   
+    renderer.render( scene, camera );
+
+}
+
+function onPointerMove( ) { 
+    
+    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+    
+    raycaster.setFromCamera( mouse, camera );
+    intersects = raycaster.intersectObject( planeMesh );
+     
+    if( intersects.length > 0 ) shaderMaterial.uniforms.planeMouseUv.value.copy( intersects[0].uv );
+    
+}
+
+function onWindowResize( ) {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix( );
+  renderer.setSize( innerWidth, innerHeight );
+
+}
+
+function vertexShader ( ) { //   return `    `;   a multiline template literal
+    
+    return `
+        varying vec2 v_Uv;
+        uniform vec2 planeMouseUv;
+        uniform vec2 planeAspect;
+        
+        void main( )    {
+
+                v_Uv = uv;
+                vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+                gl_Position = projectionMatrix * mvPosition;
+            
+        } 
+    `;
+    
+}
+
+function fragmentShader( ) { //   return `    `;   a multiline template literal 
+    
+    return `       
+        varying vec2 v_Uv;
+        uniform vec2 planeMouseUv;
+        uniform vec2 planeAspect;
+        
+        void main( ) {
+            
+            // borders
+            float left = smoothstep( 0.00, 0.05, v_Uv.x );
+            float right = 1.0 - step( 0.98, v_Uv.x );
+            float top = 1.0 - step( 0.66, v_Uv.y );
+            float bottom = smoothstep( 0.00,0.05, v_Uv.y );    
+            
+            vec3 color = vec3( left * right * top * bottom );
+            
+            // moving circle
+            vec2 aspect = vec2( planeAspect.x / planeAspect.y, 1.0 );
+            vec2 pUv = v_Uv * aspect;
+            vec2 mUv = planeMouseUv * aspect;
+            
+            float dist = distance( pUv, mUv ) * planeAspect.y; // plane's height is the base
+            float radius = 0.07;
+            float thickness = 0.02;
+            
+            float circ =  step( radius, dist ) - step( radius + thickness, dist );
+            
+            color = color * vec3( v_Uv.x, v_Uv.x, v_Uv.y );
+            
+            gl_FragColor = vec4( color, sqrt( v_Uv.y ) );
+             
+            gl_FragColor.rgb = mix( gl_FragColor.rgb, vec3( 0.2, 1.0, 0.4 ), circ );
+            
+        }
+    `;
+}
+
+</script>
+</html>

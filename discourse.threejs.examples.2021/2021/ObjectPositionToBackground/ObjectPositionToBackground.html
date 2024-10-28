@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/maintain-object-position-in-relation-to-background/28062/2 -->
+<!-- https://jsfiddle.net/qt613emf/ -->
+<head>
+  <title> ObjectPositionToBackground </title>
+  <meta charset="utf-8" />
+<style>
+	body {
+	margin: 0%;
+	}
+</style>
+<body></body>
+<script type="module">
+
+// @author Mugen87 
+
+import * as THREE from "../jsm/three.module.130.js";
+
+var camera, scene, renderer;
+
+var texture;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+										// 'https://i.imgur.com/5yeBVeM.jpeg'
+		texture = new THREE.TextureLoader().load( '5yeBVeM.jpeg', () => {
+		
+			cover( texture, window.innerWidth / window.innerHeight );
+		
+			scene.background = texture;
+		
+		} );
+		texture.matrixAutoUpdate = false;
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		window.addEventListener( 'resize', onWindowResize, false );
+
+}
+
+function onWindowResize() {
+
+	var aspect = window.innerWidth / window.innerHeight;
+
+	camera.aspect = aspect;
+	camera.updateProjectionMatrix();
+	
+	cover( texture, aspect );
+
+	renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+function cover( texture, aspect ) {
+
+	var imageAspect = texture.image.width / texture.image.height;
+
+	if ( aspect < imageAspect ) {
+
+			texture.matrix.setUvTransform( 0, 0, aspect / imageAspect, 1, 0, 0.5, 0.5 );
+
+	} else {
+
+			texture.matrix.setUvTransform( 0, 0, 1, imageAspect / aspect, 0, 0.5, 0.5 );
+
+	}
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-animate-a-conveyor-belt-along-an-axis/31331/2 -->
+<!-- https://jsfiddle.net/prisoner849/k41czjqg/ -->
+<head>
+  <title> AnimatedConveyorBelt </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.133.js";
+import { OrbitControls } from "../jsm/OrbitControls.133.js";
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0x7f7f7f);
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(8, 5, 13);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let path = new THREE.Path();
+path.absarc(5, 0, 1, Math.PI * 0.5, Math.PI * 1.5, true);
+path.absarc(-5, 0, 1, Math.PI * 1.5, Math.PI * 0.5, true);
+path.closePath();
+console.log(path)
+let basePts = path.getSpacedPoints(200).reverse();
+
+let g = new THREE.PlaneGeometry(1, 1, 200, 1);
+basePts.forEach((p, idx) => {
+	g.attributes.position.setXYZ(idx, p.x, p.y, -2);
+  g.attributes.position.setXYZ(idx + 201, p.x, p.y, 2);
+})
+
+let m = new THREE.MeshBasicMaterial({
+	side: THREE.DoubleSide,
+	map: createTexture()
+});
+
+let band = new THREE.Mesh(g, m);
+scene.add(band);
+
+
+window.addEventListener("resize", () => {
+	camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop( () => {
+	m.map.offset.x = clock.getElapsedTime();
+	renderer.render(scene, camera);
+});
+
+function createTexture(){
+	let c = document.createElement("canvas");
+  c.width = c.height = 256;
+  let ctx = c.getContext("2d");
+  ctx.fillStyle = "maroon";
+	ctx.fillRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = "white";
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.lineWidth = 100;
+  ctx.lineTo(c.width, c.height);
+  ctx.stroke();
+  
+  let texture = new THREE.CanvasTexture(c);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.MirroredRepeatWrapping;
+  texture.repeat.set(10, 2);
+  
+  return texture;
+}
+
+</script>
+</html>

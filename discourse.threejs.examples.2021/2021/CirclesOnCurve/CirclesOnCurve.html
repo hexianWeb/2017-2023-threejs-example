@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-help-with-wrong-position-meshes-along-a-curve/27356 -->
+<!-- https://stackblitz.com/edit/three-js-starter-u7r2di?file=index.js -->
+<head>
+  <title> CirclesOnCurve </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+  }
+</style>
+<body> <div id="app"> </div> </body>
+
+<script type="module">
+
+// @author EstebanFuentealba
+
+import * as THREE from "../jsm/three.module.129.js";
+import { OrbitControls } from "../jsm/OrbitControls.129.js";
+
+class Ellipse extends THREE.Curve {
+  constructor(xRadius, yRadius) {
+    super();
+    // add radius as a property
+    this.xRadius = xRadius;
+    this.yRadius = yRadius;
+  }
+  // define the getPoint function for the subClass
+  getPoint(t) {
+    var radians = 2 * Math.PI * t;
+
+    return new THREE.Vector3(
+      this.xRadius * Math.cos(radians),
+      this.yRadius * Math.sin(radians),
+      0
+    );
+  }
+}
+
+let camera, scene, renderer, controls;
+
+let curve;
+const rows = 5;
+const cols = 8;
+const radius = 2;
+const positions = [
+  new THREE.Vector3(-10, 0, 10),
+  new THREE.Vector3(-5, 5, 5),
+  new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(5, -5, 5),
+  new THREE.Vector3(10, 0, 10)
+];
+init();
+animate();
+addPath();
+addTubeFromPath();
+addCirclesAndPointsInTube();
+function addPath() {
+  curve = new THREE.CatmullRomCurve3(positions);
+  const points = curve.getPoints(50);
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+  const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+
+  // Create the final object to add to the scene
+  const curveObject = new THREE.Line(geometry, material);
+  scene.add(curveObject);
+}
+function addTubeFromPath() {
+  const geometry = new THREE.TubeGeometry(curve, 8, radius, 8, false);
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xffff00,
+    wireframe: true
+  });
+  material.side = THREE.DoubleSide;
+  let tube = new THREE.Mesh(geometry, material);
+  scene.add(tube);
+}
+
+function addCirclesAndPointsInTube() {
+  const up = new THREE.Vector3(0, 1, 0);
+  const axis = new THREE.Vector3();
+  const arrowMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+  arrowMaterial.side = THREE.DoubleSide;
+
+  const circleMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+  circleMaterial.side = THREE.DoubleSide;
+
+  for (let slice = 0; slice < rows; slice++) {
+    let u = (slice * 100) / (rows - 1) / 100;
+    let centerOfCircle = curve.getPoint(u);
+    let tangent = curve.getTangent(u).normalize();
+    axis.crossVectors(up, tangent).normalize();
+    var radians = Math.acos(up.dot(tangent));
+
+    //  arrow to normal direction
+    const geometry = new THREE.ConeGeometry(0.5, 1, 32);
+    const arrow = new THREE.Mesh(geometry, arrowMaterial);
+    arrow.position.copy(centerOfCircle);
+    arrow.quaternion.setFromAxisAngle(axis, radians);
+    scene.add(arrow);
+    //  circle
+    const circle = new THREE.Mesh(
+      new THREE.CircleGeometry(radius, 32),
+      circleMaterial
+    );
+    circle.position.copy(centerOfCircle);
+    circle.quaternion.setFromAxisAngle(axis, radians);
+    circle.rotateX(Math.PI / 2);
+    scene.add(circle);
+
+    //  contour
+    const curveCircle = new Ellipse(radius, radius);
+    const points = curveCircle.getPoints(50);
+    const g = new THREE.BufferGeometry().setFromPoints(points);
+
+    const material = new THREE.LineBasicMaterial({ color: 0x0000ff });
+
+    // Create the final object to add to the scene
+    const ellipse = new THREE.Line(g, material);
+    let quaternion = new THREE.Quaternion().setFromAxisAngle(axis, radians);
+    ellipse.applyQuaternion(quaternion);
+    ellipse.position.copy(centerOfCircle);
+    ellipse.rotateX(Math.PI / 2);
+    scene.add(ellipse);
+
+    for (let segment = 0; segment < cols; segment++) {
+      u = (segment * 100) / (cols - 1) / 100;
+      let vertex = curveCircle.getPoint(u);
+      let p = addPoint(vertex.applyQuaternion(ellipse.quaternion).add(centerOfCircle));
+      scene.add(p);
+    }
+  }
+}
+function addPoint(point) {
+  const g = new THREE.SphereGeometry(0.2, 32, 32);
+
+  const m = new THREE.MeshBasicMaterial({ color: 0xe61d5f });
+  const p = new THREE.Mesh(g, m);
+  p.position.copy(point);
+  return p;
+}
+function init() {
+  camera = new THREE.PerspectiveCamera(
+    45,
+    window.innerWidth / window.innerHeight,
+    1,
+    10000
+  );
+  camera.position.set(30, 30, 0);
+
+  scene = new THREE.Scene();
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0xeeeeee, 1);
+  document.body.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+
+  //  light
+  var aL = new THREE.AmbientLight(0xffffff);
+  scene.add(aL);
+
+  var dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  dirLight.position.set(-1, 1.75, 1);
+  dirLight.position.multiplyScalar(50);
+  scene.add(dirLight);
+
+  //  grid
+  var gridXZ = new THREE.GridHelper(100, 10);
+  scene.add(gridXZ);
+
+  window.addEventListener('resize', resize, false);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+function resize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+</script>
+
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/updating-uv-coordinates-of-buffergeometry/9180/3 -->
+<!-- https://jsfiddle.net/9xy4k1o0/ -->
+<head>
+  <title> UpdatingUVcoordinates  </title>
+  <meta charset="utf-8" />
+  <style>	
+	body {
+	margin: 0;
+	}
+	
+	#button {
+	cursor: pointer;
+	position: absolute;
+	top: 10px;
+	left: 10px;
+	border: none;
+	font-weight: bold;
+	padding: 1em;
+	}
+	
+	#status {
+	color: red;
+	padding-left: 10px;
+	}
+	
+	#uvData {
+	position: absolute;
+	top: 65px;
+	left: 10px;
+	border: 1px solid #ccc;
+	padding: 1em;
+	color: white;
+	font-size: 0.75em;
+	}
+	</style>	
+</head>
+
+<body>
+  <button id="button">
+      Click to Randomize UV's
+      <span id="status">Normal</span>
+    </button>
+    <div id="uvData"></div>
+</body>
+
+<script src="../js/three.min.107.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+init();
+animate();
+
+function init() {
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10);
+  camera.position.z = 1;
+
+  scene = new THREE.Scene();
+
+  geometry = new THREE.BoxBufferGeometry(0.2, 0.2, 0.2);
+
+  const loader = new THREE.TextureLoader();
+  material = new THREE.MeshBasicMaterial({
+    map: loader.load('https://threejsfundamentals.org/threejs/resources/images/wall.jpg'),
+  });
+
+  mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  mesh.rotation.x += 0.01;
+  mesh.rotation.y += 0.02;
+
+  renderer.render(scene, camera);
+}
+
+document.getElementById("button").addEventListener("click", function() {
+  randomizeUVs(mesh);
+});
+
+// Randomize UVs for an object
+function randomizeUVs(object) {
+  if (object.hasOwnProperty('geometry')) {
+    let geo = object.geometry;
+    let uvAttribute = geo.attributes.uv;
+    let text = '';
+
+    // Modify UV map			
+    for (var i = 0; i < uvAttribute.count; i++) {
+
+      var u = uvAttribute.getX(i);
+      var v = uvAttribute.getY(i);
+
+      // do something with uv
+      u = u + Math.random() * Math.random();
+      v = v + Math.random() * Math.random();
+
+      text += 'i:' + i + ', u:' + u.toFixed(2) + ', v:' + v.toFixed(2) + "<br/>";
+
+      // write values back to attribute
+      uvAttribute.setXY(i, u, v);
+
+      document.getElementById("status").innerHTML = "Random";
+    }
+
+    uvAttribute.needsUpdate = true;
+
+    document.getElementById("uvData").innerHTML = text;
+  }
+  console.log(geometry.attributes.uv.array);
+}
+
+ 
+</script>
+</html>

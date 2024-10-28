@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-smooth-chase-camera-for-an-object/3216/5 -->
+<!-- https://jsfiddle.net/Fyrestar/6519yedL/  ( 2018 - updated 2020 ) -->
+<head>
+  <title> SmoothChaseCamera </title>
+  <meta charset="utf-8" />
+ <style>
+	body { 
+		margin: 0;
+	}
+ 
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.114.js"></script>
+ 
+<script>
+
+ // @author Fyrestar
+ 
+ var camera, scene, renderer, mesh, goal;
+
+var time = 0;
+var newPosition = new THREE.Vector3();
+var matrix = new THREE.Matrix4();
+
+var stop = 1;
+var DEGTORAD = 0.01745327;
+var temp = new THREE.Vector3;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.set( 0, 2, - 2 );
+    
+    scene = new THREE.Scene();
+    camera.lookAt( scene.position );
+
+    var geometry = new THREE.BoxBufferGeometry( 0.2, 0.2, 0.2 );
+    var material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    
+    goal = new THREE.Object3D;
+    
+    mesh.add( goal );
+    scene.add( mesh );
+    
+    goal.position.set(0, 2, -2);
+    
+    var gridHelper = new THREE.GridHelper( 4, 10 );
+    scene.add( gridHelper );
+    
+    scene.add( new THREE.AxesHelper() );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    
+    time += 0.01;
+
+
+		if ( time > stop ) {
+    	
+      mesh.rotateY( Math.random() * 360 * DEGTORAD);
+      
+      stop = time + Math.random() * 1;
+    
+    }
+		mesh.translateZ(0.01);
+    
+    temp.setFromMatrixPosition(goal.matrixWorld);
+    
+    camera.position.lerp(temp, 0.2);
+    camera.lookAt( mesh.position );
+    
+    renderer.render( scene, camera );
+
+}
+ 
+</script> 
+
+</html>

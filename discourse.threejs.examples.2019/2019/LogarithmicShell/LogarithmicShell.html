@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/seashell-mesh-from-point-array-extrude-along-path/9622/8 -->
+<!-- https://codepen.io/prisoner849/pen/vYBVddL -->
+<head>
+  <title> LogarithmicShell </title>
+  <meta charset="utf-8" />
+    <style>
+	html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.108.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.set(-5, 5, 10).setLength(150);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, canvas);
+
+// lights
+var light = new THREE.HemisphereLight( 0xffffbb, 0x202020, 1 );
+scene.add(light);
+var dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.setScalar(10);
+scene.add(dirLight);
+
+// profile
+var curve = new THREE.EllipseCurve(
+	0,  0,            // ax, aY
+	0.5, 0.5,           // xRadius, yRadius
+	0,  2 * Math.PI,  // aStartAngle, aEndAngle
+	false,            // aClockwise
+	0                 // aRotation
+);
+var profilePoints = curve.getPoints(12);
+
+profilePoints = profilePoints.map(p => {return new THREE.Vector3().copy(p).setZ(0)});
+profilePoints.forEach( p => {
+  p.applyEuler(new THREE.Euler(THREE.Math.degToRad(90), 0, 0));
+})
+scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(profilePoints), new THREE.LineBasicMaterial({color: "red"})));
+
+// spiral
+var shellPoints = [];
+var shellIndex = [];
+
+var spiralPoints = [];
+spiralPoints.push(new THREE.Vector3());
+var sResolution = 150;
+var sTurns = 3.14;
+var alpha = THREE.Math.degToRad(80);
+var radiusVector = new THREE.Vector3(1, 0, 0);
+var axis = new THREE.Vector3(0, 0, 1);
+var euler = new THREE.Euler();
+for (let i = 0; i <= sResolution; i++){
+  let theta = map(i, 0, sResolution, 0, Math.PI * 2 * sTurns);
+  let rad = Math.exp(theta / Math.tan(alpha)); // cos / sin = cotangent = 1 / tan
+  
+  let theta2 = theta + Math.PI * 2;
+  let rad2 = Math.exp(theta2 / Math.tan(alpha));
+  
+  let midRad = (rad + rad2) * 0.5;
+  
+  let scale = rad2 - rad;
+  
+  let p = new THREE.Vector3().copy(radiusVector).multiplyScalar(rad).applyAxisAngle(axis, theta)
+  spiralPoints.push(p);
+  
+  let c = new THREE.Vector3().copy(p).setLength(midRad);
+  
+  let segCurrent = i * profilePoints.length;
+  let segNext = (i + 1) * profilePoints.length;
+  
+  profilePoints.forEach((p, idx) => {
+    let pShell = new THREE.Vector3().copy(p).setX(p.x * scale).setZ(p.z * scale * 0.6).applyEuler(euler.set(0, 0, theta)).add(c);
+    shellPoints.push(pShell);
+    
+    if ( (i < sResolution) && (idx < profilePoints.length - 1) ){
+
+      shellIndex.push(
+        segCurrent + idx + 1,
+        segCurrent + idx,
+        segNext + idx
+      );
+      shellIndex.push(
+        segCurrent + idx + 1,
+        segNext + idx,
+        segNext + idx + 1
+      );
+    }
+    
+  });
+  
+}
+
+var spiralGeom = new THREE.BufferGeometry().setFromPoints(spiralPoints);
+var spiralMat = new THREE.LineBasicMaterial({color: "yellow"});
+var spiral = new THREE.Line(spiralGeom, spiralMat);
+scene.add(spiral);
+
+var shellGeom = new THREE.BufferGeometry().setFromPoints(shellPoints);
+shellGeom.setIndex(shellIndex);
+shellGeom.computeVertexNormals();
+var shellMat = new THREE.MeshStandardMaterial({ color: "magenta", flatShading: true, side: THREE.DoubleSide });
+var shell = new THREE.Mesh(shellGeom, shellMat);
+scene.add(shell);
+
+//wireframe for awesomeness
+var shellWireframe = new THREE.Mesh(shellGeom, new THREE.MeshBasicMaterial({color: "pink", wireframe: true}));
+scene.add(shellWireframe);
+
+render();
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function map(val, r1start, r1end, r2start, r2end){
+  return r2start + (r2end - r2start) * ((val - r1start) / (r1end - r1start));
+}
+
+</script>
+
+</html>

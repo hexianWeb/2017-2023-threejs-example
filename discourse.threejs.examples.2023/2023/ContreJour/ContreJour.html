@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/emissive-glowing-effect-on-custom-model/54146/4 -->
+<!-- https://codepen.io/boytchev/pen/LYXrBqP -->
+<head>
+  <title>ContreJour</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { GLTFLoader } from '../jsm/GLTFLoader.149.js';
+
+// general setup, boring, skip to the next comment
+
+console.clear( );
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'black' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 7 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var light = new THREE.DirectionalLight( 'orange', 2.5 );
+    light.position.set( 1.2, 0, -1 );
+    scene.add( light );
+
+var light2 = new THREE.DirectionalLight( 'orange', 2.5 );
+    light2.position.set( -1.2, 0, -1 );
+    scene.add( light2 );
+
+
+
+// next comment
+
+var head = new THREE.Object3D( );
+     // https://boytchev.github.io/etudes/threejs/negative-morphs/LeePerrySmith.glb
+new GLTFLoader().load( './LeePerrySmith.glb', ( gltf ) =>
+				{
+					head = gltf.scene.children[ 0 ];
+					head.geometry.scale( 0.3, 0.3, 0.3 );
+					head.material = new THREE.MeshPhysicalMaterial( {
+						color: 0xffd000,
+						sheen: 1,
+						sheenColor: 'white',
+						sheenRoughness: 0.25,
+						metalness: 0,
+						roughness: 0.5,
+						emissive: 'orange',
+						emissiveIntensity: 0.005,
+						} );
+
+					scene.add( head );
+				}
+			);
+
+function animationLoop( t )
+{
+    head.rotation.y = t/1700;
+	
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/3d-chart-boxgeometry/48683 -->
+<!-- https://codepen.io/prisoner849/pen/oNPZPYE -->
+<head>
+  <title>3D_Chart</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    
+    .text{
+    position: absolute;
+    border: 1px solid gray;
+    border-radius: 5px;
+    color: maroon;
+    font-family: monospace;
+    font-size: 16pt;
+    font-weight: bold;
+    }
+</style>
+</head>
+
+<body> 
+    <div id="textHolder" style="position:absolute;"></div>
+</body>
+
+<script type="module">
+
+// @author  prisoner849
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+console.clear();
+
+class DataPart extends THREE.Object3D {
+  constructor(data) {
+    super();
+
+    this.countryName = data.countryName;
+    this.peaks = data.peaks;
+    this.isDataPart = true;
+
+    let gData = new THREE.BoxGeometry(1, 1, 1, this.peaks.length - 1, 1, 1)
+      .translate(0.5, 0.5, 1)
+      .scale(this.peaks.length - 1, 1, 0.1);
+    for (let i = 0; i < gData.attributes.position.count; i++) {
+      if (gData.attributes.position.getY(i) > 0.5) {
+        let idx = Math.round(gData.attributes.position.getX(i));
+        gData.attributes.position.setY(i, this.peaks[idx]);
+      }
+    }
+    gData.translate(-0.5 * (this.peaks.length - 1), 0, 0);
+    gData.scale(10 / this.peaks.length, 1, 1);
+    gData.toNonIndexed();
+    gData.computeVertexNormals();
+    let mData = new THREE.MeshLambertMaterial();
+    let oData = new THREE.Mesh(gData, mData);
+    this.add(oData);
+
+    this.anchors = [
+      new THREE.Vector3(-this.peaks.length * 0.5, 0, 0),
+      new THREE.Vector3(
+        this.peaks.length * 0.5,
+        this.peaks[this.peaks.length - 1],
+        0
+      )
+    ];
+    this.anchorsProjection = (camera, projVectors, halfSize) => {
+      projVectors.forEach((pv, idx) => {
+        pv.copy(this.anchors[idx]);
+        this.localToWorld(pv);
+        pv.project(camera);
+        pv.x *= halfSize.x;
+        pv.y *= -1 * halfSize.y;
+        pv.x += halfSize.x;
+        pv.y += halfSize.y;
+      });
+    };
+  }
+}
+
+class DataWidget extends THREE.Object3D {
+  constructor(mainData) {
+    super();
+    this.colors = [new THREE.Color("pink"), new THREE.Color("orange")];
+    this.mainData = mainData;
+    this.count = mainData.length;
+
+    this.dataBars = [];
+    this.mainData.forEach((md, mdIdx) => {
+      let dp = new DataPart(md);
+      dp.children[0].material.color.lerpColors(
+        this.colors[0],
+        this.colors[1],
+        mdIdx / (mainData.length - 1)
+      );
+      dp.position.z = ((this.count - 1) * 0.5 - mdIdx) * 0.5;
+      this.dataBars.push(dp);
+      this.add(dp);
+    });
+    let helper = new THREE.LineSegments(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({
+        color: 0xff0088,
+        depthWrite: false,
+        depthTest: false
+      })
+    );
+    this.add(helper);
+    this.helper = helper;
+    this.prevSelected = null;
+    let textName = document.createElement("div");
+    textName.className = "text";
+    textName.style.display = "none";
+    textHolder.appendChild(textName);
+    this.textName = textName;
+    let textVal = document.createElement("div");
+    textVal.className = "text";
+    textVal.style.display = "none";
+    textHolder.appendChild(textVal);
+    this.textVal = textVal;
+    this.anchorsProjections = [new THREE.Vector3(), new THREE.Vector3()];
+    this.hideData = () => {
+      this.helper.visible = false;
+      this.textName.style.display = "none";
+      this.textVal.style.display = "none";
+    };
+    this.showData = () => {
+      this.helper.visible = true;
+      this.textName.style.display = "block";
+      this.textVal.style.display = "block";
+    };
+    this.showText = (obj, camera, halfSize) => {
+      obj.parent.anchorsProjection(camera, this.anchorsProjections, halfSize);
+
+      //console.log(this.anchorsProjections);
+
+      this.textName.style.transform = `translate(${this.anchorsProjections[0].x}px, ${this.anchorsProjections[0].y}px)`;
+
+      this.textVal.style.transform = `translate(${this.anchorsProjections[1].x}px, ${this.anchorsProjections[1].y}px)`;
+    };
+    this.setSelected = (obj) => {
+      this.helper.geometry.dispose();
+      this.helper.geometry = new THREE.EdgesGeometry(obj.geometry);
+      this.helper.position.copy(obj.parent.position);
+      this.textName.innerHTML = obj.parent.countryName;
+      this.textVal.innerHTML = obj.parent.peaks[
+        obj.parent.peaks.length - 1
+      ].toFixed(2);
+    };
+  }
+}
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0xface8D);
+
+let frustumSize = 13;
+let aspect = window.innerWidth / window.innerHeight;
+let camera = new THREE.OrthographicCamera( frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 1000 );
+
+camera.position.set(-1, 1, 0.75).setLength(12);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  const aspect = window.innerWidth / window.innerHeight;
+
+  camera.left = - frustumSize * aspect / 2;
+  camera.right = frustumSize * aspect / 2;
+  camera.top = frustumSize / 2;
+  camera.bottom = - frustumSize / 2;
+  
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 2.5, 0);
+controls.enableDamping = true;
+
+scene.add(new THREE.GridHelper(10, 10, "maroon", "maroon"));
+
+let light = new THREE.DirectionalLight(0xffffff, 0.25);
+light.position.set(3, 5, 8);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.75));
+
+let testData = [];
+for (let i = 0; i < 20; i++) {
+  let td = {
+    countryName: "x"
+      .repeat(THREE.MathUtils.randInt(5, 10))
+      .replace(
+        /./g,
+        (c) =>
+          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[
+            Math.floor(Math.random() * 62)
+          ]
+      ),
+    peaks: new Array(11).fill().map((_, pIdx) => {
+      return 1 + Math.random() * pIdx * 0.1 + (i * pIdx) / 50;
+    })
+  };
+  testData.push(td);
+}
+
+let dw = new DataWidget(testData);
+scene.add(dw);
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2(-1, -1);
+const halfSize = new THREE.Vector2();
+let intersects;
+
+function onPointerMove(event) {
+  pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+}
+
+window.addEventListener("pointermove", onPointerMove);
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+
+  raycaster.setFromCamera(pointer, camera);
+  intersects = raycaster.intersectObjects(dw.dataBars);
+  if (intersects.length > 0) {
+    let obj = intersects[0].object;
+    if (obj.parent.isDataPart && dw.prevSelected != obj) {
+      dw.setSelected(obj);
+      dw.showData();
+      dw.prevSelected = obj;
+    }
+    if (dw.prevSelected != null) {
+      dw.showText(obj, camera, halfSize.set(innerWidth, innerHeight).multiplyScalar(0.5));
+    }
+  } else {
+    dw.hideData();
+    dw.prevSelected = null;
+  }
+
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

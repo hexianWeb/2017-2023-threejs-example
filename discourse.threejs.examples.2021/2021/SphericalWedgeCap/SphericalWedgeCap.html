@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/end-caps-of-tubegeometry/9655/16 -->
+<!-- https://jsfiddle.net/prisoner849/cLqrghdm/ -->
+<head>
+  <title> SphericalWedgeCap </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+  </style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.127.js";
+import { OrbitControls } from "../jsm/OrbitControls.127.js";
+import { BufferGeometryUtils } from '../jsm/BufferGeometryUtils.127.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 5, 5);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper());
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+let r = 2.5;
+let wS = 16;
+let hS = 8;
+let phiStart = Math.PI;
+let phiLength = Math.PI * 1.35;
+
+let gSphere = new THREE.SphereGeometry(r, wS, hS, phiStart, phiLength);
+let gCircle1 = new THREE.CircleGeometry(r, hS, Math.PI * 1.5, Math.PI);
+gCircle1.rotateY(Math.PI + phiStart);
+let gCircle2 = new THREE.CircleGeometry(r, hS, Math.PI * 0.5, Math.PI);
+gCircle2.rotateY(phiStart + phiLength);
+let g = BufferGeometryUtils.mergeBufferGeometries([gSphere, gCircle1, gCircle2]);
+
+let m = new THREE.MeshPhongMaterial({color: 0x007fff, flatShading: true});
+
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let lines = new THREE.LineSegments(new THREE.WireframeGeometry(g), new THREE.LineBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.5}));
+scene.add(lines);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+</script>
+</html>

@@ -1,0 +1,83 @@
+<!-- https://discourse.threejs.org/t/shift-vertices-of-circle-geometry-not-working/26664/17 -->
+<!-- https://jsfiddle.net/prisoner849/wab3o7cv/ -->
+<head>
+  <title> Orbit </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+	html {
+	overflow: hidden;
+	margin: 0%;
+	}
+</style>
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.127.js";
+import { OrbitControls } from "../jsm/OrbitControls.127.js";
+import {GUI} from "../jsm/dat.gui.module.127.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 50, 200);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.PointLight();
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+
+scene.add(new THREE.GridHelper(200, 10));
+
+
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), new THREE.MeshBasicMaterial({color: 0xffffff7f})));
+
+
+let planet = {
+	orbitRadius: 80,
+  inclination: 23
+}
+
+let pts = new THREE.Path().absarc(0, 0, planet.orbitRadius, 0, Math.PI * 2).getPoints(90);
+let g = new THREE.BufferGeometry().setFromPoints(pts);
+g.rotateX(Math.PI * 0.5);
+let m = new THREE.LineBasicMaterial( { color: 0xffff00, transparent: true, opacity: 0.75 } );
+let orbit = new THREE.Line(g, m);
+orbit.rotation.x = Math.PI / 6; // 30 deg
+scene.add(orbit)
+
+let pg = new THREE.ConeGeometry(5, 20, 5);
+let pm = new THREE.MeshLambertMaterial({color: "aqua"});
+let pl = new THREE.Mesh(pg, pm);
+pl.scale.set(1, 2, 1);
+pl.rotation.order = "YZX";
+orbit.add(pl);
+
+scene.add(orbit);
+
+let gui = new GUI();
+gui.add(orbit.rotation, "x", 0, Math.PI * 0.5).name("orbit rotation X");
+//gui.add(planet, "inclination", 0, 90).name("planet inclination");
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop( _ => {
+	let t = clock.getElapsedTime() * 0.5;
+	pl.position.set(Math.cos(t), 0, -Math.sin(t)).multiplyScalar(planet.orbitRadius);
+	pl.rotation.y = t - Math.PI * 0.5;
+  pl.rotation.z = Math.PI * 0.5;
+  
+
+	renderer.render(scene, camera);
+})
+</script>
+</html>

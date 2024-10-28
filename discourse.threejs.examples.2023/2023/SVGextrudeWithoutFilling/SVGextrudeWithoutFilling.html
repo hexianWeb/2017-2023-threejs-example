@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/svg-extrude-without-filling-the-path/48032/5 -->
+<!-- https://codepen.io/prisoner849/pen/RwYrZKg?editors=0010 -->
+<head>
+  <title>SVGextrudeWithoutFilling</title>
+  <meta charset="utf-8" />
+    <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+<body> </body>
+
+    <script>
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="1000"
+    height="1000" >
+    <path d="M 10,10 L 10,300 A 200,200 0,0,1 210,500 L 300,500 A 200,200 0,0,1 500,300 L 500,10 L 10,10 "
+        stroke="green" stroke-width="4" fill="none" />
+    </svg>`;
+    </script>
+
+
+<script type="module">
+
+// @author  prisoner849
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+import { SVGLoader } from '../jsm/SVGLoader.149.js';
+
+console.clear();
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0xface8d);
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 5000);
+camera.position.set(0, 0, 1000);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(-1, 1, 1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let gu = {
+  time: { value: 0 }
+};
+
+let loader = new SVGLoader();
+let data = loader.parse(svg);
+console.log(data);
+data.paths.forEach(path => {
+  let pts = path.subPaths[0].getPoints(50);
+  pts.pop();
+  pts.forEach(p => p.y *= -1);
+  pts.reverse();
+  let strokeWidth = path.userData.style.strokeWidth;
+  
+  let pPrev = new THREE.Vector2(), pNext = new THREE.Vector2(), c = new THREE.Vector2();
+  let offsetPts = [];
+  pts.forEach((p, idx) => {
+    let idxPrev = idx - 1;
+    if (idxPrev < 0 ) idxPrev = pts.length - 1;
+    let idxNext = idx + 1;
+    if (idxNext== pts.length) idxNext = 0;
+    pPrev.subVectors(pts[idxPrev], p).normalize();
+    pNext.subVectors(pts[idxNext], p).normalize();
+    let anglePrev = pPrev.angle();
+    let angleNext = pNext.angle();
+    let angleMid = (angleNext - anglePrev) * 0.5;
+    pPrev.rotateAround(c, angleMid);
+    let offsetDist = strokeWidth / Math.cos(angleMid - Math.PI * 0.5);
+    offsetPts.push(pPrev.clone().negate().setLength(offsetDist).add(p));
+  })
+  ;
+  let shape = new THREE.Shape(offsetPts);
+  shape.holes.push(new THREE.Path(pts.reverse()));
+  let gShape = new THREE.ExtrudeGeometry(shape, {depth: 100, bevelEnabled: false,});
+  let mShape = new THREE.MeshLambertMaterial({color: "olive"});
+  let oShape = new THREE.Mesh(gShape, mShape);
+  oShape.add(drawContour(offsetPts, "red"), drawContour(pts, "aqua"))
+  scene.add(oShape);
+})
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  gu.time.value = t;
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+function drawContour(pts, color){
+  let g = new THREE.BufferGeometry().setFromPoints(pts);
+  let m = new THREE.LineBasicMaterial({color: color});
+  let o = new THREE.Line(g, m);
+  return o;
+}
+
+</script>
+</html>

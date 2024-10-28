@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/smooth-shading-results-in-weird-edges/12926/6 -->
+<!-- https://codepen.io/Ni55aN/pen/zROmoe -->
+<head>
+  <title> SmoothShading </title>
+  <meta charset="utf-8" />
+	<style>
+	body, html {
+	margin: 0;
+	overflow: hidden;
+	}
+	</style>
+</head>
+<body> </body>
+
+<script src="../js/three.min.113.js"></script>	
+ 
+<script>
+
+ // @author Ni55aN
+ 
+ THREE.Geometry.prototype.computeAngleVertexNormals = function(angle){
+  	function weightedNormal( normals, vector ) {
+
+			var normal = new THREE.Vector3();
+
+			for ( var i = 0, l = normals.length; i < l; i ++ ) {
+
+				if ( normals[ i ].angleTo( vector ) < angle ) {
+
+					normal.add( normals[ i ] );
+
+				}
+
+			}
+
+			return normal.normalize();
+
+		}
+
+		this.computeFaceNormals();
+
+		var vertexNormals = [];
+
+		for ( var i = 0, l = this.vertices.length; i < l; i ++ ) {
+
+			vertexNormals[ i ] = [];
+
+		}
+
+		for ( var i = 0, fl = this.faces.length; i < fl; i ++ ) {
+
+			var face = this.faces[ i ];
+
+			vertexNormals[ face.a ].push( face.normal );
+			vertexNormals[ face.b ].push( face.normal );
+			vertexNormals[ face.c ].push( face.normal );
+
+		}
+
+		for ( var i = 0, fl = this.faces.length; i < fl; i ++ ) {
+
+			var face = this.faces[ i ];
+
+			face.vertexNormals[ 0 ] = weightedNormal( vertexNormals[ face.a ], face.normal );
+			face.vertexNormals[ 1 ] = weightedNormal( vertexNormals[ face.b ], face.normal );
+			face.vertexNormals[ 2 ] = weightedNormal( vertexNormals[ face.c ], face.normal );
+
+		}
+
+		if ( this.faces.length > 0 ) {
+
+			this.normalsNeedUpdate = true;
+
+		}
+
+}
+
+
+var camera, scene, renderer;
+var material, cylinders = [];
+
+init();
+animate();
+
+function addCylinder(geometry, offset){
+  var c = new THREE.Mesh(geometry, material );
+  c.position.x=offset;
+	scene.add( c );
+  cylinders.push(c);
+  return c;
+}
+
+function init() {
+
+	camera = new THREE.PerspectiveCamera( 30, window.innerWidth / window.innerHeight, 0.01, 10 );
+	camera.position.z = 5;
+	camera.position.y = 1.8;
+	scene = new THREE.Scene();
+  material = new THREE.MeshLambertMaterial({color: 0xaaaaaa});
+
+  var g = new THREE.CylinderGeometry( 0.5, 0.5, 1, 30, 3 );
+  g.faces.map(f => f.vertexNormals = []); // remove vertex normals 
+  g.faces.map(f => f.normal.set(0,0,0)); // reset face normals
+
+  var g1 = g.clone();
+  g1.computeFaceNormals();
+	addCylinder(g1, -1.5)
+  
+  var g2 = g.clone();
+  g2.computeVertexNormals();
+	addCylinder(g2.clone(), 0);
+  
+  var g3 = g.clone();
+  g3.computeAngleVertexNormals(Math.PI/2);
+  addCylinder(g3, 1.5);
+  
+  
+  
+  
+  
+  camera.lookAt(scene.position);
+  
+  var light = new THREE.DirectionalLight(0xffffff,0.6);
+  light.position.set(1,4,4);
+  scene.add(light);
+  var light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
+  scene.add( light );
+  
+	renderer = new THREE.WebGLRenderer( { antialias: true } );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+	requestAnimationFrame( animate );
+
+  cylinders.map(c => {
+	  c.rotation.y += 0.01;
+  });
+
+	renderer.render( scene, camera );
+
+}
+</script>
+</html>

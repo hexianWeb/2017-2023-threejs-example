@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-create-a-text-geometry/4141 -->
+<!-- https://jsfiddle.net/f2Lommf5/14075/ -->
+
+<!-- fonts:	
+	http://gero3.github.io/facetype.js/
+	https://thefiveplanets.org/b01/data/fonts/
+	https://thefiveplanets.org/b01/data/fonts/LICENSE
+-->
+
+<head>
+  <title> Text Geometry </title>
+  <meta charset="utf-8" />
+  <style>
+  	body {
+	  margin: 0;
+	}
+ </style> 
+</head>
+
+<body>
+</body>
+<script src="../js/three.min.96.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 50 );
+    camera.position.z = 8;
+
+    scene = new THREE.Scene(); 
+	
+    var loader = new THREE.FontLoader();
+   
+	loader.load( 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function ( font ) {
+      var geometry = new THREE.TextGeometry( 'Hello three.js!', {
+        font: font,
+        size: 1,
+        height: 0.5,
+        curveSegments: 4,
+        bevelEnabled: true,
+        bevelThickness: 0.02,
+        bevelSize: 0.05,
+        bevelSegments: 3
+      } );
+      geometry.center();
+      var material = new THREE.MeshNormalMaterial();
+      var mesh = new THREE.Mesh( geometry, material );
+    	scene.add( mesh );
+    } );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+    
+    //
+    
+    var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+</script>
+</html>

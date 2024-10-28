@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-make-the-face-of-the-model-facing-down-to-use-another-color/38866/12 -->
+<!-- https://codepen.io/illuminsi/pen/jOZQqVE -->
+<head>
+  <title>RotatePoints(dithering_fragment)</title>
+  <meta charset="utf-8" />
+   <style>
+    app {
+    width: 100vw;
+    height: 100vh;
+}
+  </style>
+</head>
+
+<body>
+<canvas id="app"></canvas>
+</body>
+
+ <script src="../js/three.139.js"></script>
+<script>
+
+// @author Chaser_Code
+
+const canvas=document.querySelector('#app');
+const width=canvas.clientWidth;
+const height=canvas.clientHeight;
+
+
+
+const context=canvas.getContext('webgl');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,transparent:true,canvas:canvas,context:context});
+renderer.setClearColor(0xB9EEFF,1);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(width, height, false);
+renderer.shadowMap.enabled=false;
+renderer.shadowMap.type=THREE.VSMShadowMap;
+
+
+const camera=new THREE.PerspectiveCamera(45,width/height,0.05,100000);
+const scene=new THREE.Scene();
+const pl1=new THREE.PointLight(0xFEE3B1, 2);
+pl1.position.set(-20,20,20);
+scene.add(pl1);
+const clock=new THREE.Clock();
+
+
+
+var mesh=new THREE.Mesh(new THREE.SphereBufferGeometry(0.2,16,16,16),new THREE.MeshStandardMaterial({color:0xffffff}));
+mesh.position.z=-5;
+scene.add(mesh);
+
+
+mesh.material.onBeforeCompile=(shader)=>{
+shader.fragmentShader=shader.fragmentShader.replace("#include <dithering_fragment>",`#include <dithering_fragment>
+if(vNormal.y<0.0){ gl_FragColor.rgb=vec3(0.0,1.0,0.0); }`
+)};
+
+
+const pLight=new THREE.PointLight(0xffff00,1);
+scene.add(pLight);
+
+
+function loop(){
+
+
+requestAnimationFrame(loop);
+
+
+renderer.render(scene,camera);
+
+
+}
+
+
+loop();
+
+</script>
+</html>

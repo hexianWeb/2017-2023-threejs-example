@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-fix-light-position-regardless-of-user-controls/1663/3 -->
+<!-- https://jsfiddle.net/prisoner849/8bzyjgty/ -->
+<head>
+  <title> FixLightPosition </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+  	margin: 0;
+	}
+  </style>  
+</head>
+
+<body> </body>
+<script src="../js/three.min.89.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 200);
+scene.add(camera);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var pointLight = new THREE.PointLight(0xffffff, 5, 40);
+pointLight.position.set(50, 50, 76);
+var lightHolder = new THREE.Group();
+lightHolder.add(pointLight);
+scene.add(lightHolder);
+scene.add(new THREE.AmbientLight(0xffffff, .5));
+
+var pointHelper = new THREE.PointLightHelper(pointLight);
+scene.add(pointHelper);
+
+var sphereGeom = new THREE.SphereGeometry(75, 32, 24);
+sphereGeom.faces.forEach(f => {
+	f.color.set(Math.random() * 0x777777 + 0x777777);
+})
+var sphere = new THREE.Mesh(sphereGeom, new THREE.MeshStandardMaterial({vertexColors: THREE.FaceColors}));
+scene.add(sphere);
+
+var camLight = new THREE.PointLight(0xff0000, 2, 40);
+camLight.position.copy(pointLight.position).sub(camera.position);
+camera.add(camLight);
+
+var lightHelper = new THREE.PointLightHelper(camLight);
+scene.add(lightHelper);
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  lightHolder.quaternion.copy(camera.quaternion);
+  renderer.render(scene, camera);
+}
+</script>
+</html>

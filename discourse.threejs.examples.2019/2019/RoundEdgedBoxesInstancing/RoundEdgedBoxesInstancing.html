@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/cheap-round-edged-box-vertex-shader/8066 -->
+<!-- https://codepen.io/prisoner849/pen/qzZaye -->
+<!-- see also https://codepen.io/Fyrestar/pen/pXJoda?editors=1010  -->
+<!-- 			https://codepen.io/prisoner849/pen/OeJGjB -->
+<head>
+  <title> RoundEdgedBoxesInstancing </title>
+  <meta charset="utf-8" />
+    <style>
+		html, body {
+		height: 100%;
+		margin: 0;
+		overflow: hidden;
+		}
+		canvas {
+		width: 100%;
+		height: 100%;
+		display; block;
+		}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.105.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var fogColor = 0xff88ff;
+scene.fog = new THREE.Fog(fogColor, 300, 450);
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.set(0, 0, 100);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setClearColor(fogColor);
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, canvas);
+
+var light = new THREE.DirectionalLight(0xffffff, 1.5);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+var loader = new THREE.CubeTextureLoader();
+loader.setCrossOrigin( "" );
+loader.setPath( 'https://threejs.org/examples/textures/cube/pisa/' );
+
+var cubeTexture = loader.load( [
+  'px.png', 'nx.png',
+  'py.png', 'ny.png',
+  'pz.png', 'nz.png'
+] );
+
+var boxGeom = new THREE.BoxBufferGeometry(2, 2, 2, 9, 9, 9);
+
+var instCount = 1000;
+var color = [];
+var boxPosition = [];
+var boxSize = [];
+var boxRadius = [];
+var boxRadiusShift = [];
+var boxRadiusSpeed = [];
+
+var cell = 5;
+var grid = 100;
+for (let i = 0; i < instCount; i++){
+  
+  let posx = THREE.Math.randInt(-grid, grid) * cell;
+  let posy = THREE.Math.randInt(-grid, grid) * cell;
+  let posz = THREE.Math.randInt(-grid, grid) * cell;
+  boxPosition.push(posx, posy, posz);
+  
+  let sizex = THREE.Math.randInt(5, 20);
+  let sizey = THREE.Math.randInt(5, 20);
+  let sizez = THREE.Math.randInt(5, 20);
+  boxSize.push(sizex, sizey, sizez);
+  
+  boxRadius.push(Math.min(sizex, Math.min(sizey, sizez)));
+  
+  boxRadiusShift.push(Math.random() * Math.PI * 2);
+  
+  boxRadiusSpeed.push(Math.random() * 0.5 + 0.5);
+  
+}
+var instBoxGeom = new THREE.InstancedBufferGeometry();
+instBoxGeom.copy( boxGeom );
+instBoxGeom.addAttribute( 'boxPosition', new THREE.InstancedBufferAttribute( new Float32Array(boxPosition), 3 ) );
+instBoxGeom.addAttribute( 'boxSize', new THREE.InstancedBufferAttribute( new Float32Array(boxSize), 3 ) );
+instBoxGeom.addAttribute( 'boxRadius', new THREE.InstancedBufferAttribute( new Float32Array(boxRadius), 1 ) );
+instBoxGeom.addAttribute( 'boxRadiusShift', new THREE.InstancedBufferAttribute( new Float32Array(boxRadiusShift), 1 ) );
+instBoxGeom.addAttribute( 'boxRadiusSpeed', new THREE.InstancedBufferAttribute( new Float32Array(boxRadiusSpeed), 1 ) );
+
+var shaderUniforms = {
+  time: {value: 0},
+  speed: {value: 50}
+}
+
+var boxMat = new THREE.MeshPhongMaterial({ color: 0x4444bb, envMap: cubeTexture });
+boxMat.onBeforeCompile = shader => {
+  
+  shader.uniforms.time = shaderUniforms.time;
+  shader.uniforms.speed = shaderUniforms.speed;
+ 
+  shader.vertexShader = `
+  uniform float time;
+  uniform float speed;
+
+  attribute vec3 boxPosition;
+  attribute vec3 boxSize;
+  attribute float boxRadius;
+  attribute float boxRadiusShift;
+  attribute float boxRadiusSpeed;
+  ` + shader.vertexShader;
+  
+  shader.vertexShader = shader.vertexShader.replace(
+    `#include <begin_vertex>`,
+    `#include <begin_vertex>
+
+    vec3 signs = sign(position);
+    float radius = boxRadius * (sin(time * 2. * boxRadiusSpeed + boxRadiusShift) * 0.5 + 0.5) - 0.001;
+    vec3 box = boxSize - vec3(radius);
+    box = vec3(max(0.0, box.x), max(0.0, box.y), max(0.0, box.z));
+    vec3 p = signs * box;
+
+    transformed = signs * box + normalize(position) * radius;
+    
+    // re-compute normals for correct shadows and reflections
+    objectNormal = all(equal(p, transformed)) ? normal : normalize(position); 
+    transformedNormal = normalize(normalMatrix * objectNormal);
+    vNormal = transformedNormal;
+
+    vec3 posShift = boxPosition;
+    posShift.z = mod(posShift.z + 500. + time * speed, 1000.) - 500.;
+
+    transformed += posShift;
+
+    `
+  );
+};
+var box = new THREE.Mesh(instBoxGeom, boxMat);
+scene.add(box);
+
+var clock = new THREE.Clock();
+var time = 0;
+
+render();
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  
+  time = clock.getElapsedTime();
+  shaderUniforms.time.value = time;
+  
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+</script>
+</html>

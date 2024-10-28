@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-are-segments-in-a-side-selectable/2042 -->
+<!-- https://jsfiddle.net/prisoner849/hakf26hL/ -->
+<head>
+  <title> SelectSegments </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+<script src="../js/three.min.90.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<body> </body>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 25, 40);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var box = new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30, 30, 30, 30), new THREE.MeshBasicMaterial({
+  vertexColors: THREE.VertexColors
+}));
+scene.add(box);
+
+var wireBox = new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30, 30, 30, 30), new THREE.MeshBasicMaterial({
+  color: "black",
+  wireframe: true
+}));
+box.add(wireBox);
+
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+var intersects = [];
+var faceIdx1 = -1, faceIdx2 = -1;
+var baseColor = new THREE.Color("white");
+var selectionColor = new THREE.Color("red");
+
+window.addEventListener("mousemove", function(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+}, false);
+
+window.addEventListener("mousedown", function(event){
+	raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObject(box);
+  if (intersects.length === 0) return;
+  
+  // set previously selected faces to white
+  setFaceColor(faceIdx1, baseColor);
+  setFaceColor(faceIdx2, baseColor);
+  
+  // find the new indices of faces
+  faceIdx1 = intersects[0].faceIndex;
+  faceIdx2 = faceIdx1 % 2 === 0 ? faceIdx1 + 1: faceIdx1 - 1;
+  
+  // set newly selected faces to red
+	setFaceColor(faceIdx1, selectionColor);
+  setFaceColor(faceIdx2, selectionColor);
+}, false)
+
+function setFaceColor(idx, color){
+	if (idx === -1) return;
+  box.geometry.faces[idx].color.copy(color);
+  box.geometry.colorsNeedUpdate = true;
+}
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+</script>
+</html>

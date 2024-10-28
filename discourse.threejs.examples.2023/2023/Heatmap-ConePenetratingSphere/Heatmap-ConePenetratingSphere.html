@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/color-mapping-intrusion-depth-onto-the-mesh/47963/2 -->
+<!-- https://codepen.io/boytchev/full/KKxKRjv -->
+<head>
+  <title> Heatmap-ConePenetratingSphere </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 10 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+
+// a glass non-breakable sphere
+
+var sphere = new THREE.Mesh(
+			new THREE.IcosahedronGeometry( 1, 10 ),
+    	new THREE.MeshPhysicalMaterial( {
+					color: 'azure',
+					transmission: 1,
+					roughness: 0,
+					metalness: 0,
+			} )
+    );
+		sphere.position.y = 1;
+		scene.add( sphere );
+
+
+// prepare heat map texture as a canvas texture
+
+// we need heigt 512 to make a sharp edge below the blue
+var canvas = document.createElement( 'CANVAS' );
+    canvas.width = 1;
+    canvas.height = 512;
+
+// start with a white canvas
+var context = canvas.getContext( '2d' );
+    context.fillStyle = 'white';
+    context.fillRect( 0, 0, 1, 512 );
+
+// draw a gradient in 500 rows, leaving 12 rows white
+var gradient = context.createLinearGradient( 0, 0, 1, 500 );
+		gradient.addColorStop( 0.40, 'red' );
+		gradient.addColorStop( 0.60, 'yellow' );
+		gradient.addColorStop( 0.65, 'yellow' );
+		gradient.addColorStop( 0.80, 'green' );
+		gradient.addColorStop( 1.00, 'blue' );
+
+		context.fillStyle = gradient;
+    context.fillRect( 0, 0, 1, 500 );
+		
+// convert the canvas into a texture
+var penetrationMap =  new THREE.CanvasTexture( canvas );
+
+
+// a cone that penetrates the sphere
+
+var cone = new THREE.Mesh(
+			new THREE.ConeGeometry( 0.5, 2, 60, 1, true ),
+    	new THREE.MeshPhysicalMaterial( {
+					color: 'white',
+					map: penetrationMap,
+					roughness: 0,
+					metalness: 0,
+			} )
+    );	
+		scene.add( cone );
+
+
+// because the texture leaks into the bottom 
+// of the cone, the cone is made bottomless, 
+// and here we add a circle to cap its bottom
+var coneCap = new THREE.Mesh(
+			new THREE.CircleGeometry( 0.5, 60 ),
+    	new THREE.MeshPhysicalMaterial( {
+					color: 'white',
+					roughness: 0,
+					metalness: 0,
+			} )
+    );	
+		coneCap.rotation.x = Math.PI/2;
+		coneCap.position.y = -1;
+		cone.add( coneCap );
+
+function animationLoop( t )
+{
+		cone.position.y = Math.sin(t/1000) - 0.5;
+	
+		// mapping between cone position and penetration 
+		// map offset values are obtained experimentally
+		//		cone		map
+		//		-0.5	-0.732
+		//		+0.5  -0.260
+		penetrationMap.offset.y = THREE.MathUtils.mapLinear( cone.position.y, -0.5, 0.5, -0.732, -0.26 );
+		
+		// move the light together with the camera
+		light.position.copy( camera.position );
+		light.position.y -= 10;
+		
+    controls.update( );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

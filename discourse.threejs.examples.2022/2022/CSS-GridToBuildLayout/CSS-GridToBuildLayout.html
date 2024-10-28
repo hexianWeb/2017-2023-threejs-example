@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/threejs-div-rendering-under-all-other-content/37119 -->
+<!-- https://jsfiddle.net/7eykmzha/ -->
+
+<!--   @author  tinywitch  +  Mugen87 -->
+
+<head>
+  <title> CSS-GridToBuildLayout </title>
+  <meta charset="utf-8" />
+  <style>
+    html,
+    body {
+    width: 100%;
+    height: 100%;
+    text-transform: uppercase;
+    text-align: center;
+    font-family: helvetica, arial;
+    margin: 0;
+    }
+    
+    article {
+    min-height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 100%;
+    }
+    
+    header {
+    padding: 1rem;
+    }
+    
+    footer {
+    padding: 1rem;
+    }
+    
+    /* navbar */
+    
+    ul {
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+    -webkit-text-size-adjust: 100%;
+    line-height: 1.42;
+    font-family: 'Signika', sans-serif;
+    font-size: max(15px, .972vw);
+    -webkit-font-smoothing: antialiased;
+    text-transform: uppercase;
+    box-sizing: border-box;
+    backface-visibility: hidden;
+    list-style: none;
+    display: flex;
+    }
+    
+    li {
+    padding: 0 0.75em;
+    padding-top: 0px;
+    padding-right: 0.75em;
+    padding-bottom: 0px;
+    padding-left: 0.75em;
+    
+    }
+    
+    li:hover {
+    text-decoration: underline;
+    background-color: aqua;
+    } 
+  </style>
+</head>
+
+<body>
+<article>
+  <header>
+    <ul>
+      <li><span>Cases</span></li>
+      <li>About</li>
+      <li>Archives</li>
+      <li>Contact</li>
+    </ul>
+  </header>
+  <main id="canvas">
+  </main>
+  <footer>
+    bottom
+  </footer>
+</article>
+    
+</body>
+
+<script type="module">
+
+// @author  tinywitch + Mugen87
+
+import * as THREE from '../jsm/three.module.139.js';
+
+var container, camera, scene, renderer, mesh,
+
+  mouse = {
+    x: 0,
+    y: 0
+  },
+  objects = [],
+
+  count = 0,
+
+  CANVAS_WIDTH = document.getElementById('canvas').clientWidth,
+  CANVAS_HEIGHT = document.getElementById('canvas').clientHeight;
+
+
+container = document.getElementById('canvas');
+renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize(CANVAS_WIDTH, CANVAS_HEIGHT);
+container.appendChild(renderer.domElement);
+
+scene = new THREE.Scene();
+
+camera = new THREE.PerspectiveCamera(50, CANVAS_WIDTH / CANVAS_HEIGHT, 1, 1000);
+camera.position.y = 150;
+camera.position.z = 500;
+camera.lookAt(scene.position);
+
+mesh = new THREE.Mesh(
+  new THREE.BoxGeometry(200, 200, 200, 1, 1, 1),
+  new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    wireframe: true
+  }));
+scene.add(mesh);
+objects.push(mesh);
+
+// find intersections
+var vector = new THREE.Vector3();
+var raycaster = new THREE.Raycaster();
+
+function render() {
+
+  mesh.rotation.y += 0.01;
+
+  renderer.render(scene, camera);
+
+}
+
+function animate() {
+
+ requestAnimationFrame(animate);
+
+  render();
+
+}
+
+animate();
+</script>
+</html>

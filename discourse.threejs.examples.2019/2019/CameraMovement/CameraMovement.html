@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/move-the-camera-forward-in-the-direction-its-facing/8364/5 -->
+<!-- https://jsfiddle.net/aknv6j10/ -->
+<head>
+  <title> CameraMovement </title>
+  <meta charset="utf-8" />
+	<style>
+		body { margin: 0; position: fixed; }
+		canvas { width: 100%; height: 100%; display: block; }
+  		button { padding: 10px; color: black; border: 1px solid black; }
+  		.hover { position: absolute; left: calc( 50% - 109px ); }
+	</style>
+</head>
+	
+<body>
+	<div class="hover">
+	<button type="button" id="rtLeft"><- rotate</button>
+	<button type="button" id="mvForward">forward</button>
+	<button type="button" id="rtRight">rotate -></button>
+	</div>
+</body>
+
+<script src="../js/three.min.106.js"></script>
+
+<script>
+
+// @author sciecode
+
+var dir = new THREE.Vector3();
+var speed = 1.0;
+
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color( 0xc9c9c9 );
+var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+
+camera.position.set( 10, 2, 10 );
+camera.lookAt( new THREE.Vector3( 0, 2, 0 ) );
+
+// cube
+
+var cubeGeometry = new THREE.BoxBufferGeometry( 10, 5, 10 );
+var cubeMaterial = new THREE.MeshBasicMaterial( {
+  color: 0xFFD033,
+  polygonOffset: true,
+  polygonOffsetFactor: 1,
+  polygonOffsetUnits: 1
+} );
+var cube = new THREE.Mesh( cubeGeometry, cubeMaterial );
+scene.add( cube );
+
+var edgesGeometry = new THREE.EdgesGeometry( cubeGeometry );
+var edgesCube = new THREE.LineSegments( edgesGeometry, new THREE.LineBasicMaterial( { color: 0x1B3740, linewidth: 1.5 } ) );
+edgesCube.position.y += 0.6;
+scene.add( edgesCube );
+
+
+var grid = new THREE.GridHelper( 100, 20 );
+grid.position.y -= 2.5;
+scene.add( grid );
+
+
+window.addEventListener( 'resize', onResize );
+
+document.getElementById("mvForward").addEventListener( 'click', moveForward );
+document.getElementById("rtLeft").addEventListener( 'click', rotateLeft );
+document.getElementById("rtRight").addEventListener( 'click', rotateRight );
+
+function moveForward() { 
+	camera.getWorldDirection( dir );
+  camera.position.addScaledVector( dir, speed );
+}
+function rotateLeft() { camera.rotation.y += Math.PI / 8; }
+function rotateRight() { camera.rotation.y -= Math.PI / 8; }
+
+
+function animate() {
+
+  requestAnimationFrame( animate );
+
+
+  renderer.render( scene, camera );
+
+};
+
+function onResize() {
+
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( w, h );
+
+}
+
+animate();
+</script>
+</html>

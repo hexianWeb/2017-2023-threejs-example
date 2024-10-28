@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/mapping-fidelity-in-quadrilateral-triangle-rendering/31033 -->
+<!-- https://jsfiddle.net/Chrisssie/zgkx7bso/ --> 
+    <!-- more examples in post  -->
+<head>
+  <title> MappingFidelity </title>
+  <meta charset="utf-8" />
+	<style>
+    body {
+        background-color: #000;
+        margin: 0px;
+        overflow: hidden;
+    }
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author Chrisssie vielzutun.ch
+
+// Simple three.js example
+import * as THREE from "../jsm/three.module.133.js";
+import { OrbitControls } from "../jsm/OrbitControls.133.js";
+import { GUI } from "../jsm/dat.gui.module.133.js";
+
+var renderer, scene, camera, controls;
+
+let testMesh, testMaterial, testGeometry;
+
+const PI_180 = Math.PI / 180.0;
+const points = [];
+
+let wireMaterial, flatMaterial, gouraudMaterial, phongMaterial, texturedMaterial, reflectiveMaterial;
+let ambientLight, light;
+let parameters;
+let shading = '';
+let latheSegments = 0;
+
+
+init();
+animate();
+//render();
+
+function init() {
+
+    // camera
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.set(0, 0, 60);
+
+
+// renderer
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  document.body.appendChild(renderer.domElement);
+
+  // scene
+  scene = new THREE.Scene();
+
+  // controls
+  controls = new OrbitControls(camera, renderer.domElement);
+
+
+  // light
+  ambientLight = new THREE.AmbientLight(0x444444);
+
+  light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(32, 39, 70);
+  
+  scene.add( ambientLight );
+  scene.add( light );
+
+  // axes
+  scene.add(new THREE.AxesHelper(40));
+
+  // Textures
+                   // https://live.staticflickr.com/65535/51613416113_dda7a692f0_o.jpg
+  const textureEquirec = new THREE.TextureLoader().load( "51613416113_dda7a692f0_o.jpg" );
+  textureEquirec.mapping = THREE.EquirectangularReflectionMapping;
+  textureEquirec.encoding = THREE.sRGBEncoding;
+               // https://live.staticflickr.com/65535/51613862444_580840bab6_o.jpg
+  const textureMap = new THREE.TextureLoader().load( "51613862444_580840bab6_o.jpg" );
+  textureMap.wrapS = textureMap.wrapT = THREE.RepeatWrapping;
+  textureMap.anisotropy = 16;
+  textureMap.encoding = THREE.sRGBEncoding;
+  
+//  scene.background = textureEquirec;
+  
+  // initialize points[] array for use in THREE.LatheGeometry
+
+  points.length = 0;
+  points.push( new THREE.Vector2( -25.0,  0.0 ) );                   // bottom outer diameter
+  points.push( new THREE.Vector2( -15.0,  0.0 ) );                   // bottom inner diameter
+  points.push( new THREE.Vector2( - 5.0, 10.0 ) );                   // top outer diameter
+  points.push( new THREE.Vector2(   0.0, 10.0 ) );                   // flat top lid center
+
+
+  // Materials
+
+  const materialColor = new THREE.Color();
+  materialColor.setRGB(1.0, 1.0, 1.0);
+  const whiteColor = new THREE.Color();
+  whiteColor.setRGB(1.0, 1.0, 1.0);
+
+  wireMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    wireframe: true
+  });
+
+  flatMaterial = new THREE.MeshPhongMaterial({
+    color: materialColor,
+    specular: 0x000000,
+    flatShading: true,
+    side: THREE.DoubleSide
+  });
+
+  gouraudMaterial = new THREE.MeshLambertMaterial({
+    color: materialColor,
+    side: THREE.DoubleSide
+  });
+
+  phongMaterial = new THREE.MeshPhongMaterial({
+    color: materialColor,
+    shininess: 30,
+    side: THREE.DoubleSide
+  });
+
+  texturedMaterial = new THREE.MeshPhongMaterial({
+    color: whiteColor,
+    map: textureMap,
+    side: THREE.DoubleSide
+  });
+
+  reflectiveMaterial = new THREE.MeshLambertMaterial({
+    color: whiteColor,
+    envMap: textureEquirec
+  });
+
+  setupGui();
+
+  createNewTestMesh();
+
+}
+
+function setupGui() {
+
+  parameters = {
+    latheSegments: 10,
+    newShading: "textured"
+  };
+
+  const gui = new GUI();
+
+  gui.add(parameters, 'latheSegments', 3, 50, 1).onChange(function(val) {
+
+    parameters.latheSegments = val;
+    render();
+
+  });
+
+  gui.add(parameters, "newShading", ["wireframe", "flat", "smooth", "glossy", "textured", "reflective"]).name("Shading").onChange(function(val) {
+
+    parameters.newShading = val;
+    render();
+
+  });
+
+}
+
+function render() {
+
+//  if (parameters.newShading !== shading ||
+//    parameters.latheSegments !== latheSegments) {
+
+    shading = parameters.newShading;
+    latheSegments = parameters.latheSegments;
+
+    createNewTestMesh();
+
+//  }
+
+  renderer.render(scene, camera);
+
+}
+
+function createNewTestMesh() {
+// Whenever the testMesh changes, the scene is rebuilt from scratch.
+
+  if (testMesh !== undefined) {
+
+    testMesh.geometry.dispose();
+    scene.remove(testMesh);
+
+  }
+
+  testGeometry = new THREE.LatheGeometry(points, latheSegments, 0.0, 360 * PI_180);
+
+  testMesh = new THREE.Mesh(testGeometry,
+    shading === "wireframe" ? wireMaterial : (
+      shading === "flat" ? flatMaterial : (
+        shading === "smooth" ? gouraudMaterial : (
+          shading === "glossy" ? phongMaterial : (
+            shading === "textured" ? texturedMaterial : reflectiveMaterial)))));
+
+  scene.add(testMesh);
+
+}
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  render();
+
+}
+
+</script>
+</html>

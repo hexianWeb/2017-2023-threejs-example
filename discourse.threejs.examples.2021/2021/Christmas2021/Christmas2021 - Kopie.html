@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/happy-christmas-2021-suggestions-for-beginners/32987  -->
+<!-- For more inspirations see   https://discourse.threejs.org/t/collection-of-examples-from-discourse-threejs-org/4315 -->
+<head>
+  <title> Christmas 2021</title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        overflow:hidden;
+        margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.135.js';
+import { OrbitControls } from '../jsm/OrbitControls.135.js';
+import { GLTFLoader } from '../jsm/GLTFLoader.135.js';
+import { FontLoader } from '../jsm/FontLoader.135.js';
+import { TextGeometry } from '../jsm/TextGeometry.135.js';
+
+THREE.Quaternion.prototype.setFromBasis = function( e1, e2, e3 ) { // @ author hofk
+    
+	const	m11 = e1.x, m12 = e1.y, m13 = e1.z,
+			m21 = e2.x, m22 = e2.y, m23 = e2.z,
+			m31 = e3.x, m32 = e3.y, m33 = e3.z,
+			trace = m11 + m22 + m33;
+
+	if ( trace > 0 ) {
+
+		const s = 0.5 / Math.sqrt( trace + 1.0 );
+
+		this._w = 0.25 / s;
+		this._x = -( m32 - m23 ) * s;
+		this._y = -( m13 - m31 ) * s;
+		this._z = -( m21 - m12 ) * s;
+
+	} else if ( m11 > m22 && m11 > m33 ) {
+
+		const s = 2.0 * Math.sqrt( 1.0 + m11 - m22 - m33 );
+
+		this._w = ( m32 - m23 ) / s;
+		this._x = -0.25 * s;
+		this._y = -( m12 + m21 ) / s;
+		this._z = -( m13 + m31 ) / s;
+
+	} else if ( m22 > m33 ) {
+
+		const s = 2.0 * Math.sqrt( 1.0 + m22 - m11 - m33 );
+
+		this._w = ( m13 - m31 ) / s;
+		this._x = -( m12 + m21 ) / s;
+		this._y = -0.25 * s;
+		this._z = -( m23 + m32 ) / s;
+
+	} else {
+
+		const s = 2.0 * Math.sqrt( 1.0 + m33 - m11 - m22 );
+
+		this._w = ( m21 - m12 ) / s;
+		this._x = -( m13 + m31 ) / s;
+		this._y = -( m23 + m32 ) / s;
+		this._z = -0.25 * s;
+
+	}
+	
+	this._onChangeCallback();
+
+	return this;
+ 
+}
+
+const camera = new THREE.PerspectiveCamera( 65, window.innerWidth / window.innerHeight, 0.01, 1000 );
+camera.position.set( -0,2, 0.3, 2  );
+ 
+const scene = new THREE.Scene();
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x3e9724 );
+document.body.appendChild( renderer.domElement );
+
+const light = new THREE.PointLight( 0xffffff, 1.2 );
+light.position.set( 5, 5, 5 );
+scene.add( light );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+  controls.minAzimuthAngle = -Math.PI * 0.4;
+  controls.maxAzimuthAngle = Math.PI * 0.4;
+  controls.minPolarAngle = Math.PI * 0.28;
+  controls.maxPolarAngle = Math.PI * 0.66;
+  controls.minDistance = 0.8;
+  controls.maxDistance = 4;
+  controls.enablePan = false;
+  controls.enableDamping = true;
+  controls.target.set( 0, 0, 0 );
+  controls.update();
+  
+const textMesh = new THREE.Group( );		
+const fontLoader = new FontLoader( ); // https://threejs.org/examples/fonts/helvetiker_regular.typeface.json						 
+fontLoader.load('helvetiker_regular.typeface.json', createText );
+textMesh.scale.set( 0.002, 0.002, 0.002 );
+textMesh.rotation.y = -0.52;
+textMesh.rotation.z = 0.3; 
+textMesh.position.set(  1.1, 0.6, 0 );
+scene.add( textMesh );
+  
+function createText( loadedFont ) {
+	
+	const textMaterial = new THREE.MeshPhongMaterial( { color: 0xcc0000, specular: 0x444444, shininess: 20 } );
+	
+	const textGeometry = new TextGeometry( 'Happy\nChristmas', {
+		
+		font: loadedFont,
+		size: 70,
+		height: 4,
+		curveSegments: 10,
+		bevelEnabled: true,
+		bevelThickness: 8,
+		bevelSize: 8,
+		bevelSegments: 5
+		
+	});
+	
+	textGeometry.center(); // otherwise position left side
+	
+	const tMesh = new THREE.Mesh( textGeometry, textMaterial );
+	
+	textMesh.add( tMesh );
+	
+}
+
+// box see also   https://discourse.threejs.org/t/periodic-circular-opening-and-closing-box/32322 
+
+const forestTexture = new THREE.TextureLoader( ).load( 'myForest.png' ); // self photographed, free
+const texturLoader = new THREE.TextureLoader( );
+const squirrelTexture = texturLoader.load( 'mySquirrel.png' );  // self photographed, free
+
+let frShPart1, openingPosition, frShPart2 ;
+shaderParts( );  
+
+let shaderMaterial = [ ];
+
+for ( let i = 0; i < 3; i ++ ) {
+
+    shaderMaterial[ i ] = new THREE.ShaderMaterial({ 
+        uniforms: { 
+                v_Uv: { value: new THREE.Vector2( ) },
+                u_time: { value:  1.5 },
+                u_Texture: { value: forestTexture },
+        },
+        vertexShader: vertexShader( ),
+        fragmentShader: frShPart1 + openingPosition[ i ] + frShPart2, 
+        side: THREE.DoubleSide,
+        transparent: true,
+    });
+
+}
+
+function vertexShader ( ) { //   return `    `;   a multiline template literal 
+    return `
+        varying vec2 v_Uv;
+        void main( )	{
+
+				v_Uv = uv;
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				gl_Position = projectionMatrix * mvPosition;
+            
+		} 
+    `;
+}
+
+function shaderParts( ) {   // some `    `  multiline template literals 
+    frShPart1 = 
+    `   varying vec2 v_Uv;
+        uniform float u_time;
+        uniform sampler2D u_Texture;   
+        float circle( vec2 pos, vec2 c, float r ) {     // pos: position   c: center  r: radius
+            vec2 dist = pos - vec2( c.x, c.y );         // distance
+            return step( 0.5 * r, dot( dist, dist ) );
+        }
+        void main( ) {
+            
+            vec2 position = v_Uv;
+            float radius = 1.3;         
+            vec2 center = vec2( 0.85 + 0.5 *( 1.0 + sin( u_time ) ) );
+    `;
+    
+    openingPosition = [
+    
+        ` position = vec2( 1.0 - v_Uv.x, 0.0 + v_Uv.y ); `, // top left
+        ` position = vec2( 0.0 + v_Uv.x, 1.0 - v_Uv.y ); `, // bottom right
+        ` position = vec2( 0.0 + v_Uv.x, 0.0 + v_Uv.y ); `, // top right 
+        ` position = vec2( 1.0 - v_Uv.x, 1.0 - v_Uv.y ); `, // bottom left - not used here!
+    
+    ];
+    
+    frShPart2 = 
+        `   float aCirc = circle( position, center, radius );            
+            vec3 colorTex = texture2D( u_Texture, v_Uv ).rgb;           
+            float aTex = texture2D( u_Texture, v_Uv ).a;           
+            vec4 color = vec4( colorTex, aTex ) * vec4( vec3( 1.0 ), aCirc );
+            gl_FragColor = color;           
+        }
+    `;
+}
+
+
+const loader = new GLTFLoader( );
+const model = new THREE.Object3D( );
+loader.load( 'train de cNile/model.gltf', function ( gltf ) { //  (CC-BY) Poly by Google
+	const box = new THREE.Box3( ).setFromObject( gltf.scene );
+	const c = box.getCenter( new THREE.Vector3( ) );
+	const size = box.getSize( new THREE.Vector3( ) ); 
+	gltf.scene.position.set( -c.x, size.y / 2 - c.y, -c.z );
+	model.add( gltf.scene );
+    model.scale.set( 1.2, 1.2, 1.2 );
+	model.position.y = -0.5;
+	scene.add( model );
+	}
+);
+
+const boxMaterials = [
+
+    shaderMaterial[ 0 ],
+    new THREE.MeshBasicMaterial( { map: squirrelTexture, side: THREE.DoubleSide, } ),
+    shaderMaterial[ 1 ],
+    new THREE.MeshBasicMaterial( { color: 0x3f5b50, side: THREE.DoubleSide, } ),
+    shaderMaterial[ 2 ],
+    new THREE.MeshBasicMaterial( { map: forestTexture, side: THREE.DoubleSide, } ),
+    
+];
+
+const boxGeometry = new THREE.BoxBufferGeometry( );
+const boxMesh = new THREE.Mesh( boxGeometry, boxMaterials );
+boxMesh.rotation.y = -0.2;
+scene.add( boxMesh );
+
+const flagpolePoints = [ 0.01, 10,  0.2, 9.9,  0.3, 9.7,  0.3, 9.5,  0.1, 9.45,  0.1, 0.5,  1.2, 0.2,  1.2, 0 ];
+const fpPoints = [ ];
+
+for ( let i = 0; i < flagpolePoints.length / 2; i ++ ) {
+	
+	fpPoints.push( new THREE.Vector2( flagpolePoints[ 2 * i ], flagpolePoints[ 2 * i + 1 ] ) );
+	
+}
+
+// see also https://hofk.de/main/discourse.threejs/BeginnerExample/BeginnerExample.html
+
+const flagpoleGeometry = new THREE.LatheGeometry( fpPoints );
+const flagpoleMaterial = new THREE.MeshPhongMaterial( { color: 'gray', side: THREE.DoubleSide, wireframe: false } );
+const flagpoleMesh = new THREE.Mesh( flagpoleGeometry, flagpoleMaterial );
+scene.add( flagpoleMesh );
+flagpoleMesh.scale.set( 0.1, 0.1, 0.1 );
+flagpoleMesh.position.set( -1.43, -0.5, 0.09 );
+ 
+		// see functions animate and flagwaving for time variability
+const threeTex = texturLoader.load( 'flag_threejs.png' );
+const flagMaterial = new THREE.MeshBasicMaterial( {
+	map: threeTex,
+	side: THREE.DoubleSide,
+	transparent: true,
+	opacity: 0.92,
+} );
+const flagGeometry = new THREE.PlaneGeometry( 0.6 , 0.3, 40, 20 );
+const flagPos = flagGeometry.attributes.position;
+const flagMesh = new THREE.Mesh( flagGeometry, flagMaterial );
+flagMesh.position.set(  -1.2, 0.29, -0.1 );
+flagMesh.rotation.y = 0.7;
+scene.add( flagMesh );
+
+function flagwaving( t ) {
+	
+	const v = new THREE.Vector3( );
+	
+	for( let i = 0; i < flagPos.count; i ++ ) {
+		
+		v.fromBufferAttribute( flagPos, i );
+		flagPos.setZ( i, 0.1 * Math.sin( 1.5 * t ) * Math.sin( i % 41 / 5 ) );
+		
+	}
+	
+	flagPos.needsUpdate = true;
+	
+}
+
+// car racing,    see https://discourse.threejs.org/t/car-racing-for-lovers-of-fast-cars/27160
+
+const curvePoints =  [
+  
+   0.0,  -0.5,  0.9,
+   1.0,  -0.5,  0.9,
+   1.5,   0.0,  0.2,
+   1.6,   0.3, -0.5,
+   1.1,   0.5, -1.3,
+  -0.5,   0.3, -1.2,
+  -1.5,   0.0, -0.5,
+  -1.9,  -0.3,  0.7,
+  -1.2,  -0.5,  0.9,
+   0.0,  -0.5,  0.9,
+  
+];
+
+const pts = [];
+	
+for ( let i = 0; i < curvePoints.length; i += 3 ) {
+	
+	pts.push( new THREE.Vector3( curvePoints[ i ], curvePoints[ i + 1 ], curvePoints[ i + 2 ] ) );
+	
+}
+
+const ls = 300; // length segments
+const ws = 5; // width segments 
+const lss = ls + 1;
+const wss = ws + 1;
+
+const curve = new THREE.CatmullRomCurve3( pts );
+const points = curve.getPoints( ls );
+const len = curve.getLength( );
+const lenList = curve.getLengths ( ls );
+
+const faceCount = ls * ws * 2;
+const vertexCount = lss * wss;
+
+const indices = new Uint32Array( faceCount * 3 );
+const vertices = new Float32Array( vertexCount * 3 );
+const uvs = new Float32Array( vertexCount * 2 );
+
+const g = new THREE.BufferGeometry( );
+g.setIndex( new THREE.BufferAttribute( indices, 1 ) );	
+g.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+g.setAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+
+let idxCount = 0;
+let a, b1, c1, c2;
+
+for ( let j = 0; j < ls; j ++ ) {
+	
+	for ( let i = 0; i < ws; i ++ ) {
+		
+		// 2 faces / segment,  3 vertex indices
+		a =  wss * j + i;
+		b1 = wss * ( j + 1 ) + i;		// right-bottom
+		c1 = wss * ( j + 1 ) + 1 + i;
+	//  b2 = c1							// left-top
+		c2 = wss * j + 1 + i;
+		
+		indices[ idxCount     ] = a; // right-bottom
+		indices[ idxCount + 1 ] = b1;
+		indices[ idxCount + 2 ] = c1; 
+		
+		indices[ idxCount + 3 ] = a; // left-top
+		indices[ idxCount + 4 ] = c1 // = b2,
+		indices[ idxCount + 5 ] = c2; 
+		
+		g.addGroup( idxCount, 6, i ); // write group for multi material
+		
+		idxCount += 6;
+		
+	}
+		
+}
+
+let uvIdxCount = 0;
+
+for ( let j = 0; j < lss ; j ++ ) {
+
+	for ( let i = 0; i < wss; i ++ ) {
+
+		uvs[ uvIdxCount     ] = lenList[ j ] / len;
+		uvs[ uvIdxCount + 1 ] = i / ws;
+		
+		uvIdxCount += 2;
+		
+	}
+	
+}
+
+let x, y, z;
+let posIdx = 0; // position index
+
+let tangent;
+const normal = new THREE.Vector3( );
+const binormal = new THREE.Vector3( 0, 1, 0 );
+ 
+const t = []; // tangents
+const n = []; // normals
+const b = []; // binormals
+
+for ( let j = 0; j < lss; j ++ ) {
+
+	// to the points
+	
+	tangent = curve.getTangent(  j / ls );
+	t.push( tangent.clone( ) );
+	
+	normal.crossVectors( tangent, binormal );
+	
+	normal.y = 0; // to prevent lateral slope of the road
+	
+	normal.normalize( );
+	n.push( normal.clone( ) );
+	
+	binormal.crossVectors( normal, tangent ); // new binormal
+	b.push( binormal.clone( ) );	
+	
+}
+
+const dw = [ -0.12, -0.11, -0.003, 0.003, 0.11, 0.12 ]; // width from the center line
+
+for ( let j = 0; j < lss; j ++ ) {  // length
+		
+	for ( let i = 0; i < wss; i ++ ) { // width
+	 
+		x = points[ j ].x + dw[ i ] * n[ j ].x;
+		y = points[ j ].y;
+		z = points[ j ].z + dw[ i ] * n[ j ].z;		 
+		
+		vertices[ posIdx ] = x;
+		vertices[ posIdx + 1 ] = y;
+		vertices[ posIdx + 2 ] = z;
+		
+		posIdx += 3;
+		
+	}
+	
+}
+
+const tex = new THREE.TextureLoader( ).load( 'CentralMarking.png' );
+tex.wrapS = THREE.RepeatWrapping;
+tex.repeat.set( ls * 2);
+ 
+const material = [
+	
+	new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide  } ),
+	new THREE.MeshBasicMaterial( { color: 0x111111, side: THREE.DoubleSide  } ),
+	new THREE.MeshBasicMaterial( { map: tex, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { color: 0x111111, side: THREE.DoubleSide} ),
+	new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide} ),
+	
+];
+
+const roadMesh = new THREE.Mesh( g, material );
+scene.add( roadMesh );
+
+const blueCar = new THREE.Object3D( );
+loader.load( 'car/car_02.gltf', processBlueCar ); // (CC-BY) Poly by Googl
+const redCar = new THREE.Object3D( );
+loader.load( 'car_JarlanPerez/model.gltf', processRedCar ); // Jarlan Perez (CC-BY) Poly by Googl
+
+let iBlue = 0;
+let iRed = ls;
+
+function driving( ) {
+
+	if ( iBlue === lss ) {
+		
+		iBlue = 0; // loop
+ 
+	}
+	
+	if ( iRed === -1 ) {
+		
+		iRed = ls; // loop
+ 
+	}
+		
+	blueCar.quaternion.setFromBasis( t[ iBlue ], b[ iBlue ], n[ iBlue ] );		
+	blueCar.position.set( points[ iBlue ].x + 0.06 * n[ iBlue ].x, points[ iBlue ].y, points[ iBlue ].z + 0.06 * n[ iBlue ].z );
+	iBlue ++;
+	
+	redCar.quaternion.setFromBasis( t[ iRed ], b[ iRed ], n[ iRed ] );
+	redCar.position.set( points[ iRed ].x - 0.06 * n[ iRed ].x, points[ iRed ].y, points[ iRed ].z - 0.06 * n[ iRed ].z );
+	iRed --;
+	
+}
+
+function processBlueCar( gltf ) {
+	
+	gltf.scene.rotation.y = Math.PI;  // gltf.scene is centered, rotatiom needed
+	blueCar.add( gltf.scene );
+	blueCar.scale.set( 0.0005, 0.0005, 0.0005 ); // because gltf.scene is very big
+	scene.add( blueCar );
+	
+}
+
+function processRedCar( gltf ) {
+
+	const box = new THREE.Box3( ).setFromObject( gltf.scene );
+	const c = box.getCenter( new THREE.Vector3( ) );
+	const size = box.getSize( new THREE.Vector3( ) );
+	gltf.scene.position.set( -c.x - 0.3, size.y / 2 - c.y, -c.z + 2.2 ); // center the gltf scene
+	gltf.scene.rotation.y = Math.PI / 2;  // rotatiom needed
+	redCar.add( gltf.scene );	
+	redCar.scale.set( 0.13, 0.13, 0.13 ); // because gltf.scene is  big
+	scene.add( redCar );
+	
+}
+
+// update to current revision and translation from German to English
+// see original https://hofk.de/main/threejs/punktesystem/02_punktebewegt.html 
+//      and  christmas 2017   https://hofk.de/main/threejs/geometrie/03_weihnacht_wuerfel.html  revision 82 
+
+const christmasTree = new THREE.Group( );
+ 
+const treeMaterial = new THREE.MeshBasicMaterial({ color: 0x11aa44, side:THREE.DoubleSide } ); 
+ 
+const treeGeometry =  new THREE.CylinderGeometry( 0, 0.14, 0.65, 36, 36 );
+const tree = new THREE.Mesh( treeGeometry, treeMaterial );
+tree.position.y = 0.05;
+christmasTree.add( tree );
+
+const trunk = new THREE.Mesh( new THREE.CylinderGeometry( 0.03, 0.03, 0.2, 36, 1 ), new THREE.MeshBasicMaterial( { color:0xa814e0a, wireframe: false } ) );
+trunk.position.y = -0.4;
+tree.add( trunk );
+      
+const count = 600;
+const pointsGeometry = new THREE.BufferGeometry( );
+
+const pos = [];
+ 
+for ( let i = 0; i < count ; i++ ) {
+    
+   pos.push( 0, 0, 0 ); 
+    
+}
+ 
+pointsGeometry.setAttribute( 'position', new THREE.Float32BufferAttribute( pos, 3 ).setUsage( THREE.DynamicDrawUsage ) );
+    
+const texture =  new THREE.TextureLoader( ).load ( 'redball.png' );
+const pointsMaterial  = new THREE.PointsMaterial({color: 0xeee8aa, size: 0.03, map: texture, transparent: true, opacity: 0.7 , alphaTest: 0.5 } );
+
+const pointSystem = new THREE.Points( pointsGeometry, pointsMaterial );
+christmasTree.add( pointSystem );
+ 
+christmasTree.position.set( -1, -0.1, 0.55 );
+scene.add( christmasTree );
+
+const spiralX = ( a, f, t ) => ( a * f * t * Math.cos( f * t ) / 1024 );
+const spiralY = ( a, f, t ) => ( 0.4 - 0.6 * t / 64 );
+const spiralZ = ( a, f, t ) => ( a * f * t * Math.sin( f * t ) / 1024 );
+	
+let f;
+
+let time = 0;
+
+animate( );
+
+
+function animate() {
+    
+    time += 0.01;
+    requestAnimationFrame( animate );
+    
+    shaderMaterial[ 0 ].uniforms.u_time.value += 0.01;
+    shaderMaterial[ 1 ].uniforms.u_time.value += 0.01;
+    shaderMaterial[ 2 ].uniforms.u_time.value += 0.01;
+    
+	model.rotation.y = time;
+    
+    flagwaving( time );
+    
+    driving( );
+ 
+    f  = 4.5 - Math.atan( 0.5 + time );
+
+	if ( f > 0.3 ) {
+    
+        const t = time * 0.005 ;
+            
+		for( let i = 0; i < pointsGeometry.attributes.position.count; i ++ ) {
+
+          pointsGeometry.attributes.position.setXYZ( i, spiralX( 0.8, f, t + 0.12 * i ), spiralY(  0.8, f, t + 0.12 * i ), spiralZ(  0.8, f, t + 0.12 * i ) );
+  
+		}
+        
+    }
+    
+    pointsGeometry.attributes.position.needsUpdate = true;
+    
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/limit-distance-object-can-be-dragged-with-dragcontrols/18931 -->
+<!-- https://jsfiddle.net/prisoner849/sc82ajd5/ -->
+<head>
+  <title> ClampWhenDragging </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.120.js"; 
+import {  DragControls } from "../jsm/DragControls.120.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.setScalar(20);
+camera.lookAt(scene.position);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let objects = []
+let dragControls = new DragControls(objects, camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper(50, 50));
+let grid = new THREE.GridHelper(20, 20, "aqua", "aqua");
+grid.position.y = 0.01;
+scene.add(grid);
+
+let obj = new THREE.Mesh(new THREE.BoxBufferGeometry(), new THREE.MeshBasicMaterial());
+obj.userData.limit = {
+	min: new THREE.Vector3(-10, 0, -10),
+  max: new THREE.Vector3(10, 0, 10)
+};
+obj.userData.update = function(){
+	obj.position.clamp(obj.userData.limit.min, obj.userData.limit.max);
+}
+objects.push(obj);
+scene.add(obj);
+
+renderer.setAnimationLoop(()=>{
+	objects.forEach(o => {
+  	o.userData.update();
+  })
+	renderer.render(scene, camera);
+})
+
+</script
+</html>

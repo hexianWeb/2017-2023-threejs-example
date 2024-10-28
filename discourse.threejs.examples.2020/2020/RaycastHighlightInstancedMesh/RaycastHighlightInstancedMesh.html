@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/raycast-highlight-with-instancedmesh/14777/2 -->
+<!-- https://codepen.io/prisoner849/pen/wvKqpRY -->
+<head>
+  <title> RaycastHighlightInstancedMesh </title>
+  <meta charset="utf-8" />
+ <style>
+	body {
+		background-color: #000;
+		margin: 0px;
+		overflow: hidden;
+	}
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.115.js";
+import { OrbitControls } from "../jsm/OrbitControls.115.js";
+
+import Stats from "https://threejs.org/examples/jsm/libs/stats.module.js";
+import { GUI } from "https://threejs.org/examples/jsm/libs/dat.gui.module.js";
+ 
+var camera, scene, renderer, stats;
+
+var mesh;
+var amount = parseInt(window.location.search.substr(1)) || 10;
+var count = Math.pow(amount, 3);
+
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2(1, 1);
+var prevInstanceId = -1;
+var highlightColor = new THREE.Color("yellow");
+
+var rotationMatrix = new THREE.Matrix4().makeRotationY(0.1);
+var instanceMatrix = new THREE.Matrix4();
+var matrix = new THREE.Matrix4();
+
+init();
+animate();
+
+function init() {
+  camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    100
+  );
+  camera.position.set(amount, amount, amount).multiplyScalar(1.25);
+  camera.lookAt(0, 0, 0);
+
+  scene = new THREE.Scene();
+
+  var light = new THREE.HemisphereLight(0xffffff, 0x000088);
+  light.position.set(-1, 1.5, 1);
+  scene.add(light);
+
+  var light = new THREE.HemisphereLight(0xffffff, 0x880000, 0.5);
+  light.position.set(-1, -1.5, -1);
+  scene.add(light);
+
+  var geometry = new THREE.SphereBufferGeometry(0.5);
+  var material = new THREE.MeshPhongMaterial({ flatShading: true });
+var colorParsChunk = [
+							'attribute vec3 instanceColor;',
+							'varying vec3 vInstanceColor;',
+							'#include <common>'
+						].join( '\n' );
+
+						var instanceColorChunk = [
+							'#include <begin_vertex>',
+							'\tvInstanceColor = instanceColor;'
+						].join( '\n' );
+
+						var fragmentParsChunk = [
+							'varying vec3 vInstanceColor;',
+							'#include <common>'
+						].join( '\n' );
+
+						var colorChunk = [
+							'vec4 diffuseColor = vec4( diffuse * vInstanceColor, opacity );'
+						].join( '\n' );
+
+						material.onBeforeCompile = function ( shader ) {
+
+							shader.vertexShader = shader.vertexShader
+								.replace( '#include <common>', colorParsChunk )
+								.replace( '#include <begin_vertex>', instanceColorChunk );
+
+							shader.fragmentShader = shader.fragmentShader
+								.replace( '#include <common>', fragmentParsChunk )
+								.replace( 'vec4 diffuseColor = vec4( diffuse, opacity );', colorChunk );
+
+						};
+
+  mesh = new THREE.InstancedMesh(geometry, material, count);
+
+  var i = 0;
+  var offset = (amount - 1) / 2;
+
+  var transform = new THREE.Object3D();
+  
+  var instanceColors = [];
+  
+  for (var x = 0; x < amount; x++) {
+    for (var y = 0; y < amount; y++) {
+      for (var z = 0; z < amount; z++) {
+        transform.position.set(offset - x, offset - y, offset - z).multiplyScalar(1.5);        
+        transform.updateMatrix();
+
+        mesh.setMatrixAt(i++, transform.matrix);
+        
+        instanceColors.push( Math.random() );
+        instanceColors.push( Math.random() );
+        instanceColors.push( Math.random() );
+      }
+    }
+  }
+  var instanceColorsBase = new Float32Array(instanceColors.length);
+  instanceColorsBase.set(instanceColors);
+  geometry.setAttribute( 'instanceColor', new THREE.InstancedBufferAttribute( new Float32Array( instanceColors ), 3 ) );
+  geometry.setAttribute( 'instanceColorBase', new THREE.BufferAttribute(new Float32Array( instanceColorsBase ), 3 ) );
+  
+  scene.add(mesh);
+
+  //
+
+  var gui = new GUI();
+  gui.add(mesh, "count", 0, count);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  new OrbitControls(camera, renderer.domElement);
+
+  stats = new Stats();
+  document.body.appendChild(stats.dom);
+
+  window.addEventListener("resize", onWindowResize, false);
+  document.addEventListener("mousemove", onMouseMove, false);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function onMouseMove(event) {
+  event.preventDefault();
+
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  render();
+}
+
+function setInstanceColor(instanceId, isHighlighting){
+  if (instanceId == -1) return;
+  mesh.geometry.attributes.instanceColor.setXYZ(
+    instanceId,
+    isHighlighting ? highlightColor.r : mesh.geometry.attributes.instanceColorBase.getX(instanceId),
+    isHighlighting ? highlightColor.g : mesh.geometry.attributes.instanceColorBase.getY(instanceId),
+    isHighlighting ? highlightColor.b : mesh.geometry.attributes.instanceColorBase.getZ(instanceId)
+  );
+  mesh.geometry.attributes.instanceColor.needsUpdate = true;
+}
+
+function render() {
+  raycaster.setFromCamera(mouse, camera);
+
+  var intersection = raycaster.intersectObject(mesh);
+
+  if (intersection.length > 0) {
+    var instanceId = intersection[0].instanceId;
+    if (instanceId != prevInstanceId) {
+      setInstanceColor(instanceId, true);
+      setInstanceColor(prevInstanceId, false);
+      prevInstanceId = instanceId;
+    }
+
+    mesh.getMatrixAt(instanceId, instanceMatrix);
+    matrix.multiplyMatrices(instanceMatrix, rotationMatrix);
+
+    mesh.setMatrixAt(instanceId, matrix);
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+  else {
+    setInstanceColor(prevInstanceId, false);
+    prevInstanceId = -1;
+  }
+
+  renderer.render(scene, camera);
+
+  stats.update();
+}
+
+
+</script>
+</html>

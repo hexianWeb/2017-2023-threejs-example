@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/box3-aabb-collision-problem/4964 -->
+<!-- https://codepen.io/anon/pen/jQLGVx -->
+<head>
+  <title> CollisionDetection </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		background-color: #ffffff;
+		margin: 0;
+		overflow: hidden;
+	}
+  </style>
+</head>
+
+<body>
+	<canvas id="myCanvas"></canvas>
+</body>
+
+<script src="../js/three.min.98.js"></script>
+
+<script>
+
+//@author DolphinIQ (updated Mugen87)
+
+// WSAD to move
+// The most important code is in the Player class
+
+let canvas = document.getElementById("myCanvas");
+let camera0, camera1, scene0, renderer, stats, controls;
+let Lights = [];
+let clock = new THREE.Clock() , delta;
+let AR = window.innerWidth/window.innerHeight;
+let staticCollideMesh = [];
+let view = 10;
+
+let player;
+
+class Player {
+  
+  constructor( data ){
+    this.controls = {
+			up: false,
+			down: false,
+			left: false,
+			right: false,
+		};
+    this._height = 4;
+    this.speedWalking = 10;
+    this.tmpPosition = new THREE.Vector3();
+    this.prevPositions = [
+			new THREE.Vector3(),
+			new THREE.Vector3(),
+			new THREE.Vector3(),
+			new THREE.Vector3(),
+			new THREE.Vector3()
+		];
+    
+    this.body = new THREE.Mesh(
+      new THREE.CylinderBufferGeometry( 1 , 1 , this._height , 8 ),
+      new THREE.MeshLambertMaterial({ color: 0xff00ff })
+    );
+    this.body.position.set( 0 , this._height/2 , 0 );
+    
+    this.body.BBoxHelper = new THREE.BoxHelper( this.body, 0xff0000 );
+		this.body.BBox = new THREE.Box3().setFromObject( this.body );
+    
+    scene0.add( this.body, this.body.BBoxHelper );
+    
+    this.initControls();
+  }
+  
+  update( time ){
+    this.updateMovement( time );
+    this.body.BBox.setFromObject( this.body );
+    this.checkCollision();
+    this.body.BBoxHelper.update();
+  }
+  
+  checkCollision(){
+    let self = this;
+    let boxesCollision = false;
+    staticCollideMesh.some( function(mesh){
+      if( self.body.BBox.intersectsBox( mesh.BBox ) ){
+        boxesCollision = true;
+        return true;
+      }
+    });
+    if( boxesCollision ){
+      this.body.position.copy( this.tmpPosition ); // last position
+    }
+  }
+  
+  updateMovement( time ){
+    this.tmpPosition.copy( this.body.position );
+    
+    // Forward
+		if( this.controls.up == true ){ 
+			this.body.translateZ( -this.speedWalking * time );
+		}
+		// Back
+		if( this.controls.down == true ){ 
+			this.body.translateZ( this.speedWalking * time );
+		}
+		// Left
+		if( this.controls.left == true ){ 
+			this.body.translateX( -this.speedWalking * time );
+		}
+		// Right
+		if( this.controls.right == true ){ 
+			this.body.translateX( this.speedWalking * time );
+		}
+  }
+  
+  initControls(){
+    let self = this;
+    
+		window.addEventListener( 'keydown', function(evt){
+			self.keyset( evt , true );
+			// evt.preventDefault();
+		}, false );
+    window.addEventListener( 'keyup', function(evt){
+			self.keyset( evt , false );
+		}, false );
+  }
+  
+  keyset( evt , trueOrFalse ){
+		if( evt.key === 'w' ){
+			this.controls.up = trueOrFalse;
+		}
+		if( evt.key === 's' ){
+			this.controls.down = trueOrFalse;
+		}
+		if( evt.key === 'a' ){
+			this.controls.left = trueOrFalse;
+		}
+		if( evt.key === 'd' ){
+			this.controls.right = trueOrFalse;
+		}
+	}
+}
+
+function init() {
+	renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	
+	scene0 = new THREE.Scene();
+	scene0.background = new THREE.Color( 0x406080 );
+	
+	// camera0 = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 1000 );
+  camera0 = new THREE.OrthographicCamera( -view *AR, view *AR , view , -view,
+                                         0.1, 1000 );
+	camera0.position.set( -5 , 10 , 15 );
+	camera0.lookAt( new THREE.Vector3( 0 , 0 , 0 ) );
+
+	window.addEventListener("resize", function(){
+		renderer.setSize( window.innerWidth, window.innerHeight );
+    AR = window.innerWidth/window.innerHeight;
+		//camera0.aspect = window.innerWidth / window.innerHeight;
+    camera0.left = -view*AR; camera0.right = view*AR; 
+    camera0.top = view; camera0.bottom = -view; 
+		camera0.updateProjectionMatrix();
+	}, false);
+	
+  makePlayer();
+	initLights();
+	createStartingMesh();
+  constructCollisionBoxes();
+}
+
+var createStartingMesh = function(){
+	var floor = new THREE.Mesh( 
+		new THREE.PlaneGeometry( 50, 50 ), 
+		new THREE.MeshPhongMaterial({
+			color: 0x107010,
+			shininess: 0,
+		})
+	);
+	floor.rotation.x = -90 * Math.PI/180;
+	scene0.add( floor )
+  
+  var grid = new THREE.GridHelper( 30 , 30 );
+  scene0.add( grid );
+	
+	let cube1 = new THREE.Mesh(
+		new THREE.BoxBufferGeometry( 2 , 4 , 8 ),
+		new THREE.MeshLambertMaterial({ color: 0x3040f0 })
+	);
+	cube1.position.set( -7 , 2 , 0 );
+  staticCollideMesh.push( cube1 );
+  
+  let cube2 = new THREE.Mesh(
+		new THREE.BoxBufferGeometry( 10 , 4 , 4 ),
+		new THREE.MeshLambertMaterial({ color: 0x3040f0 })
+	);
+	cube2.position.set( 0 , 2 , -10 );
+  staticCollideMesh.push( cube2 );
+  
+  let cube3 = new THREE.Mesh(
+		new THREE.BoxBufferGeometry( 4 , 4 , 4 ),
+		new THREE.MeshLambertMaterial({ color: 0x3040f0 })
+	);
+	cube3.position.set( 13 , 2 , -4 );
+  staticCollideMesh.push( cube3 );
+  
+  let sphere1 = new THREE.Mesh(
+		new THREE.SphereBufferGeometry( 2 , 8 , 8 ),
+		new THREE.MeshPhongMaterial({ color: 0x3040f0, flatShading: true })
+	);
+	sphere1.position.set( 11 , 2 , 7 );
+  staticCollideMesh.push( sphere1 );
+  
+	scene0.add( cube1, cube2 , cube3 , sphere1 );
+}
+
+let makePlayer = function(){
+  player = new Player();
+}
+
+let constructCollisionBoxes = function() {
+	
+	staticCollideMesh.forEach( function( mesh ){
+		// Bounding Box
+		mesh.BBox = new THREE.Box3().setFromObject( mesh );
+		
+		// helper
+		mesh.BBoxHelper = new THREE.BoxHelper( mesh , 0xff0000 );
+		scene0.add( mesh.BBoxHelper );
+	});
+}
+
+var initLights = function(){
+	Lights[0] = new THREE.AmbientLight( 0xffffff , 0.3 );
+	Lights[1] = new THREE.DirectionalLight( 0xffffee , 0.9 );
+	Lights[1].position.set( 30 , 100 , -90 );
+  Lights[2] = new THREE.PointLight( 0xffffee , 0.3 );
+	Lights[2].position.set( 20 , 60 , 60 );
+	
+	Lights.some( function(light){
+		scene0.add( light );
+	});
+}
+
+function animate( time ) {
+	
+	delta = clock.getDelta();
+	player.update( delta );
+
+	renderer.render( scene0, camera0 );
+	requestAnimationFrame( animate );
+}
+
+init();
+requestAnimationFrame( animate );
+
+</script>
+</html>

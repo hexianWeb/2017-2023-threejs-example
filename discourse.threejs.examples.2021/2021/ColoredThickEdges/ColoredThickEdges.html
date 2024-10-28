@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/highlighting-the-edge-of-a-cube-on-hover-linesegmentsgeometry/28480 -->
+<!-- https://jsfiddle.net/prisoner849/9pwozejq/ -->
+<head>
+  <title> ColoredThickEdges </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+<body></body>
+
+<script src="../js/three.min.128.js"></script>
+<script src="../js/OrbitControls.128.js"></script>
+<script src="../js/dat.gui.min.128.js"></script>
+
+<script>
+
+// @author prisoner849
+
+  var vertexShader = `
+    varying vec2 vUv;
+    void main()	{
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }
+  `;
+  var fragmentShader = `
+		//#extension GL_OES_standard_derivatives : enable
+    
+    varying vec2 vUv;
+    uniform float thickness;
+    uniform vec3 color;
+    uniform vec3 edgeColor;
+   	
+    float edgeFactor(vec2 p){
+    	vec2 grid = abs(fract(p - 0.5) - 0.5) / fwidth(p) / thickness;
+  		return min(grid.x, grid.y);
+    }
+    
+    void main() {
+			
+      float a = clamp(edgeFactor(vUv), 0., 1.);
+      
+      vec3 c = mix(edgeColor, color, a);
+      
+      gl_FragColor = vec4(c, 1.0);
+    }
+  `;
+
+</script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(8, 16, 12);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x7f7f7f);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target = new THREE.Vector3(0, 2.5, 0);
+controls.update();
+
+var geom = new THREE.BoxBufferGeometry(10, 10, 10);
+
+var colors = {
+	color: "#ffa08c",
+  edgeColor: "#640064"
+}
+
+var material = new THREE.ShaderMaterial({
+  uniforms: {
+    thickness: {
+    	value: 2
+    },
+    color: {
+    	value: new THREE.Color(colors.color)
+    },
+    edgeColor:{
+    	value: new THREE.Color(colors.edgeColor)
+    }
+  },
+  vertexShader: vertexShader,
+  fragmentShader: fragmentShader,
+  extensions: {derivatives: true}
+});
+
+
+let box = new THREE.Mesh( geom, material );
+scene.add( box );  	
+
+
+
+var gui = new dat.GUI();
+gui.add(material.uniforms.thickness, "value", 1, 3).name("thickness");
+gui.addColor(colors, "color").onChange( val => {material.uniforms.color.value.set(val)});
+gui.addColor(colors, "edgeColor").onChange( val => {material.uniforms.edgeColor.value.set(val)});
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

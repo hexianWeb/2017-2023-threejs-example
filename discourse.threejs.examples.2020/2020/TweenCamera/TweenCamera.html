@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/animating-camera-lookat/12270 -->
+<head>
+  <title> TweenCamera </title>
+  <meta charset="utf-8" />
+    <style>
+	body {
+		margin: 0;
+	}
+	</style>
+</head>
+
+<body>
+
+	First pan the camera around the object. >>>
+	
+	<button id="move">camera home</button> 
+	<button id="stop">camera stop</button>
+	
+</body>
+
+<script src="../js/three.min.112.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/tween.js"></script>
+
+<script>
+
+// @author hofk
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.01, 20 );
+camera.position.set( 0, 2, 5 );
+
+var light = new THREE.HemisphereLight( 0xffbf67, 0x15c6ff );
+scene.add( light );
+
+var renderer = new THREE.WebGLRenderer({ antialias: true } );
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+ 
+var gridHelper = new THREE.GridHelper( 5, 10 );
+scene.add( gridHelper );
+var axesHelper = new THREE.AxesHelper( 5 );
+scene.add( axesHelper );
+
+controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+var cylinder = new THREE.Mesh(new THREE.CylinderBufferGeometry( 0.8, 1.2, 1.6 ), new THREE.MeshNormalMaterial( ) );
+scene.add(cylinder);
+
+var posX = camera.position.x + 1;
+var posY = camera.position.y + 1;
+var posZ = camera.position.z + 2;
+
+document.getElementById("move").onclick = move;	
+document.getElementById("stop").onclick = stop;	
+
+var tween;
+
+animate( );
+
+//.........................................
+
+function move( ) {
+    var from = {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z
+    };
+
+    var to = {
+        x: posX,
+        y: posY,
+        z: posZ
+    };
+	
+    tween = new TWEEN.Tween(from)   
+		.to( to, 4000 )
+        .easing( TWEEN.Easing.Linear.None ) // TWEEN.Easing.Quadratic.InOut ...
+        .onUpdate( function ( ) {		
+			camera.position.set( from.x, from.y, from.z );
+			camera.lookAt(new THREE.Vector3( 0, 0, 0 ) );
+    		} )	
+       .start( );
+}
+
+function stop( ) {
+
+	tween.stop();
+	
+}
+
+function animate( ) {
+    
+    requestAnimationFrame(animate);   
+	TWEEN.update();
+   	controls.update();
+	renderer.render(scene, camera);
+	
+}
+</script>
+</html>

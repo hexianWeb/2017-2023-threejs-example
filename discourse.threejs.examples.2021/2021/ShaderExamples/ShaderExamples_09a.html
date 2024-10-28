@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/periodic-circular-opening-and-closing-box/32322/3 -->
+<!-- box with dinamic holes -->
+<head>
+  <title> ShaderExamples_09a </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+        overflow:hidden;
+        margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author hofk
+
+import * as THREE from '../jsm/three.module.135.js';
+import { OrbitControls } from '../jsm/OrbitControls.135.js';
+
+const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 1000 );
+camera.position.set( 1, 1, 2 );
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0x488348);
+document.body.appendChild( renderer.domElement );
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const tex = new THREE.TextureLoader( ).load( 'uv_grid_opengl.jpg' );
+
+const shaderMaterial = new THREE.ShaderMaterial({
+    uniforms: { 
+            v_Uv: { value: new THREE.Vector2( ) },
+            u_time: { value: 0.5 },
+            u_Texture: { value: tex },
+    },
+    vertexShader: vertexShader( ), 
+    fragmentShader: fragmentShader( ),
+    side: THREE.DoubleSide,
+    transparent: true,
+});
+
+const boxGeometry = new THREE.BoxBufferGeometry(  );
+const boxMesh = new THREE.Mesh( boxGeometry, shaderMaterial );
+scene.add( boxMesh );
+
+animate();
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    shaderMaterial.uniforms.u_time.value += 0.01;
+    renderer.render( scene, camera );
+
+}
+
+function vertexShader ( ) { //   return `    `;   a multiline template literal 
+    return `
+        varying vec2 v_Uv;
+        uniform float u_time;
+        uniform sampler2D u_Texture;        
+        void main( )    {
+                v_Uv = uv;
+                vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+                gl_Position = projectionMatrix * mvPosition;         
+        }
+    `;
+}
+
+function fragmentShader( ) {
+    return `
+        varying vec2 v_Uv;
+        uniform float u_time;
+        uniform sampler2D u_Texture;      
+        float circle( vec2 c, float r ) { // st: position   c: center  r: radius
+            vec2 dist = v_Uv - vec2( c.x, c.y ); // distance
+            return step( 0.5 * r, dot( dist, dist ) );
+        }
+        void main( ) {            
+            vec2 position = v_Uv;
+            float radius = 0.6 * ( 1.0 + sin( u_time ) ) - 0.05;           
+            vec2 center = vec2( 0.5 );
+            vec3 colorCirc = vec3( circle( center, radius ) ); 
+            float aCirc = circle( center, radius ); 
+            vec3 colorTex = texture2D( u_Texture, v_Uv ).rgb;           
+            float aTex = texture2D( u_Texture, v_Uv ).a; 
+            vec4 color = vec4( colorTex, aTex ) * vec4( vec3( 1.0 ), aCirc );
+            gl_FragColor = color;
+        }
+    `;
+}
+</script>
+</html>

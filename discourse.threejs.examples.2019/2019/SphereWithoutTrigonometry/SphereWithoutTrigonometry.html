@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sphere-without-use-of-trigonometric-functions/6856  -->
+<!-- http://discourse.threejs.hofk.de/2019/SphereWithoutTrigonometry/SphereWithoutTrigonometry.html -->
+<head>
+	<title> SphereWithoutTrigonometry </title>
+	<meta charset="utf-8" />
+</head>
+<body> 	</body>
+<script src="../js/three.min.103.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author hofk
+
+'use strict';
+
+const sumNN = ( n ) => ( n * ( n + 1 ) / 2 );	// Sum natural numbers
+const sumON = ( n ) => ( n * n );				// Sum odd numbers
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 0.1, 100 );
+camera.position.set( 0, 1, 8 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdddddd, 1 );
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+const controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+const tex1 = new THREE.TextureLoader().load( 'uvgrid01.png' );
+//const material = new THREE.MeshBasicMaterial( { map: tex1, side: THREE.DoubleSide } );
+const tex2 = new THREE.TextureLoader().load( 'dahlia.png' );
+
+const material = [
+	new THREE.MeshBasicMaterial( { map: tex1, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide, wireframe: true } ),
+	new THREE.MeshBasicMaterial( { color: 0xff00ff, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { color: 0x00ffff, side: THREE.DoubleSide, wireframe: true } ),
+	new THREE.MeshBasicMaterial( { color: 0xffff00, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { map: tex2, side: THREE.DoubleSide, wireframe: false } ),
+	new THREE.MeshBasicMaterial( { color: 0x33ff55, side: THREE.DoubleSide } ),
+	new THREE.MeshBasicMaterial( { map: tex1, side: THREE.DoubleSide } )
+];
+
+const g = new THREE.BufferGeometry( );
+
+//SphereWithoutTrigonometry( g, 2.5, 10, [ 1,1,0,0, 1,0,1,0 ] );  //  ( BufferGeometry, radius, equator, parts )
+	//equator = half of height segments = quarter of equatorial segments
+SphereWithoutTrigonometry( g, 3,18 );
+const mesh = new THREE.Mesh( g, material );
+scene.add( mesh );
+
+animate();
+
+function animate() {
+	
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+function SphereWithoutTrigonometry( g, r, eqt, parts ) { //  ( BufferGeometry, optional: radius, equator, parts )
+
+	r = r !== undefined ? r : 1;
+	eqt = eqt !== undefined ? eqt : 8;
+	
+	// parts array, value 1 for octant, otherwise arbitrary - upper counterclockwise, lower clockwise seen from below 
+	parts = parts !== undefined ? parts : [ 1,1,1,1, 1,1,1,1 ];
+	
+	let pCount = 0;
+	
+	for ( let p = 0; p < 8; p ++ ) {
+		
+		pCount += parts[ p ] === 1 ? 1 : 0; 
+		
+	}
+	
+	let posIdx = 0;	// position index
+	let uvIdx = 0;	// uv index
+	let fIdx = 0;	// face index
+	
+	const vertexCount = sumNN( eqt + 1 ) * pCount;
+	const faceCount = sumON( eqt ) * pCount;
+	
+	g.faceIndices = new Uint32Array( faceCount * 3 );
+	g.vertices = new Float32Array( vertexCount * 3 );
+	g.uvs = new Float32Array( vertexCount * 2 );
+	
+	g.setIndex( new THREE.BufferAttribute( g.faceIndices, 1 ) );
+	g.addAttribute( 'position', new THREE.BufferAttribute( g.vertices, 3 ) );
+	g.addAttribute( 'uv', new THREE.BufferAttribute( g.uvs, 2 ) );
+	
+	pCount = 0;
+	
+	for ( let p = 0; p < 8; p ++ ) {
+		
+		if (  parts[ p ] === 1 ) {
+			
+			indicesPartSphere( p );
+			verticesUVsPartSphere( p );
+			pCount += 1;
+			
+		}
+		
+	}
+	
+	function indicesPartSphere( p ) {
+		
+		let a0, a1, b0, b1;	// indices
+		let spin = ( p === 0 || p === 2 || p === 5 || p === 7 ) ? true : false;
+					
+		a0 = sumNN( eqt + 1 ) * pCount; // start vertex index per part
+		
+		g.addGroup( fIdx, sumON( eqt ) * 3, p ); // write groups for multi material
+		
+		for ( let i = 0; i < eqt; i ++ ) {
+			
+			a1 = a0 + 1;
+			b0 = a0 + i + 1; //  below ( i ) 
+			b1 = b0 + 1;
+
+			// each two faces
+			
+			for ( let j = 0; j < i; j ++ ) {
+			
+				g.faceIndices[ fIdx     ] = j + a0;			// left face
+				g.faceIndices[ fIdx + 1 ] = j + ( spin ? b1 : b0 );
+				g.faceIndices[ fIdx + 2 ] = j + ( spin ? b0 : b1 );
+				
+				g.faceIndices[ fIdx + 3 ] = j + a0;			// right face
+				g.faceIndices[ fIdx + 4 ] = j + ( spin ? a1 : b1 );
+				g.faceIndices[ fIdx + 5 ] = j + ( spin ? b1 : a1 );	
+				
+				fIdx += 6;
+				
+			}
+		
+			g.faceIndices[ fIdx     ] = i + a0;	// last face in row ( like a left face )
+			g.faceIndices[ fIdx + 1 ] = i + ( spin ? b1 : b0 );
+			g.faceIndices[ fIdx + 2 ] = i + ( spin ? b0 : b1 );
+			
+			fIdx += 3;
+			
+			a0 += i + 1; // next start index
+			
+		}
+	
+	}
+	
+	function verticesUVsPartSphere( p ) {
+		
+		const signX = ( p === 0 || p === 3 || p === 4 || p === 7 ) ? 1 : -1;
+		const signY = p < 4 ? 1 : -1; 
+		const signZ = ( p === 2 || p === 3 || p === 6 || p === 7 ) ? 1 : -1;
+		
+		let xp, yp, zp, len;
+		
+		let ux = 0.5;	
+		let du = 1 / eqt;
+		let uy = 1 + du;	
+		
+		for ( let i = 0 ; i <= eqt; i ++ ) {
+			
+			yp =  1 -  i / eqt;
+			
+			ux = 0.5 + signX * signY * signZ * ( i + 2 ) * du / 2;
+			uy -= du;
+			
+			for ( let j = 0; j <= i ; j ++ ) {
+				
+				xp =  ( i -  j ) / eqt;
+				zp =  j / eqt;
+				
+				len = Math.sqrt( xp * xp + yp * yp + zp * zp ); // to normalize
+				
+				g.vertices[ posIdx     ] = r * signX * xp / len;
+				g.vertices[ posIdx + 1 ] = r * signY * yp / len;
+				g.vertices[ posIdx + 2 ] = r * signZ * zp / len;
+				
+				posIdx += 3;
+				
+				ux += -signX * signY * signZ * du;
+				
+				g.uvs[ uvIdx ] = ux;
+				g.uvs[ uvIdx + 1 ] = uy;
+				
+				uvIdx  += 2;		
+						
+			}
+				
+		}
+		
+	}
+	
+ }
+
+</script>
+
+</html>

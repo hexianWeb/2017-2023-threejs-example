@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/3d-text-to-3d-background/16688 -->
+<!-- https://jsfiddle.net/prisoner849/kutyamo9/ -->
+<head>
+  <title> 3dTextTo3dBackground </title>
+  <meta charset="utf-8" />
+  	<style>
+	html, body{ overflow:hidden; padding:0; margin: 0 }
+		margin: 0;
+	background-color: #000;
+	color: #fff;
+	font-family: Monospace;
+	font-size: 13px;
+	line-height: 24px;
+	overscroll-behavior: none;
+	}
+	
+	a {
+	color: #ff0;
+	text-decoration: none;
+	}
+	
+	a:hover {
+	text-decoration: underline;
+	}
+	
+	button {
+	cursor: pointer;
+	text-transform: uppercase;
+	}
+	
+	canvas {
+	display: block;
+	}
+	
+	#info {
+	position: absolute;
+	top: 0px;
+	width: 100%;
+	padding: 10px;
+	box-sizing: border-box;
+	text-align: center;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	z-index: 1; /* TODO Solve this in HTML */
+	}
+	
+	a, button, input, select {
+	pointer-events: auto;
+	}
+	
+	.dg.ac {
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	z-index: 2 !important; /* TODO Solve this in HTML */
+	}
+	
+	#overlay {
+	position: absolute;
+	z-index: 2;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0,0,0,0.7);
+	}
+	
+	#overlay button {
+		background: #ffffff;
+		border: 0;
+		color: #000000;
+		padding: 16px 20px;
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+	
+	#notSupported {
+	width: 50%;
+	margin: auto;
+	background-color: #f00;
+	margin-top: 20px;
+	padding: 10px;
+	}
+	</style>
+</head>
+
+<body>
+	<div id="info">Description</div>
+</body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.118.js";
+
+var container;
+
+var camera, scene, renderer;
+
+var geometry, group, textMesh;
+
+var mouseX = 0,
+  mouseY = 0;
+
+var windowHalfX = window.innerWidth / 2;
+var windowHalfY = window.innerHeight / 2;
+var loader = new THREE.FontLoader();
+document.addEventListener('mousemove', onDocumentMouseMove, false);
+
+init();
+text();
+animate();
+
+function init() {
+
+  container = document.createElement('div');
+  container.id = "stage3d";
+  document.body.appendChild(container);
+
+  camera = new THREE.PerspectiveCamera(95, window.innerWidth / window.innerHeight, 1, 5000);
+  camera.position.z = 500;
+
+  scene = new THREE.Scene();
+
+  var geometry = new THREE.SphereGeometry(5, 32, 32);
+  var materials = [
+    new THREE.MeshBasicMaterial({
+      // light
+      //specular: '#b03b2e',
+      // intermediate
+      color: '#a31a0b',
+      // dark
+      //emissive: '#7d1409',
+      //shininess: 50,
+      transparent: true,
+      opacity: 0.9,
+      //overdraw: true
+    }),
+    new THREE.MeshBasicMaterial({
+      // light
+      //specular: '#2fa4b1',
+      // intermediate
+      color: '#0b94a3',
+      // dark
+      //emissive: '#0b7681',
+      //shininess: 50,
+      transparent: true,
+      opacity: 0.9,
+      //overdraw: true
+    })
+  ];
+
+  group = new THREE.Object3D();
+
+  for (var i = 0; i < 1000; i++) {
+
+    var mesh = new THREE.Mesh(geometry, materials[Math.floor(Math.random() * materials.length)]);
+    mesh.position.x = Math.random() * 2000 - 1000;
+    mesh.position.y = Math.random() * 2000 - 1000;
+    mesh.position.z = Math.random() * 2000 - 1000;
+    mesh.rotation.x = Math.random() * 2 * Math.PI;
+    mesh.rotation.y = Math.random() * 2 * Math.PI;
+    mesh.opacity = 50;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    group.add(mesh);
+
+
+  }
+  scene.add(group);
+
+  var directionalLight = new THREE.DirectionalLight(0xffffff);
+  directionalLight.position.set(1, 1, 1).normalize();
+  directionalLight.intensity = 0.2;
+  scene.add(directionalLight);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.sortObjects = false;
+  container.appendChild(renderer.domElement);
+
+
+  //
+
+  window.addEventListener('resize', onWindowResize, false);
+
+}
+
+
+function text() {
+// https://threejs.org/examples/fonts/helvetiker_regular.typeface.json
+  loader.load('../js/helvetiker_regular.typeface.json', function(font) {
+
+    var material1 = new THREE.MeshPhongMaterial({
+      color: 0x0033ff,
+      //specular: 0x555555,
+      //shininess: 30
+    });
+
+    var geometry1 = new THREE.TextGeometry('Hello three.js\ncommunity!', {
+      font: font,
+      size: 80,
+      height: 5,
+      curveSegments: 12,
+      bevelEnabled: true,
+      bevelThickness: 10,
+      bevelSize: 8,
+      bevelSegments: 5
+    });
+    geometry1.center();
+
+    textMesh = new THREE.Mesh(geometry1, material1);
+
+    scene.add(textMesh);
+
+    var light = new THREE.DirectionalLight(0xffffff);
+    light.position.set(0, 1, 1).normalize();
+    scene.add(light);
+
+
+    /*renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    renderer.render(scene, camera);*/
+
+  });
+}
+
+function onWindowResize() {
+
+  windowHalfX = window.innerWidth / 4;
+  windowHalfY = window.innerHeight / 4;
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+}
+
+function onDocumentMouseMove(event) {
+
+  mouseX = (event.clientX - windowHalfX) * 2;
+  mouseY = (event.clientY - windowHalfY) * 2;
+
+}
+
+//
+
+function animate() {
+
+  requestAnimationFrame(animate);
+  render();
+
+}
+
+function render() {
+  camera.position.x += (mouseX - camera.position.x) * .0080;
+  camera.position.y += (-mouseY - camera.position.y) * .0080;
+
+  camera.lookAt(scene.position);
+
+  var currentSeconds = Date.now();
+  group.rotation.x = Math.sin(currentSeconds * 0.0007) * 0.5;
+  group.rotation.y = Math.sin(currentSeconds * 0.0003) * 0.5;
+  group.rotation.z = Math.sin(currentSeconds * 0.0002) * 0.5;
+  
+  if (textMesh){
+  	textMesh.quaternion.copy(camera.quaternion);
+  }
+
+  renderer.render(scene, camera);
+
+}
+</script>
+</html>

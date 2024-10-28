@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-do-i-extract-instancedmesh-rotations-to-increment-them-and-update-them-once-done/19644/3 -->
+<!-- https://jsfiddle.net/prisoner849/L9sr46d2/ -->
+<head>
+  <title> RotateInstances </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+  overflow: hidden;
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.121.js"; 
+import {  OrbitControls } from "../jsm/OrbitControls.121.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight,
+  1, 100);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+let g = new THREE.CylinderBufferGeometry(0.25, 0.5, 1, 32);
+let m = new THREE.MeshLambertMaterial();
+let io = new THREE.InstancedMesh(g, m , 10);
+
+let dummy = new THREE.Object3D();
+let mat4 = new THREE.Matrix4();
+
+for(let i = 0; i < 10; i++){
+	dummy.position.set(-4.5 + i, 0, 0);
+  dummy.updateMatrix();
+  io.setMatrixAt(i, dummy.matrix);
+  io.setColorAt(i, new THREE.Color( Math.random() * 0x7f7f7f + 0x7f7f7f));
+}
+
+scene.add(io);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+
+	let t = clock.getDelta();
+	
+  for(let i = 0; i < 10; i++){
+  
+  	io.getMatrixAt(i, mat4);
+    mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
+    
+    dummy.rotation.x += t * (i % 2 == 0 ? -1 : 1);
+    dummy.updateMatrix();
+    
+    io.setMatrixAt(i, dummy.matrix);
+    io.instanceMatrix.needsUpdate = true;
+  
+  }
+
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

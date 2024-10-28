@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/raycaster-missing-half-a-plane-bug/4802 -->
+<!-- http://jsfiddle.net/vser1n2u/9/ -->
+<head>
+  <title> RayCasterPlane  </title>
+  <meta charset="utf-8" />
+  <style>
+	html{height: 100%}
+	body {text-align:center; background-color: #000000; height: 100%; margin: 0px; overflow: hidden}
+	#info {	position: absolute; top: 60px; width: 300px; margin: 10px; text-align: left; z-index: 90; display:none}
+  </style>		
+</head>
+
+<body>
+	<div id="info"></div>
+	</div>
+</body>
+<script src="../js/three.min.98.js"></script>
+<script>
+
+// @author Norman (updated @Mugen87 with comments in the post)
+
+	var w = window.innerWidth;
+	var h = window.innerHeight ;
+	var mouseDown = { button:-1	}
+	var ms = new THREE.Vector2(0, 0);
+	var scene = new THREE.Scene();	
+	scene.background = new THREE.Color(0x37759c ); 
+	var fov = 37;
+	var aspect = w / h;
+	var cnear = 10;
+	var cfar = 4000;
+	var cam = new THREE.PerspectiveCamera( fov, aspect, cnear, cfar );
+	scene.add(cam);
+	cam.position.set(0, 0, 250.0);
+
+	var renderer = new THREE.WebGLRenderer();
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( w, h );
+	renderer.autoClear = true;
+	document.body.appendChild( renderer.domElement );
+
+	var watch = document.getElementById("info");
+	watch.style.display = "block";
+	watch.style.color = 'white';
+
+	document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+	document.addEventListener( 'click', onClick, false );
+
+	var raycaster = new THREE.Raycaster();
+	var testplane = createPlane( 110, 50);
+	animate();
+
+	function onDocumentMouseMove( e ) {
+		ms.x =  ( e.clientX / window.innerWidth ) * 2 - 1;
+		ms.y = -( e.clientY / window.innerHeight ) * 2 + 1;
+	}
+	
+	function onClick( e ){ 
+  
+  		let o = testplane;
+  
+  		let objXpos = -110;
+			let rightVertsPos = 220;
+			let v = o.m.geometry.vertices;
+
+			o.m.position.x = objXpos;
+			v[1].x = rightVertsPos;
+			v[2].x = rightVertsPos;
+			o.m.geometry.verticesNeedUpdate = true;
+      o.m.geometry.computeBoundingSphere();
+      o.m.geometry.computeBoundingBox();
+ 
+  }
+
+	function createPlane(w, h){
+		let s = new THREE.Shape();
+		s.moveTo(0, 0);
+		s.lineTo(w, 0);
+		s.lineTo(w, -h);
+		s.lineTo(0, -h);
+		s.lineTo(0, 0);
+
+		let shapegeom = new THREE.ShapeGeometry(s);
+		let m = new THREE.Mesh( shapegeom, new THREE.MeshBasicMaterial());	
+		//shapegeom.dispose();
+		//shapegeom = null;
+
+		let o = {
+			m: m, //mesh
+			w: w, //width
+			h: h, //height
+		}  
+
+		scene.add(o.m);	
+		return o;
+	}
+
+	function testRayCaster(){
+		let o = testplane;
+
+		raycaster.setFromCamera( ms, cam );
+		intersects = raycaster.intersectObject(o.m, false);
+
+		if (intersects.length > 0){
+			watch.innerHTML = "TRUE";
+
+		}else{ // (no intersection)
+			watch.innerHTML = "FALSE";
+		}
+	}
+
+	function animate() {
+		requestAnimationFrame( animate );
+		render();
+	}
+
+	function render() {		
+		testRayCaster();
+		renderer.render( scene, cam); 
+	}
+</script>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/how-to-highlight-a-cube-face-on-hover-three-js/27775/3 -->
+ <!-- https://jsfiddle.net/zLt97pej/ -->
+ <head>
+  <title> HighlightCubeFaceOnHover </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin: 0;
+	overflow: hidden;
+	}
+ </style>
+</head>
+
+<script src="../js/three.min.130.js"></script>
+<script src="../js/OrbitControls.130.js"></script>
+ 
+<body> </body>
+
+<script>
+
+// @author kirill321592 + Mugen87
+
+let raycaster, intersected;
+const scene = new THREE.Scene();
+
+const mouse = new THREE.Vector2();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(2, 5, 3);
+
+	raycaster = new THREE.Raycaster();
+
+  let geometry = new THREE.BoxGeometry();
+  geometry = geometry.toNonIndexed(); // <======== CHANGED
+
+  const material = new THREE.MeshBasicMaterial( { vertexColors: true, color: new THREE.Color('white') } );
+
+  const mesh = new THREE.Mesh(geometry, material);
+  const positionAttribute = mesh.geometry.getAttribute('position');
+	const colors = [];
+	const color = new THREE.Color('white');
+		for (let i = 0; i < positionAttribute.count; i += 3) {
+			colors.push(color.r, color.g, color.b);
+			colors.push(color.r, color.g, color.b);
+			colors.push(color.r, color.g, color.b);
+		}
+	mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  scene.add(mesh);
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+document.addEventListener('mousemove', onPointerMove, false); 
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+const highlightFace = color => {
+    const { face } = intersected;
+    const colorAttribute = intersected.object.geometry.getAttribute('color');
+
+    colorAttribute.setXYZ(face.a, color.r, color.g, color.b);
+    colorAttribute.setXYZ(face.b, color.r, color.g, color.b);
+    colorAttribute.setXYZ(face.c, color.r, color.g, color.b);
+
+    offset = ( face.a % 2 == 0 ) ? 3 : - 3; // <======== CHANGED
+    colorAttribute.setXYZ(face.a + offset, color.r, color.g, color.b);
+    colorAttribute.setXYZ(face.b + offset, color.r, color.g, color.b);
+    colorAttribute.setXYZ(face.c + offset, color.r, color.g, color.b);
+    
+    colorAttribute.needsUpdate = true;
+};
+
+
+function onPointerMove(event) {
+
+  event.preventDefault();
+
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+	
+	raycaster.setFromCamera( mouse, camera );
+
+	const intersects = raycaster.intersectObjects( scene.children );
+
+	if (intersects.length > 0) {
+			if (intersected != intersects[0].object) {
+				if (intersected) {
+					highlightFace(new THREE.Color('white'));
+				}
+				intersected = intersects[0];
+				highlightFace(new THREE.Color('red'));
+			}
+		} else {
+			if (intersected) {
+				highlightFace(new THREE.Color('white'));
+			}
+			intersected = null;
+		}
+
+}
+  
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+render();
+
+</script>
+</html>

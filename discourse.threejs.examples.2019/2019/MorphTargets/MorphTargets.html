@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/deform-vertices-and-then-return-to-original-shape/6451 -->
+ <!-- https://jsfiddle.net/8j5cpz0y/ -->
+<head>
+  <title> MorphTargets </title>
+  <meta charset="utf-8" />
+     <style>
+      body { margin: 0; }
+   </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.102.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author Mugen87
+
+
+var container;
+
+var camera, scene, renderer, clock;
+
+var clip;
+
+init();
+animate();
+
+function init() {
+
+  camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+  camera.position.z = 500;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color( 0x222222 );
+  scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+  
+  clock = new THREE.Clock();
+
+  var light = new THREE.PointLight( 0xff2200 );
+  camera.add( light );
+  scene.add( camera );
+
+  light = new THREE.AmbientLight( 0x111111 );
+  scene.add( light );
+
+  var geometry = new THREE.BoxGeometry( 100, 100, 100 );
+  var material = new THREE.MeshLambertMaterial( { color: 0xffffff, morphTargets: true } );
+
+  // generate morph target data
+
+  var vertices = [];
+
+  for ( var v = 0; v < geometry.vertices.length; v ++ ) {
+
+    vertices.push( geometry.vertices[ v ].clone() );
+
+    vertices[ vertices.length - 1 ].x *= 1.2;
+    vertices[ vertices.length - 1 ].y *= 1.2;
+    vertices[ vertices.length - 1 ].z *= 1.2;
+
+  }
+
+  geometry.morphTargets.push( { name: "target_1", vertices: vertices } );
+  
+  //
+
+  geometry = new THREE.BufferGeometry().fromGeometry( geometry );
+
+  mesh = new THREE.Mesh( geometry, material );
+
+  scene.add( mesh );
+  
+  // construct clip
+  
+  var times =  [ 0, 0.1, 0.2 ];
+  var values = [ 0, 1, 0 ];
+  
+  var track = new THREE.VectorKeyframeTrack( '.morphTargetInfluences[0]', times, values, THREE.InterpolateLinear );
+  var clip = new THREE.AnimationClip( 'clip', undefined, [ track ] );
+  
+  mixer = new THREE.AnimationMixer( mesh );
+
+	var action = mixer.clipAction( clip );
+  action.loop = THREE.LoopOnce;
+
+  //
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio( window.devicePixelRatio );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  document.body.appendChild( renderer.domElement );
+
+  //
+
+  var controls = new THREE.OrbitControls( camera, renderer.domElement );
+  controls.minDistance = 400;
+  controls.maxDistance = 1000;
+
+  //
+
+  window.addEventListener( 'resize', onWindowResize, false );
+  
+  renderer.domElement.addEventListener( 'click', () => {
+  
+  	//action.stop();
+  	//action.play();
+  	
+    mesh.morphTargetInfluences[ 0 ] = 1 - mesh.morphTargetInfluences[ 0 ]; 
+ 
+  }, false );
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+function animate() {
+
+  requestAnimationFrame( animate );
+  
+  var delta = clock.getDelta();
+  
+  mixer.update( delta );
+  
+  renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

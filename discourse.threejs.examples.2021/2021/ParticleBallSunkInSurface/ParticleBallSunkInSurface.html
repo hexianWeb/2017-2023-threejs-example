@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-bend-a-grid-of-particles-into-kinda-sphere-looking-shape/26607/6 -->
+<!-- https://jsfiddle.net/prisoner849/5ca2qet9/ -->
+<!--   see also  https://discourse.threejs.org/t/bend-a-plane-with-a-sphere-smoothing/26632  https://codepen.io/prisoner849/full/zYZzmXB -->
+<head>
+  <title> ParticleBallSunkInSurface </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+html {
+  margin: 0%;
+  padding: 0%;
+}
+
+</style>
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849
+
+import * as THREE from "../jsm/three.module.127.js";
+import { OrbitControls } from "../jsm/OrbitControls.127.js";
+ 
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(5, 8, 13).setLength(15);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x202020);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let gpt = new THREE.IcosahedronGeometry(5, 7);
+let mpt = new THREE.PointsMaterial({size: 0.15, color: 0x00ffff});
+let pt = new THREE.Points(gpt, mpt);
+scene.add(pt)
+
+let gpl = new THREE.PlaneGeometry(20, 20, 100, 100);
+gpl.rotateX(Math.PI * -0.5);
+
+bendThePlane(5, 3, 10); // magic is here
+
+let mpl = new THREE.PointsMaterial({size:0.05, color: 0xaaaaaa});
+let pl = new THREE.Points(gpl, mpl);
+scene.add(pl);
+
+window.addEventListener( 'resize', onWindowResize );
+
+renderer.setAnimationLoop( _ => {
+	renderer.render(scene, camera);
+})
+
+function bendThePlane(radius, pHeight, smoothness){
+	let pos = gpl.attributes.position;
+ 	let v3 = new THREE.Vector3();
+  for(let i = 0; i < pos.count; i++){
+  	v3.fromBufferAttribute(pos, i);
+    let a = pHeight; // level of the plane (on Y-axis)
+
+    let b = getSphereCone(v3, -3, radius);
+    
+    let sm = smoothfunc(a, b, smoothness);
+
+    pos.setY(i, sm);
+  }
+}
+
+function getSphereCone(p, h, r){
+
+	let dist = Math.hypot(p.x, p.z);
+  
+  let limR = Math.sqrt(r*r - h * h);
+  
+  let res = 0;
+  if (dist <= limR){
+  	res = Math.sqrt(r*r - dist*dist) * Math.sign(h);
+  }
+  else {
+  	res = h - (dist - limR) * (limR / h);
+  }
+  
+  return res;
+}
+
+function smoothfunc(a, b, k){
+	let h = Math.max(0, Math.min(1, ((b - a) / k) + 0.5));
+  let m = h * (1 - h) * k;
+  return (h * a) + ((1 - h) * b) - (m * 0.5);
+}
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( innerWidth, innerHeight );
+
+}
+
+</script>
+</html>

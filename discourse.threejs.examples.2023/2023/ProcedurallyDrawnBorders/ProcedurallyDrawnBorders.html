@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-add-solid-border-into-cube-edge-in-three-js/47878/2 -->
+<!-- https://codepen.io/boytchev/pen/LYBwOyQ -->
+<head>
+  <title>ProcedurallyDrawnBorders</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+ 
+// boring stuff, scroll down to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 10 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix( );
+  renderer.setSize( innerWidth, innerHeight );
+});
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// a cnavas where the borders of the cube will be drawn
+
+var canvas = document.createElement( 'CANVAS' );
+    canvas.width = 512;
+    canvas.height = 512;
+
+
+// procedurally defining of a thick black border with tan interior
+
+var context = canvas.getContext( '2d' );
+    context.fillStyle = 'tan';
+    context.fillRect( 0, 0, 512, 512 );
+    context.strokeStyle = 'black';
+    context.lineWidth = 32;
+    context.strokeRect( 16, 16, 512-32, 512-32 );
+
+
+// a cube with a taxture from the canvas image
+
+var object = new THREE.Mesh(
+			new THREE.BoxGeometry( 2, 2, 2 ),
+    	new THREE.MeshLambertMaterial( {map: new THREE.CanvasTexture(canvas)} )
+    );	
+		scene.add( object );
+
+
+
+function animationLoop( t )
+{
+    object.rotation.x = Math.sin( t/700 );
+    object.rotation.y = Math.sin( t/1200 );
+
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

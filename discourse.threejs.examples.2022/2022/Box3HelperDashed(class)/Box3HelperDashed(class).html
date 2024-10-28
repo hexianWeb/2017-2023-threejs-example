@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/use-dashed-lines-on-box3helper/36320/4 -->
+<!-- https://codepen.io/prisoner849/pen/jOYyrzQ -->
+<head>
+  <title> Box3HelperDashed(class) </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+class Box3HelperDashed extends THREE.LineSegments{
+  
+	constructor( box, color = 0xffff00 ) {
+    
+    let baseLines = [
+      new THREE.Vector3(1, 1, 1),
+      new THREE.Vector3(1, 1, -1),
+      new THREE.Vector3(1, 1, -1),
+      new THREE.Vector3(1, -1, -1),
+      new THREE.Vector3(1, -1, -1),
+      new THREE.Vector3(1, -1, 1)
+    ]
+    let axis = new THREE.Vector3(0, 1, 0);
+    let pts = [];
+    for(let i = 0; i < 4; i++){
+      baseLines.forEach(bl => {
+        pts.push(bl.clone().applyAxisAngle(axis, Math.PI * 0.5 * i));
+      })
+    }
+    
+		const geometry = new THREE.BufferGeometry().setFromPoints(pts);
+
+		super( geometry, new THREE.LineDashedMaterial( { color: color, toneMapped: false, dashSize: 0.1, gapSize: 0.1 } ) );
+
+		this.box = box;
+
+		this.type = 'Box3HelperDashed';
+
+		this.geometry.computeBoundingSphere();
+    this.computeLineDistances();
+
+	}
+
+	updateMatrixWorld( force ) {
+
+		const box = this.box;
+
+		if ( box.isEmpty() ) return;
+
+		box.getCenter( this.position );
+
+		box.getSize( this.scale );
+
+		this.scale.multiplyScalar( 0.5 );
+
+		super.updateMatrixWorld( force );
+
+	}
+}
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(6, 10, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let sphere = new THREE.Mesh(new THREE.SphereGeometry(5), new THREE.MeshBasicMaterial({color: "red", wireframe: true}));
+scene.add(sphere);
+let b3 = new THREE.Box3().setFromObject(sphere);
+let b3hd = new Box3HelperDashed(b3);
+scene.add(b3hd);
+
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+
+</script>
+</html>

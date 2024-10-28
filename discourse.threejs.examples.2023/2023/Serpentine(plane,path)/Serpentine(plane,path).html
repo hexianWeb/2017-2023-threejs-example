@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-create-this-shape-in-three-js/47859/20 -->
+<!-- https://codepen.io/prisoner849/pen/zYLVyQg -->
+<head>
+  <title>Serpentine(plane,path)</title>
+  <meta charset="utf-8" />
+<style>
+body{
+  overflow: hidden;
+  margin: 0;
+}
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author  prisoner849
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+ 
+console.clear();
+
+class Utils {
+  static buildStripe(pathPoints, width) {
+    let pCnt = pathPoints.length;
+    let halfWidth = width * 0.5;
+    let a = new THREE.Vector2(),
+      b = new THREE.Vector2(),
+      s = new THREE.Vector2(),
+      n = new THREE.Vector2();
+    let as = new THREE.Vector2(),
+      bs = new THREE.Vector2(),
+      c = new THREE.Vector2();
+    let gPts = [];
+
+    for (let i = 0; i < pathPoints.length; i++) {
+      let idxPrev = i == 0 ? i : (i - 1);
+      let idxNext = i == (pCnt - 1) ? i : (i + 1);
+      a.copy(pathPoints[idxPrev]);
+      b.copy(pathPoints[idxNext]);
+      s.copy(pathPoints[i]);
+      as.subVectors(a, s);
+      bs.subVectors(b, s);
+      let angle = (bs.angle() - as.angle()) * 0.5;
+      let scaleVal = Math.cos(Math.abs(angle - Math.PI * 0.5));
+      
+      if (i == 0) {
+        n.set(-bs.y, bs.x).setLength(halfWidth);
+      } else if (i == (pCnt - 1)) {
+        n.set(as.y, -as.x).setLength(halfWidth);
+      } else {
+        console.log("here")
+        n.copy(bs)
+        .setLength(halfWidth / scaleVal)
+        .rotateAround(c, angle);
+      }
+      gPts[i] = s.clone().add(n);
+      gPts[i + pCnt] = s.clone().addScaledVector(n, -1);
+    }
+
+    let g = new THREE.PlaneGeometry(
+      1,
+      1,
+      pathPoints.length - 1,
+      1
+    ).setFromPoints(gPts).center();
+    return g;
+  }
+}
+
+class Serpentine extends THREE.Mesh {
+  constructor(width, height, bends, stripeWidth) {
+    let bendGap = height / bends;
+    let halfGap = bendGap * 0.5;
+
+    let path = new THREE.Path();
+    path.moveTo(0, 0);
+    path.lineTo(0, 0);
+
+    for (let i = 0; i < bends; i++) {
+      let evenOdd = i % 2 === 0;
+      let evenX = width - halfGap;
+      let evenStartY = halfGap;
+      let oddX = halfGap;
+      let oddStartY = bendGap * 1.5;
+      let x = evenOdd ? evenX : oddX;
+      let y =
+        (evenOdd ? evenStartY : oddStartY) + bendGap * Math.floor(i * 0.5) * 2;
+      path.absarc(x, y, halfGap, Math.PI * 1.5, Math.PI * 0.5, !evenOdd);
+    }
+
+    path.lineTo(bends % 2 === 0 ? width : 0, height);
+
+    let pts = path.getPoints(10);
+    //console.log(pts);
+    let g = Utils.buildStripe(pts, stripeWidth);
+    let m = new THREE.MeshBasicMaterial({color: 0x004480});
+    super(g, m);
+    let gp = new THREE.BufferGeometry().setFromPoints(pts).center();
+    let p = new THREE.Points(gp, new THREE.PointsMaterial({ size: 0.1, color: 0x00ffff }));
+    let l = new THREE.Line(gp, new THREE.LineBasicMaterial({ color: 0xffff00 }));
+    this.add(l, p);
+  }
+}
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0xface8d);
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let gu = {
+  time: { value: 0 }
+};
+
+let serpentine = new Serpentine(6, 10, 10, 0.4);
+scene.add(serpentine);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop((_) => {
+  let t = clock.getElapsedTime();
+  gu.time.value = t;
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/problems-with-creating-custom-polyhedron-geometry/5412/3 -->
+<!-- https://jsfiddle.net/f2Lommf5/16750/ -->
+
+<head>
+  <title> RhombicDodecahedron </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.99.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script> 
+
+// @ author Mugen87
+
+function RhombicDodecahedronBufferGeometry( radius, detail ) {
+
+  var vertices = [
+
+    // (±1, ±1, ±1)
+    - 1, - 1, - 1,  1, - 1, - 1,
+    1, - 1, 1,  - 1, - 1, 1,
+    - 1, 1, 1,  - 1, 1, 1,
+    1, 1, 1,  1, 1, - 1,
+
+    0, 2, 0,  0, - 2, 0,
+    0, 0, - 2,  0, 0, 2,
+    2, 0, 0,  - 2, 0, 0
+
+  ];
+
+  var indices = [
+
+    0, 3, 13,   9, 3, 0,
+    0, 13, 4,  10, 0, 4,
+    9, 0, 1,  1, 0, 10,
+    7, 10, 4,  4, 8, 7,
+    4, 13, 5,  8, 4, 5,
+    5, 13, 3,  5, 3, 11,
+    3, 2, 11,  3, 9, 2,
+    5, 11, 6,  8, 5, 6,
+    6, 11, 2,  6, 2, 12,
+    12, 7, 6,  7, 8, 6,
+    12, 1, 7,  7, 1, 10,
+    1, 12, 2,  2, 9, 1
+
+  ];
+
+  THREE.PolyhedronBufferGeometry.call( this, vertices, indices, radius, detail );
+
+  this.type = 'RhombicDodecahedronBufferGeometry';
+
+  this.parameters = {
+    radius: radius,
+    detail: detail
+  };
+
+}
+
+RhombicDodecahedronBufferGeometry.prototype = Object.create( THREE.PolyhedronBufferGeometry.prototype );
+RhombicDodecahedronBufferGeometry.prototype.constructor = RhombicDodecahedronBufferGeometry;
+
+var camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 5;
+
+    scene = new THREE.Scene();
+
+    geometry = new RhombicDodecahedronBufferGeometry();
+    material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+</script>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/pause-a-tween-js-animation/5987 -->
+<!-- https://jsfiddle.net/10Lryk34/ -->
+<head>
+  <title> TweenPause </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.101.js"></script>
+<script src="../js/Tween.min.js"></script>
+
+<script>
+
+//@ author Mugen87
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+
+    geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
+    material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+		
+		var targetPosition = new THREE.Vector3( 0.5, 0, 0 );
+		
+		var tween = new TWEEN.Tween( mesh.position ).to( targetPosition, 2000 ); // duration 2s
+		tween.start();
+		
+		setTimeout( () => {
+		
+			tween.stop(); // stop the tween after 1s
+		
+		 }, 1000 );
+		 
+		 setTimeout( () => {
+		
+			tween.start(); // restart it after 2s (it will last the entire duration)
+		
+		 }, 2000 );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate( time ) {
+
+    requestAnimationFrame( animate );
+		
+		TWEEN.update( time );
+		
+    renderer.render( scene, camera );
+
+}
+</script>
+
+</html>

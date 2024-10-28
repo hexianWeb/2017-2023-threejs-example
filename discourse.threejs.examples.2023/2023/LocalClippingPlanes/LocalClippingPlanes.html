@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/apply-clipping-planes-to-only-specific-area-of-object/48811/17 -->
+<!-- https://codepen.io/boytchev/pen/ExeoeOJ -->
+<head>
+  <title>LocalClippingPlanes</title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+ 
+// general setup, boring, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 15, 5, 0 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+renderer.localClippingEnabled = true;
+
+
+// create a capsule geometry, reshaped in the middle
+// the goal is to make some complex looking 3D shape
+
+var geometry = new THREE.CapsuleGeometry( 1, 3, 32, 64 ),
+		pos = geometry.getAttribute( 'position' );
+
+for( var i=0; i<pos.count; i++ )
+{
+		var x = pos.getX( i ),
+				z = pos.getZ( i ),
+				k;
+	
+	if( Math.abs(pos.getY(i))<1.6 )
+			k = 0.4;//+0.2*Math.sin( 4*Math.atan2( z, x ) );
+	else
+			k = 2;
+
+	pos.setX( i, k*x );	
+	pos.setZ( i, k*z );	
+}
+		
+
+geometry.computeVertexNormals( );
+
+
+// there will be four clipping planes that
+// cut through the lower part of the shape
+
+var bottomPlanes = [
+			new THREE.Plane( new THREE.Vector3(0,-1,0).normalize(), 0 ), // object splitter
+	
+			new THREE.Plane( new THREE.Vector3(1,0,0).normalize(), 1.4 ),  // #1
+			new THREE.Plane( new THREE.Vector3(-1,0,0).normalize(), 1.4 ), // #2
+			new THREE.Plane( new THREE.Vector3(0,0,1).normalize(), 1.4 ),  // #3
+			new THREE.Plane( new THREE.Vector3(0,0,-1).normalize(), 1.4 )  // #4
+	];
+
+var topPlanes = [
+			new THREE.Plane( new THREE.Vector3(0,1,0).normalize(), 0 ), // object splitter
+	];
+
+
+// create an object as four objects (because transparency)
+
+var backSideBottom = new THREE.Mesh(
+			geometry,
+    	new THREE.MeshPhongMaterial( {
+					color: 'tomato',
+					shininess: 100,
+					side: THREE.BackSide,
+					transparent: true,
+					opacity: 0.7,
+					clippingPlanes: bottomPlanes,
+			} )
+    );	
+
+var frontSideBottom = new THREE.Mesh(
+			geometry,
+    	new THREE.MeshPhongMaterial( {
+					color: 'tomato',
+					shininess: 100,
+					side: THREE.FrontSide,
+					transparent: true,
+					opacity: 0.7,
+					clippingPlanes: bottomPlanes,
+			} )
+    );	
+frontSideBottom.renderOrder = 1;
+
+var backSideTop = new THREE.Mesh(
+			geometry,
+    	new THREE.MeshPhongMaterial( {
+					color: 'tomato',
+					shininess: 100,
+					side: THREE.BackSide,
+					transparent: true,
+					opacity: 0.7,
+					clippingPlanes: topPlanes,
+			} )
+    );	
+
+var frontSideTop = new THREE.Mesh(
+			geometry,
+    	new THREE.MeshPhongMaterial( {
+					color: 'tomato',
+					shininess: 100,
+					side: THREE.FrontSide,
+					transparent: true,
+					opacity: 0.7,
+					clippingPlanes: topPlanes,
+			} )
+    );	
+frontSideTop.renderOrder = 1;
+
+
+// select what part to show
+
+scene.add( backSideTop, frontSideTop );	// top
+scene.add( backSideBottom, frontSideBottom ); // bottom
+
+
+
+function animationLoop( t )
+{
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

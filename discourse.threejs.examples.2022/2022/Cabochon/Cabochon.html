@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/cabochons-cabochongeometry/43964 -->
+<!-- https://codepen.io/prisoner849/pen/VwdZGNm -->
+<head>
+  <title> Cabochon </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script>
+  // https://github.com/yiwenl/glsl-fbm/blob/master/3d.glsl
+  const fbm = `
+  #define NUM_OCTAVES 5
+
+  float mod289(float x){return x - floor(x * (1.0 / 289.0)) * 289.0;}
+  vec4 mod289(vec4 x){return x - floor(x * (1.0 / 289.0)) * 289.0;}
+  vec4 perm(vec4 x){return mod289(((x * 34.0) + 1.0) * x);}
+
+  float noise(vec3 p){
+      vec3 a = floor(p);
+      vec3 d = p - a;
+      d = d * d * (3.0 - 2.0 * d);
+
+      vec4 b = a.xxyy + vec4(0.0, 1.0, 0.0, 1.0);
+      vec4 k1 = perm(b.xyxy);
+      vec4 k2 = perm(k1.xyxy + b.zzww);
+
+      vec4 c = k2 + a.zzzz;
+      vec4 k3 = perm(c);
+      vec4 k4 = perm(c + 1.0);
+
+      vec4 o1 = fract(k3 * (1.0 / 41.0));
+      vec4 o2 = fract(k4 * (1.0 / 41.0));
+
+      vec4 o3 = o2 * d.z + o1 * (1.0 - d.z);
+      vec2 o4 = o3.yw * d.x + o3.xz * (1.0 - d.x);
+
+      return o4.y * d.y + o4.x * (1.0 - d.y);
+  }
+
+
+  float fbm(vec3 x) {
+    float v = 0.0;
+    float a = 0.5;
+    vec3 shift = vec3(100);
+    for (int i = 0; i < NUM_OCTAVES; ++i) {
+      v += a * noise(x);
+      x = x * 2.0 + shift;
+      a *= 0.5;
+    }
+    return v;
+  }
+  `;
+</script>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+import { RoomEnvironment } from '../jsm/RoomEnvironment.136.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 4.5);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+const bgt = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = bgt;
+scene.background = bgt;
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+
+//scene.add(new THREE.AxesHelper());
+
+let light = new THREE.DirectionalLight(0xffffff, 0.2);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.8));
+
+let contour = new THREE.CatmullRomCurve3(
+  [
+    new THREE.Vector3(0, 2, 0),
+    new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(1, -1, 0).normalize(),
+    new THREE.Vector3(0, -1, 0),
+    new THREE.Vector3(-1, -1, 0).normalize(),
+    new THREE.Vector3(-1, 0, 0)
+  ].reverse(),
+  true
+);
+let pts = contour.getPoints(100);
+console.log(pts.length);
+let cg = new THREE.BufferGeometry().setFromPoints(pts);
+let l = new THREE.Line(cg, new THREE.LineBasicMaterial({ color: "yellow" }));
+//scene.add(l);
+let p = new THREE.Points(
+  cg,
+  new THREE.PointsMaterial({ color: "red", size: 0.075 })
+);
+//scene.add(p);
+
+let bodyPts = [];
+let dir = new THREE.Vector3();
+pts.forEach((p, idx) => {
+  //if (idx != 0) return;
+
+  let len = p.length();
+  dir.copy(p).normalize();
+  let path = new THREE.Path();
+  path.moveTo(0, 0);
+  path.lineTo(len, 0);
+  path.bezierCurveTo(len + 0.1, 0, len + 0.2, 0.5, 0, 0.5);
+  let edgePts = path.getPoints(50);
+  console.log(edgePts.length);
+
+  let eg = new THREE.BufferGeometry().setFromPoints(edgePts);
+  let em = new THREE.LineBasicMaterial({ color: "white" });
+  //scene.add(new THREE.Line(eg, em));
+
+  //console.log(edgePts);
+  edgePts.forEach((ep) => {
+    let v = new THREE.Vector3().copy(dir).multiplyScalar(ep.x).setZ(ep.y);
+    bodyPts.push(v.x, v.y, v.z);
+  });
+});
+
+let bg = new THREE.PlaneGeometry(1, 1, 51, 100); //.setFromPoints(bodyPts);
+bg.setAttribute("position", new THREE.Float32BufferAttribute(bodyPts, 3));
+bg.computeVertexNormals();
+correctNormals(bg);
+let bm = new THREE.MeshPhysicalMaterial({
+  wireframe: false,
+  roughness: 0,
+  metalness: 0,
+  reflectivity: 1,
+  color: 0x040004,
+  onBeforeCompile: (shader) => {
+    shader.vertexShader = `
+      varying vec3 vPos;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `#include <begin_vertex>
+      vPos = vec3(position);
+      `
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+      varying vec3 vPos;
+      ${fbm}
+      ${shader.fragmentShader}      
+    `.replace(
+      `#include <color_fragment>`,
+      `
+      float d = fbm(vPos * 0.5);
+      for(int i = 0; i < 4; i++){
+        d = fbm(vPos * (float(i) + 1.) * d);
+      }
+
+      vec3 col = mix(diffuseColor.rgb, vec3(0, 1, 0.75), pow(d, 4.));
+      diffuseColor = vec4( col, opacity );`
+    );
+    console.log(shader.fragmentShader);
+  }
+});
+let body = new THREE.Mesh(bg, bm);
+scene.add(body);
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+function correctNormals(g){
+  let params = g.parameters;
+  let ws = params.widthSegments;
+  let hs = params.heightSegments;
+  
+  let n1 = new THREE.Vector3();
+  let n2 = new THREE.Vector3();
+  
+  let nor = g.attributes.normal;
+  
+  for( let i = 0; i <= params.widthSegments; i++ ){
+    let iFirst = i;
+    let iLast = i + (ws + 1) * hs;
+    n1.fromBufferAttribute(nor, i);
+    n2.fromBufferAttribute(nor, i + (ws + 1) * hs);
+    n1.add(n2).normalize();
+    
+    nor.setXYZ(iFirst, n1.x, n1.y, n1.z);
+    nor.setXYZ(iLast, n1.x, n1.y, n1.z);
+  }
+}
+</script>
+</html>

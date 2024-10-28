@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!-- ttps://discourse.threejs.org/t/centered-background-texture/13079 -->
+<!-- https://codepen.io/prisoner849/pen/LYVWwNE -->
+<head>
+  <title> CenteredBackgroundTexture </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+<body> </body>
+<script src="../js/three.min.113.js"></script>	
+
+<script>
+
+ // @author prisoner849
+ 
+ var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 0, 4);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var path = "uv_grid_opengl.jpg"; // https://threejs.org/examples/textures/uv_grid_opengl.jpg
+//var path = "https://threejs.org/examples/textures/758px-Canestra_di_frutta_(Caravaggio).jpg";
+var bgTex = new THREE.TextureLoader().load( path, t => {
+
+  setBackground(t);
+  
+});
+
+scene.background = bgTex;
+
+var box = new THREE.Mesh(new THREE.BoxBufferGeometry(2, 2, 2), new THREE.MeshBasicMaterial({color: "yellow", wireframe: true}));
+scene.add(box);
+
+var clock = new THREE.Clock();
+
+window.addEventListener( 'resize', onWindowResize, false );
+
+renderer.setAnimationLoop(() => {
+	
+  let delta = clock.getDelta();
+  box.rotation.y += delta * 0.27;
+  box.rotation.x += delta * 0.314
+  
+  renderer.render(scene, camera)
+
+});
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  
+  setBackground( bgTex );
+
+  renderer.setSize(innerWidth, innerHeight);
+
+}
+
+function setBackground(texture) {
+
+  let imgRatio = texture.image.width / texture.image.height;
+  let planeRatio = innerWidth / innerHeight;
+  let ratio = planeRatio / imgRatio;
+
+  texture.repeat.x = ratio;
+  texture.offset.x = 0.5 * (1 - ratio);
+  
+}
+</script>
+</html>

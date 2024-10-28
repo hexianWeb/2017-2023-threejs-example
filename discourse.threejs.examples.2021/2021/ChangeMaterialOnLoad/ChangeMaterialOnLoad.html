@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/is-there-a-way-to-override-textureloaders-default-texture-properties/30239/2 -->
+<!-- https://jsfiddle.net/prisoner849/os89407g/ -->
+
+<!-- NOTE backside of plane -->
+
+<head>
+  <title> ChangeMaterialOnLoad </title>
+  <meta charset="utf-8" />
+  	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+import { mergeBufferGeometries } from "../jsm/BufferGeometryUtils.132.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 0, 2);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let g = mergeBufferGeometries([
+	new THREE.PlaneGeometry(),
+  new THREE.PlaneGeometry().rotateY(Math.PI)
+], true);
+
+let loader = new THREE.TextureLoader();  // .setPath("https://threejs.org/examples/textures/");
+let onLoad = (texture) => {
+	texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2, 2);
+}
+
+let m = [
+	new THREE.MeshBasicMaterial({map: loader.load("uv_grid_opengl.jpg", onLoad)}),
+  new THREE.MeshBasicMaterial({map: loader.load("colors.png", onLoad)})
+];
+
+let o = new THREE.Mesh(g, m);
+o.updateMatrix();
+console.log(o);
+scene.add(o);
+
+window.addEventListener("resize", onResize);
+
+renderer.setAnimationLoop(_ => {
+  renderer.render(scene, camera);
+})
+
+function onResize(event) {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+
+</script>
+</html>

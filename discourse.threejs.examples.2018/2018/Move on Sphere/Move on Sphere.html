@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-move-items-around-a-sphere/1877/13 -->
+<!-- https://jsfiddle.net/prisoner849/zcv81gL5/ - See also other solutions in the post.-->
+
+<head>
+  <title> Move on Sphere </title>
+  <meta charset="utf-8" />
+    <style>
+	body {
+		margin: 0;
+		overflow: hidden;
+	}
+  </style>
+</head>
+
+<body>
+
+<button id="btnMove" style="position: absolute;">
+ Move
+</button>
+</body>
+<script src="../js/three.min.90.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/Tween.min.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x404040, 2, 5);
+var camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+camera.position.z = 2;
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var radius = 0.6;
+var segmentsWidth = 16;
+var segmentsHeight = 12;
+var sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, segmentsWidth, segmentsHeight), new THREE.MeshBasicMaterial({
+  color: 0x050505,
+  wireframe: true
+}));
+scene.add(sphere);
+
+var item = new THREE.Mesh(new THREE.BoxGeometry(0.0625, 0.0625, 0.4), new THREE.MeshBasicMaterial({
+  color: "aqua",
+  wireframe: true
+}));
+item.geometry.translate(0, 0, 0.2);
+scene.add(item);
+
+var sphericalStart = new THREE.Spherical();
+var sphericalEnd = new THREE.Spherical(radius, Math.PI * 0.5, 0);
+var center = new THREE.Vector3();
+var vectorStart = new THREE.Vector3();
+var vectorEnd = new THREE.Vector3();
+
+var angle = {
+  value: 0
+};
+var angleEnd = {
+  value: 0
+};
+var normal = new THREE.Vector3();
+var lookAt = new THREE.Vector3();
+
+function setInitials() {
+  sphericalStart.set(radius, THREE.Math.degToRad(170), THREE.Math.degToRad(355));
+  sphericalEnd.set(radius, THREE.Math.degToRad(10), THREE.Math.degToRad(5));
+  vectorStart.setFromSpherical(sphericalStart);
+  vectorEnd.setFromSpherical(sphericalEnd);
+  normal.copy(vectorStart).cross(vectorEnd).normalize();
+  angle.value = 0;
+  angleEnd.value = vectorStart.angleTo(vectorEnd);
+}
+setInitials();
+
+
+btnMove.addEventListener("click", function() {
+  var tween = new TWEEN.Tween(angle).to(angleEnd, 2000).delay(500).onUpdate(
+    function() {
+      item.position.copy(vectorStart).applyAxisAngle(normal, angle.value);
+      item.lookAt(lookAt.copy(item.position).normalize().multiplyScalar(radius + 1));
+    }
+  ).onComplete(setInitials);
+  tween.chain(tween);
+  tween.start();
+}, false);
+
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  TWEEN.update();
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

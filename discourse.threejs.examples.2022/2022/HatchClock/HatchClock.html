@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/clock-generative-hatch-pattern/38841 -->
+<!-- https://codepen.io/prisoner849/pen/abqKbey -->
+<head>
+  <title>HatchClock</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+
+console.clear();
+let gu = {
+  uTime: {value: 0},
+  uResolution: {value: new THREE.Vector2(innerWidth, innerHeight)},
+  localTime: {value: new THREE.Vector3()}
+}
+let canvas = new THREE.Mesh(
+  new THREE.PlaneGeometry(2, 2),
+  new THREE.ShaderMaterial({
+    uniforms: gu,
+    vertexShader: `
+      varying vec2 vUv;
+      void main(){
+        vUv = uv;
+        gl_Position = vec4(position, 1);
+      }
+    `,
+    fragmentShader:`
+      #define ss(a, b, c) smoothstep(a, b, c)
+      #define PI 3.1415926
+      #define PI2 PI*2.
+      uniform float uTime;
+      uniform vec2 uResolution;
+      uniform vec3 localTime;
+      
+      varying vec2 vUv;
+      
+      //  Function from Iñigo Quiles
+      //  https://www.shadertoy.com/view/MsS3Wc
+      vec3 hsb2rgb( in vec3 c ){
+          vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),
+                                   6.0)-3.0)-1.0,
+                           0.0,
+                           1.0 );
+          rgb = rgb*rgb*(3.0-2.0*rgb);
+          return c.z * mix( vec3(1.0), rgb, c.y);
+      }
+      
+      float random (vec2 st) {
+          return fract(sin(dot( st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+      }
+      
+      vec2 rotate(vec2 v, float a) {
+        float s = sin(a);
+        float c = cos(a);
+        mat2 m = mat2(c, -s, s, c);
+        return m * v;
+      }
+      
+      vec3 drawSector(vec3 colorBase, vec3 color, vec2 uv, float angle, float rMax, float width){
+        float f = 0.;
+        
+        vec2 rUv = uv;//rotate(uv, PI * -0.5);
+        
+        float dist = length(rUv);
+        float a = abs(mod(atan(rUv.x, rUv.y) + PI2, PI2) * -1.);
+        float fSector = step(0., a) - step(angle, a);
+        float fRadius = step(rMax - width, dist) - step(rMax, dist);
+        f = min(fSector, fRadius);
+        return mix(colorBase, color, f);
+      }
+      
+      vec3 splits[10] = vec3[10](
+        vec3(normalize(vec2(0., 0.5)), 0.5),
+        vec3(normalize(vec2(-1., 1.)), -0.25),
+        vec3(normalize(-vec2(-1, -0.99)), 0.),
+        vec3(normalize(vec2(1., -1.)), -0.5),
+        vec3(normalize(-vec2(0.01, -1.)), 0.25),
+        vec3(normalize(-vec2(1, 0.5)), -0.75),
+        vec3(normalize(vec2(-1, 0.5)), 0.75),
+        vec3(normalize(-vec2(-0.23, -0.45)), -0.35),
+        vec3(normalize(vec2(1, 0.35)), 0.6),
+        vec3(normalize(vec2(-0.5, 0.14)), -0.31)
+      );
+      
+      void main(){
+        vec2 uv = vUv * 2. - 1.;
+        uv.x *= uResolution.x / uResolution.y;
+        uv *= 1.05;
+        
+        vec3 col = vec3(0);
+        
+        vec2 idx = vec2(2, 0);
+        float border = 0.;
+        for(int i = 0; i < 10; i++){
+          vec3 split = splits[i];
+          float sinTime = sin((split.z + uTime) * 3.1415926 * 2. * 0.1 * split.z) * 0.25;
+          float d = dot(uv * 1.5, split.xy);
+          
+          idx += float(i) * ((d > split.z + sinTime) ? vec2(-1) : vec2(1));
+          
+          float bDist = abs((split.z + sinTime) - d);
+          float fBDist = fwidth(bDist);
+          border = max(border, ss(fBDist + 0.005, 0.005, bDist));
+          
+        }
+        float rand = random(idx);
+        //col = vec3(rand);
+        
+        float angle = 3.1415926 * rand;
+        vec2 rUv = rotate(uv * (100. + 100. * rand), angle);
+        float hatch = pow(abs(sin(rUv.x)), 16.); // hatch pattern along x-axis of rotated uv coords
+        col = mix(vec3(1), hsb2rgb(vec3(mod(idx.x + idx.y, 20.) / 20., 1., 1.)), hatch); 
+        col = mix(col, vec3(0.125), border);
+        
+        float fw = fwidth(length(uv));
+        float fCircle = ss(1. - fw, 1., length(uv));
+        col = mix(col, vec3(0), fCircle);
+        
+        col = drawSector(col, vec3(1, 0, 1), uv, localTime.x * (PI2 / 12.), 0.95, 0.075); // hours
+        col = drawSector(col, vec3(0, 1, 1), uv, localTime.y * (PI2 / 60.), 0.85, 0.050); // minutes
+        col = drawSector(col, vec3(1, 1, 0), uv, localTime.z * (PI2 / 60.), 0.75, 0.025); // seconds
+        
+        gl_FragColor = vec4(col, 1);
+      }
+    `,
+  })
+)
+let camera = new THREE.Camera();
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  renderer.setSize(innerWidth, innerHeight);
+  gu.uResolution.value.set(innerWidth, innerHeight);
+})
+
+let clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  let t = clock.getElapsedTime();
+  gu.uTime.value = t;
+  let lt = new Date();
+  gu.localTime.value.set(
+    lt.getHours() % 12 == 0 ? 12 : lt.getHours() % 12, 
+    lt.getMinutes() == 0 ? 60 : lt.getMinutes(), 
+    lt.getSeconds() == 0 ? 60 : lt.getSeconds()
+  );
+  renderer.render(canvas, camera);
+})
+
+</script>
+</html>

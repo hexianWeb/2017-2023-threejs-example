@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/best-way-to-flatten-the-top-and-bottom-of-a-torus-geometry/23620/5 -->
+<!-- https://jsfiddle.net/prisoner849/1j3usg5o/ -->
+<head>
+  <title> TorusLayers </title>
+  <meta charset="utf-8" />
+<style>
+body {
+  margin: 0px;
+  background-color: #050505;
+  color: #fff;
+  overflow: hidden;
+}
+
+#container {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+</style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author prisoner849
+
+import * as THREE from "../jsm/three.module.125.js";
+import { OrbitControls } from "../jsm/OrbitControls.125.js";
+//import {TWEEN} from "../jsm/tween.module.min.125.js";
+import {TWEEN} from "https://threejs.org/examples/jsm/libs/tween.module.min.js";
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 30);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(10, 10, 10);
+scene.add(light,  new THREE.AmbientLight(0xffffff, 0.5));
+
+let r = 2;
+let R = 7;
+let slices = 5;
+
+let sliceStep = 2 / slices; 
+let slicedTorus = new THREE.Group();
+for(let i = 0; i < slices; i++){
+
+	let currX = 1 - (i * sliceStep);
+  let nextX = currX - sliceStep;
+  
+  let currY = 1 - (currX * currX);
+  let nextY = 1 - (nextX * nextX);
+
+	let aStart = new THREE.Vector2(currX, currY).angle();
+  let aEnd = new THREE.Vector2(nextX, nextY).angle();
+  
+  let pts =[];
+  
+  let ps1 = getPoints(r, aStart, aEnd, 5);
+  pts = pts.concat(ps1);
+
+  let ps2 = getPoints(r, -aEnd, -aStart, 5);
+  pts = pts.concat(ps2);
+
+  pts.push(pts[0].clone());
+  let center = new THREE.Vector2();
+  pts.forEach(p => {
+  	p.rotateAround(center, Math.PI * -0.5).multiplyScalar(r);
+  	p.x += R;
+  });
+
+  let g = new THREE.LatheGeometry(pts, 18, 0, Math.PI * 2);
+ 	//g.center();
+  let m = new THREE.MeshBasicMaterial({color: i % 2 == 0 ? 0xff00ff : 0x00ffff, wireframe: true});
+  let o = new THREE.Mesh(g, m);
+  //o.position.set(0, -(nextX + currX) * 0.5 * 3, 0);
+  o.userData = {
+  	pos: new THREE.Vector3().random().subScalar(0.5).setLength(50),
+    posFinal: new THREE.Vector3(0, -(nextX + currX) * 0.5 * 3, 0),
+    rot: new THREE.Vector3().random().multiplyScalar(Math.PI * 2),
+    rotFinal: new THREE.Vector3()
+  }
+  slicedTorus.add(o);
+  
+}
+scene.add(slicedTorus);
+
+let v = new THREE.Vector3();
+let tween = new TWEEN.Tween({value: 0}).to({value:1}, 10000)
+	.onUpdate(val => {
+  	slicedTorus.children.forEach(t => {
+    	
+      let a = Math.pow(val.value, 0.25);
+      
+      t.position.lerpVectors(t.userData.pos, t.userData.posFinal, val.value);
+    	v.lerpVectors(t.userData.rot, t.userData.rotFinal, a);
+      t.rotation.set(v.x, v.y, v.z);
+      
+    })
+  	
+  })
+  .easing(TWEEN.Easing.Elastic.Out)
+  .start();
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  TWEEN.update();
+  renderer.render(scene, camera);
+}
+
+function getPoints(r, a1, a2, division){
+	let aZero = Math.PI * 1.5;
+ 	let shape = new THREE.Shape();
+  shape.absarc(0, 0, r, a1, a2);
+  let pts = shape.getSpacedPoints(division);
+  return pts;
+}
+</script>
+</html>

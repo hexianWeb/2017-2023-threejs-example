@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/twisted-torus-parametric/56492/2 -->
+<!-- https://codepen.io/boytchev/pen/qBLKpjx -->
+
+<!-- 
+    Explanation @author PavelBoytchev
+    
+    This is called Math.
+    
+    I started with a torus. Its parametric equation does two circles – one big circle along the whole torus (using u as parametric angle) and one small circle across the tube (using v as parametric angle).
+    
+    x = (R+r*cos(v)) * Math.cos(u)
+    y = (R+r*cos(v)) * Math.sin(u)
+    z = r*sin(v)
+    
+    image
+    
+    Then I changed the radius r of the small circle so that it is not a circle, but a superellipse. A super ellipse can make a smooth transition from a circle to a square, so instead of a constant radius r, I used:
+    
+    r = (cos(v)**n + sin(v)**n)**(-1/n)
+    
+    image
+    
+    Finally, I added the twist – this is u and v are angles that go along the two circles, and I made one of the angle to be added to the other angle by a factor t, so instead of cos(v) and sin(v) I used:
+    
+    cos(v+t*u)
+    sin(v+t*u)
+    
+    image
+    
+    Thus the overall equation looks like this (R=4):
+    
+    r = (cos(v)**n + sin(v)**n)**(-1/n)
+    x = (4 + r*cos(v+t*u)) * cos(u)
+    y = (4 + r*cos(v+t*u)) * sin(u)
+    z = r*sin(v+t*u)
+    
+    You can get all the shapes above by simply changing t and n:
+    
+        torus with circular tube: t=0, n=2
+        torus with square tube: t=0, n=10
+        square torus with a twist: t=1.5, n=10
+
+-->
+
+<head>
+
+  <title>TwistedTorusParametric</title>
+  
+  <meta charset="utf-8" />
+    <style>
+        body{
+        overflow: hidden;
+        margin: 0;
+        }
+    </style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { ParametricGeometry } from '../jsm/ParametricGeometry.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js'
+
+// general setup, boring, skip to the next comment
+
+console.clear( );
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 0, 25 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+		controls.autoRotate = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    //scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 3 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+function surface( u, v, target )
+{
+		const n = 10,  // larger values make sharper square
+					t = 1.5; // larger values make more twists
+	
+		u *= 2*Math.PI;
+		v *= 2*Math.PI;
+	
+		var r = (Math.cos(v)**n + Math.sin(v)**n)**(-1/n),
+				x = (4+r*Math.cos(v+t*u)) * Math.cos(u),
+				y = (4+r*Math.cos(v+t*u)) * Math.sin(u),
+				z = r*Math.sin(v+t*u);
+	
+  	target.set( x, y, z );
+}
+
+
+const geometry = new ParametricGeometry(surface, 100, 100);
+
+
+var object = new THREE.Mesh(
+			geometry,
+			new THREE.MeshNormalMaterial(),
+    );	
+		scene.add( object );
+
+
+
+function animationLoop( t )
+{
+   object.rotation.z = t/2700;
+
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

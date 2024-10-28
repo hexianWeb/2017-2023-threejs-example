@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/give-specific-color-to-texture-in-fragment-shader/13774/5 -->
+<!-- https://jsfiddle.net/ykou3t1b/ -->
+<head>
+  <title> ColorToTexture_FragmentShader </title>
+  <meta charset="utf-8" />
+    <style> 
+	body {
+	background-color: #000;
+	margin: 0px;
+	overflow: hidden;
+	}
+   </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.114.js"></script>
+
+<script>
+
+// @author Joachim + Fyrestar
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color('#efefef')
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+camera.position.z = 1000;
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var loader = new THREE.TextureLoader();
+
+var data = [{
+    vx: 10,
+    vy: 10
+  }
+]
+
+var drawCircles = function() {
+  this._positions = new Float32Array(3)
+  this._colors = new Float32Array(3)
+  this._textures = new Float32Array(1)
+  this._bordercolors = new Float32Array(3)
+
+  const color = new THREE.Color('#ff0000')
+  const borderColor = new THREE.Color('#00ff00')
+
+  data.map(({
+    vx,
+    vy
+  }, i) => {
+    const vertex = new THREE.Vector3(vx, vy, 0)
+    vertex.toArray(this._positions, i * 3)
+    color.toArray(this._colors, i * 3)
+    borderColor.toArray(this._bordercolors, i * 3)
+    this._textures[i] = 0
+  })
+
+  const geometry = new THREE.BufferGeometry()
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(this._positions, 3))
+  geometry.setAttribute('color', new THREE.BufferAttribute(this._colors, 3))
+  geometry.setAttribute('bordercolor', new THREE.BufferAttribute(this._bordercolors, 3))
+  geometry.setAttribute('textureIndex', new THREE.BufferAttribute(this._textures, 1))
+  
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      textures: {
+        type: 'tv',
+		// https://i.postimg.cc/Hs7rQ499/seat-spinner.png
+        value: [loader.load('seat-spinner.png')]
+      },
+      vSize: {
+        value: 500.0
+      }
+    },
+    extensions: {
+      derivatives: true
+    },
+    vertexShader: `
+      	attribute vec3 color;
+        attribute vec3 bordercolor;
+
+      	uniform float vSize;
+
+     	 	varying vec3 vColor;
+        varying vec3 vBordercolor;
+
+      	precision mediump float;
+
+      	void main() {
+        	vColor = color;
+          vBordercolor = bordercolor;
+					vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+				  gl_PointSize = vSize * (300.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+    fragmentShader: `
+      	uniform sampler2D textures[3];
+        uniform float vSize;
+      	varying vec3 vColor;
+        varying vec3 vBordercolor;
+
+        void main() {
+
+          vec4 backgroundcolor = vec4(vColor, 1.0);
+          
+          vec4 bordercolor = vec4(vBordercolor, 1.0);
+
+          vec4 texture;
+          
+					// Try to apply a specific color to the texture.
+          texture = vec4(0.0, 0.0, 1.0, 1.0) * texture2D(textures[0], gl_PointCoord);
+
+          float edgeSize = 50.0;
+          float distance = length(2.0 * gl_PointCoord - 1.0);
+          if (distance > 1.0) {
+            discard;
+          }
+
+          float edge = smoothstep(
+            vSize - edgeSize - 5.0,
+            vSize - edgeSize,
+            distance * (vSize + edgeSize)
+          );
+
+          gl_FragColor = mix(backgroundcolor, bordercolor, edge);
+
+          gl_FragColor.a *= (1.0 - smoothstep(
+            vSize - 5.0,
+            vSize,
+            distance * vSize
+          ));
+          
+          gl_FragColor = mix(gl_FragColor, texture, texture.a);
+        }
+      `,
+    transparent: true
+  })
+
+  scene.add(new THREE.Points(geometry, material))
+}
+
+
+// run game loop
+var animate = function() {
+  requestAnimationFrame(() => animate());
+  renderer.render(scene, camera);
+};
+
+animate();
+
+drawCircles()
+
+
+</script>
+
+</html>

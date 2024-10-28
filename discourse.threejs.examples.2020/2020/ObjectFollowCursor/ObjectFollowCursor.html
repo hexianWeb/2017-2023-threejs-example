@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/make-css2dobject-follow-cursor/14221/13 -->
+<!-- https://jsfiddle.net/9a7nq4hd/ -->
+<head>
+  <title> ObjectFollowCursor </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+		margin: 0;
+	}
+	canvas {
+		display: block;
+	}
+	div {
+		width: 16px;
+		height: 16px;
+		background-color: #ff0000;
+		pointer-events: none;
+		opacity: 0;
+		position: absolute;
+	}
+	</style>
+</head>
+
+<body>
+	<div id="div">
+	</div>
+</body>
+
+<script type="module">
+
+//@author Mugen87
+
+//import * as THREE from "https://threejs.org/build/three.module.js";
+//import { OrbitControls } from "https://threejs.org/examples/jsm/controls/OrbitControls.js";
+
+import * as THREE from "../jsm/three.module.115.js";
+import { OrbitControls } from "../jsm/OrbitControls.115.js";
+
+let renderer, scene, camera, mesh;
+
+const element = document.getElementById( 'div' );
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+ 
+init();
+animate();
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set( 20, 20, 20 );
+
+    // controls
+    const controls = new OrbitControls( camera, renderer.domElement );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    
+    // light
+    const light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20,20, 0 );
+    scene.add( light );
+    
+    // axes
+    scene.add( new THREE.AxesHelper( 20 ) );
+
+    // geometry
+    const geometry = new THREE.SphereGeometry( 5, 12, 8 );
+    
+    // material
+    const material = new THREE.MeshPhongMaterial( {
+        color: 0x00ffff, 
+        flatShading: true,
+        transparent: true,
+        opacity: 0.7,
+    } );
+    
+    // mesh
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+		
+		// 
+
+		document.addEventListener( 'mousemove', onMousemove);
+    
+}
+
+function onMousemove( event ) {
+
+	element.style.transform = `translate(-50%,-50%) translate(${event.pageX}px, ${event.pageY}px)`;
+	
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+	
+	raycaster.setFromCamera( mouse, camera );
+	
+	const intersects = raycaster.intersectObject( mesh );
+	
+	if ( intersects.length > 0 ) {
+	
+		element.style.opacity = 1;
+	
+	
+	} else {
+	
+		element.style.opacity = 0;
+	
+	}
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/constellations-skybox/16399/3 -->
+<!-- https://codepen.io/prisoner849/pen/qBbrZXq -->
+<head>
+  <title> ConstellationsSkybox </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+//@author prisoner849
+
+import * as THREE from "../jsm/three.module.117.js";
+
+var camera, scene, renderer;
+
+var isUserInteracting = false,
+  onMouseDownMouseX = 0,
+  onMouseDownMouseY = 0,
+  lon = 0,
+  onMouseDownLon = 0,
+  lat = 0,
+  onMouseDownLat = 0,
+  phi = 0,
+  theta = 0;
+
+init();
+animate();
+
+function init() {
+  var container, mesh;
+
+  container = document.getElementById("container");
+
+  camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    1,
+    1100
+  );
+  camera.target = new THREE.Vector3(0, 0, 0);
+
+  scene = new THREE.Scene();
+  
+  var ptsAmout = 100;
+  var pts = [];
+  for (let i = 0; i < ptsAmout; i++){
+    pts.push(new THREE.Vector3().setFromSphericalCoords(
+      500,
+      Math.random() * Math.PI,
+      Math.random() * Math.PI * 2
+    ));
+  }
+  
+  var geom = new THREE.BufferGeometry().setFromPoints(pts);
+  var idx = [];
+  for (let i = 0; i < 50; i++){
+    idx.push(
+      Math.floor(Math.random() * 100),
+      Math.floor(Math.random() * 100)
+    )
+  }
+  geom.setIndex(idx);
+  
+  var points = new THREE.Points(geom, new THREE.PointsMaterial({color: 0xffff00, size: 5}));
+  scene.add(points);
+  
+  var lines = new THREE.LineSegments(geom, new THREE.LineBasicMaterial({color: 0xff0000}));
+  scene.add(lines);
+
+  renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x202020);
+  document.body.appendChild(renderer.domElement);
+
+  document.addEventListener("mousedown", onPointerStart, false);
+  document.addEventListener("mousemove", onPointerMove, false);
+  document.addEventListener("mouseup", onPointerUp, false);
+
+  document.addEventListener("wheel", onDocumentMouseWheel, false);
+
+  document.addEventListener("touchstart", onPointerStart, false);
+  document.addEventListener("touchmove", onPointerMove, false);
+  document.addEventListener("touchend", onPointerUp, false);
+
+  //
+
+  document.addEventListener(
+    "dragover",
+    function (event) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    },
+    false
+  );
+
+  document.addEventListener(
+    "dragenter",
+    function () {
+      document.body.style.opacity = 0.5;
+    },
+    false
+  );
+
+  document.addEventListener(
+    "dragleave",
+    function () {
+      document.body.style.opacity = 1;
+    },
+    false
+  );
+
+  document.addEventListener(
+    "drop",
+    function (event) {
+      event.preventDefault();
+
+      var reader = new FileReader();
+      reader.addEventListener(
+        "load",
+        function (event) {
+          material.map.image.src = event.target.result;
+          material.map.needsUpdate = true;
+        },
+        false
+      );
+      reader.readAsDataURL(event.dataTransfer.files[0]);
+
+      document.body.style.opacity = 1;
+    },
+    false
+  );
+
+  //
+
+  window.addEventListener("resize", onWindowResize, false);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function onPointerStart(event) {
+  isUserInteracting = true;
+
+  var clientX = event.clientX || event.touches[0].clientX;
+  var clientY = event.clientY || event.touches[0].clientY;
+
+  onMouseDownMouseX = clientX;
+  onMouseDownMouseY = clientY;
+
+  onMouseDownLon = lon;
+  onMouseDownLat = lat;
+}
+
+function onPointerMove(event) {
+  if (isUserInteracting === true) {
+    var clientX = event.clientX || event.touches[0].clientX;
+    var clientY = event.clientY || event.touches[0].clientY;
+
+    lon = (onMouseDownMouseX - clientX) * 0.1 + onMouseDownLon;
+    lat = (clientY - onMouseDownMouseY) * 0.1 + onMouseDownLat;
+  }
+}
+
+function onPointerUp() {
+  isUserInteracting = false;
+}
+
+function onDocumentMouseWheel(event) {
+  var fov = camera.fov + event.deltaY * 0.05;
+
+  camera.fov = THREE.MathUtils.clamp(fov, 10, 75);
+
+  camera.updateProjectionMatrix();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  update();
+}
+
+function update() {
+  if (isUserInteracting === false) {
+    lon += 0.1;
+  }
+
+  lat = Math.max(-85, Math.min(85, lat));
+  phi = THREE.MathUtils.degToRad(90 - lat);
+  theta = THREE.MathUtils.degToRad(lon);
+
+  camera.target.x = 500 * Math.sin(phi) * Math.cos(theta);
+  camera.target.y = 500 * Math.cos(phi);
+  camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
+
+  camera.lookAt(camera.target);
+
+  /*
+				// distortion
+				camera.position.copy( camera.target ).negate();
+				*/
+
+  renderer.render(scene, camera);
+}
+
+
+</script>
+</html>

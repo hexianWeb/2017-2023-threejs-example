@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/how-to-create-buffergeometry-properly/8269/4 -->
+ <!-- https://jsfiddle.net/prisoner849/3xwt0yh8/ -->
+<head>
+  <title> ExtrudeFromPoints </title>
+  <meta charset="utf-8" />
+	<style>
+		html, body {
+		height: 100%;
+		margin: 0;
+		overflow: hidden;
+		}
+		canvas {
+		width: 100%;
+		height: 100%;
+		display; block;
+		}
+	</style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.105.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prioner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.set(5,7,5);
+camera.lookAt(scene.position);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+
+var controls = new THREE.OrbitControls(camera, canvas);
+
+scene.add(new THREE.GridHelper(20, 20));
+
+var pts = [
+	new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(0, 0, 3),
+  new THREE.Vector3(3, 0, 3),
+  new THREE.Vector3(3, 0, 0),
+  new THREE.Vector3(2, 0, 0),
+  new THREE.Vector3(2, 0, 2),
+  new THREE.Vector3(1, 0, 2),
+  new THREE.Vector3(1, 0, 0)
+];
+
+var pointsGeom = new THREE.BufferGeometry().setFromPoints(pts);
+var pointsMat = new THREE.PointsMaterial({size: 0.5, color: "aqua"});
+var points = new THREE.Points(pointsGeom, pointsMat);
+scene.add(points);
+
+var shapePoints = pts.map(p => {return new THREE.Vector2(p.x, -p.z)});
+var shape = new THREE.Shape(shapePoints);
+
+var extrudeSettings = {
+	steps: 1,
+	depth: 1,
+	bevelEnabled: false
+};
+
+var extrudeGeom = new THREE.ExtrudeBufferGeometry( shape, extrudeSettings );
+extrudeGeom.rotateX(-Math.PI * 0.5);
+var extrudeMat = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+var mesh = new THREE.Mesh( extrudeGeom, extrudeMat ) ;
+scene.add( mesh );
+
+render();
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+</script>
+</html>

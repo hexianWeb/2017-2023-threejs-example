@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/raycaster-dont-intersect-with-geometry-points-after-updating-the-position-vertices/37858 -->
+<!-- https://jsfiddle.net/1evwn7m4/2/ -->
+<head>
+  <title> RaycasterAfterUpdatingPositions </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  Fennec + Mugen87 
+
+import * as THREE from '../jsm/three.module.140.js';
+import {OrbitControls} from '../jsm/OrbitControls.140.js';
+
+let camera, scene, renderer, orbit, raycaster, points;
+let pointIndex = -1;
+
+const pointer = new THREE.Vector2();
+const plane = new THREE.Plane();
+const planeInterectionPoint = new THREE.Vector3();
+plane.normal.set(0,0,1);
+
+const style = document.body.style;
+const pointSize = 0.5;
+const pointMainColor = 1;
+const pointHoverColor = [1, 0, 0];
+
+init();
+render();
+
+function init() {
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x333333)
+  document.body.appendChild(renderer.domElement);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.z = 20;
+
+  orbit = new OrbitControls(camera, renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  const geometry = simpleFourPointsGeometry();
+  const material = new THREE.PointsMaterial({
+    size: pointSize,
+    sizeAttenuation: true,
+    vertexColors: true,
+  });
+
+  points = new THREE.Points(geometry, material);
+  scene.add(points);
+
+  raycaster = new THREE.Raycaster();
+  raycaster.params.Points = { threshold: pointSize };
+  
+  document.addEventListener("pointermove", hover);
+  document.addEventListener("pointerdown", drag);
+}
+
+function hover(e) {
+  const color = points.geometry.attributes.color;
+  const array = color.array;
+
+	updatePointer(e);
+  const intersections = raycaster.intersectObjects([points], false);
+  const intersection =
+    intersections.length > 0 ? intersections[intersections.length - 1] : null;
+
+  if (~pointIndex) {
+    style.cursor = "";
+
+    for (let i = 0, l = array.length; i < l; i++) array[i] = pointMainColor;
+
+    pointIndex = -1;
+    color.needsUpdate = true;
+  }
+
+  if (intersection) {
+    style.cursor = "pointer";
+
+    const index = intersection.index * 3;
+    array[index] = pointHoverColor[0];
+    array[index + 1] = pointHoverColor[1];
+    array[index + 2] = pointHoverColor[2];
+
+    pointIndex = index;
+    color.needsUpdate = true;
+  }
+}
+
+function drag(e) {
+  function move(e) {
+		updatePointer(e);
+    raycaster.ray.intersectPlane(plane, planeInterectionPoint);
+    
+    posAttrArray[index] = planeInterectionPoint.x;
+    posAttrArray[index + 1] = planeInterectionPoint.y;
+    posAttr.needsUpdate = true;
+  }
+
+  function endMove(e) {
+  	orbit.enabled = true;
+    document.addEventListener("pointermove", hover);
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", endMove);
+    
+    points.geometry.computeBoundingSphere();
+  }
+
+  if (!~pointIndex) return;
+  
+  const index = pointIndex;
+  const posAttr = points.geometry.attributes.position;
+  const posAttrArray = posAttr.array;
+
+	orbit.enabled = false;
+  document.removeEventListener("pointermove", hover);
+  document.addEventListener("pointermove", move);
+  document.addEventListener("pointerup", endMove);
+}
+
+function updatePointer(e) {
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  
+  raycaster.setFromCamera(pointer, camera);
+}
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+function simpleFourPointsGeometry() {
+  const geometry = new THREE.BufferGeometry();
+
+  const position = [
+    -1, 1, 0,
+    1, 1, 0,
+    -1, -1, 0,
+    1, -1, 0
+  ]
+  
+  const color = Array(position.length).fill(pointMainColor);
+
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(new Float32Array(position), 3)
+  );
+
+  geometry.setAttribute(
+    "color",
+    new THREE.Float32BufferAttribute(new Float32Array(color), 3)
+  );
+  
+  return geometry;
+}
+
+</script>
+</html>

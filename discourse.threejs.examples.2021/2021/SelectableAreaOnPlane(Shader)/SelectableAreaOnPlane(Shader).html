@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-draw-selectable-area-on-a-plane/29942/2 -->
+<!-- https://jsfiddle.net/prisoner849/am6y8z5p/ -->
+<head>
+  <title> SelectableAreaOnPlane(Shader)  </title>
+  <meta charset="utf-8" />
+  	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(5, 8, 13).setLength(10);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let g = new THREE.PlaneGeometry(15, 10);
+g.rotateX(-Math.PI * 0.5);
+let uniforms = {
+	rectSize: {value: new THREE.Vector2(8, 3)},
+  rectWidth: {value: 0.5}
+}
+console.log(uniforms)
+let m = new THREE.MeshBasicMaterial({ // https://threejs.org/examples/textures/uv_grid_opengl.jpg
+	map: new THREE.TextureLoader().load("uv_grid_opengl.jpg"),
+  onBeforeCompile: shader => {
+  	shader.uniforms.rectSize = uniforms.rectSize;
+    shader.uniforms.rectWidth = uniforms.rectWidth;
+    shader.vertexShader = `
+    	varying vec2 vPos;
+      ${shader.vertexShader}
+    `.replace(
+    	`#include <fog_vertex>`,
+      `#include <fog_vertex>
+      	vPos = position.xz;
+      `
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+    	#define ss(a, b, c) smoothstep(a, b, c)
+      uniform vec2 rectSize;
+      uniform float rectWidth;
+			varying vec2 vPos;
+      ${shader.fragmentShader}
+    `.replace(
+    	`#include <dithering_fragment>`,
+      `#include <dithering_fragment>
+      	
+       	vec2 hSize = rectSize * 0.5;
+        vec2 rPos = abs(vPos) - hSize;
+        
+        float rect = float(abs(max(rPos.x,rPos.y)) < rectWidth * 0.5);
+        
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1), rect * 0.5);
+      
+      `
+    );
+    //console.log(shader.fragmentShader);
+  }
+});
+m.defines = {
+	"USE_UV" : " " // just in case
+}
+let plane = new THREE.Mesh(g, m);
+scene.add(plane);
+
+let mouse = new THREE.Vector3();
+let raycaster = new THREE.Raycaster();
+let intersects = [];
+
+window.addEventListener("resize", onWindowResize);
+
+let clock = new THREE.Clock();
+
+animate();
+
+function animate() {
+
+  requestAnimationFrame( animate );
+  let t = clock.getElapsedTime();
+  uniforms.rectSize.value.set(8 + Math.cos(t * 0.6), 5 + Math.sin(t * 0.5));
+  renderer.render(scene, camera);
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth, innerHeight);
+
+}
+
+</script>
+</html>

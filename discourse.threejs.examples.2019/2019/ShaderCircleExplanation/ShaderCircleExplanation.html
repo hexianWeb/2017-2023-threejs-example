@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/inner-glow-gradient-shader-material/11265/4 -->
+ <!-- https://hofk.de/main/threejs/shader/shader_v05.html -->
+ 	<!-- see also https://hofk.de/main/threejs/shader/shader_v06.html -->
+<head>
+  <title> ShaderCircleExplanation </title>
+  <meta charset="utf-8" />
+</head>
+
+<body> </body>
+<script src="../js/three.min.111.js"></script>
+
+<!-- @author hofk -->
+
+<script id="vertexShader" type="x-shader/x-vertex">
+
+	// GLSL Code (OpenGL Shading Language)
+	void main( ) {
+	
+		// standard output position is gl_Position:
+    	gl_Position = vec4( position, 1.0 ); // position: 3D from three.js, fourth comp. > 1.0 gives cutout	
+		
+	}
+	
+</script>
+
+<script id="fragmentShader" type="x-shader/x-fragment">
+
+    // GLSL Code (OpenGL Shading Language)
+	#extension GL_OES_standard_derivatives : enable
+    // uniform  -  data for all executed GPU threads uniform, read-only, see below at three.js
+	uniform vec2  u_resolution; //  size of the painting area (canvas) in pixels (width, height)
+	//uniform vec2  u_mouse;    // mouse position over the painting area in pixels (X, Y)
+	//uniform float u_time;  	// time in seconds since start of screen layout
+	
+	// function definition (circles)
+	float circ(float d, float x, float y){
+		
+	   return d + sqrt( x * x + y * y );
+	   
+	}
+	
+	void main( ) {
+	
+	    // standard input of fragment coordinates: gl_FragCoord (predefined)
+	    vec2 s = 2.0 * gl_FragCoord.xy / u_resolution.xy - 1.0;   // scaling of the axes:  -1 to +1
+		
+		// vec3 color = vec3(circ(0.1, s.x, s.y), circ(0.2, s.x, s.y), circ(0.0, s.x, s.y) - 0.1); // color circles
+		vec3 color = vec3(circ(-0.25, s.x, s.y), circ(-0.1, s.x, s.y),  circ( 0.6, s.x, s.y) - 0.15 ); // color circles	
+		
+		// color = clamp(color, 0.05, 0.85); // limitation of colors to a region  
+		color = clamp(color, 0.002, 0.99); // limitation of colors to a region
+		
+	    // standard output fragment color: gl_FragColor (predefined) 
+		gl_FragColor = vec4(color, 1.0);	// parallel output - color with opacity: 1.0
+		
+	}
+	
+</script>
+
+<script>
+
+// JavaScript - three.js
+
+// Include GLSL code from shader scripts
+vertexShaderCode   =  document.getElementById( 'vertexShader'   ).textContent
+fragmentShaderCode =  document.getElementById( 'fragmentShader' ).textContent
+
+init( );
+animate( );
+
+//.........................................................
+
+function init() {
+
+    scene = new THREE.Scene();
+	camera = new THREE.Camera();
+    //camera.position.z = 1.0;
+	renderer = new THREE.WebGLRenderer();
+    //renderer.setPixelRatio( window.devicePixelRatio );
+	WIDTH  =  700;
+	HEIGHT =  700;
+	renderer.setSize(WIDTH,HEIGHT);           // Zeichenflaeche
+	renderer.setClearColor( 0xffffff, 1 );
+	
+	container = document.createElement('div');
+    document.body.appendChild(container);
+	container.appendChild( renderer.domElement );
+	
+	// uniform variables for shader integration
+    shaderUniforms = {
+	
+          //u_time: 		{ type:  "f", value: 1.0},           // "f" float
+          u_resolution: { type: "v2", value: new THREE.Vector2() },		  
+          //u_mouse: 		{ type: "v2", value: new THREE.Vector2() }
+		  
+    };
+	
+	shaderUniforms.u_resolution.value.x = WIDTH;    // = renderer.domElement.width;   // give value to shader 
+    shaderUniforms.u_resolution.value.y = HEIGHT;   // = renderer.domElement.height;  // give value to shader
+	
+	// create material from the shader
+    shMaterial = new THREE.ShaderMaterial( {
+	
+        uniforms: 		shaderUniforms,
+        vertexShader:   vertexShaderCode,
+        fragmentShader: fragmentShaderCode 
+		
+    } );
+	
+	geometry = new THREE.CircleBufferGeometry( 1.0, 72 );
+	//geometry = new THREE.PlaneGeometry( 2.0, 2.0 );
+    plane = new THREE.Mesh(geometry, shMaterial );
+    scene.add( plane );
+	
+}
+
+function animate( ) {
+
+    requestAnimationFrame( animate );	
+	//shaderUniforms.u_time.value += 0.01;
+    renderer.render( scene, camera );
+	
+}
+</script>
+
+</html>

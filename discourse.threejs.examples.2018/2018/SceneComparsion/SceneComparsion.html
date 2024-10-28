@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<!-- https://codepen.io/looeee/pen/jpebjN -->
+<!-- https://discourse.threejs.org/t/compare-three-js-scenes-with-overlay-slider/3700 -->
+
+<head>
+  <title> scene comparison  </title>
+  <meta charset="utf-8" />
+  
+<!--   @author: looeee  -->
+
+<style> 
+body {
+  background-color: #000;
+  margin: 0px;
+  overflow: hidden;
+  color: white;
+  text-align: center;
+}
+
+a {
+  color: white;
+}
+a:hover{
+  color: red;
+}
+
+.container {
+  position: absolute;
+  top: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+}
+
+* {box-sizing: border-box;}
+
+
+.comp {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.comp canvas {
+  display: block;
+  vertical-align: middle;
+}
+
+.comp-slider {
+  position: absolute;
+  z-index: 9;
+  cursor: ew-resize;
+
+  width: 40px;
+  height: 40px;
+  background-color: #2196F3;
+  opacity: 0.7;
+  border-radius: 50%;
+  
+  top: calc(50% - 20px);
+  left: calc(50% - 20px);
+  
+}
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="comp left-container"></div>
+  <div class="comp-slider"></div>
+  <div class="comp right-container"></div>
+</div>
+
+</body>
+<script src="../js/three.min.95.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+//  @author: looeee
+
+let container;
+let containerA;
+let containerB;
+let camera;
+let rendererA;
+let rendererB;
+let sceneA;
+let sceneB;
+let controls;
+
+function init() {
+
+  container = document.querySelector( '.container' );
+  containerA = document.querySelector( '.left-container' );
+  containerB = document.querySelector( '.right-container' );
+
+  // create a Scene
+  sceneA = new THREE.Scene();
+  sceneA.background = new THREE.Color( 0x8FBCD4 );
+  
+  sceneB = new THREE.Scene();
+  sceneB.background = new THREE.Color( 0xff00ff );
+
+  initCamera();
+  initControls();
+  initMeshes();
+  initLights();
+  initRenderer();
+
+  rendererA.setAnimationLoop( () => {
+
+    update();
+    render();
+
+  } );
+
+}
+
+function initCamera() {
+
+  camera = new THREE.PerspectiveCamera( 35, container.clientWidth / container.clientHeight,  0.1,  100 );
+  camera.position.set( 2, 4, 7 );
+
+}
+
+function initControls() {
+
+  controls = new THREE.OrbitControls( camera, container );
+
+}
+
+function initMeshes() {
+  
+  const geoA = new THREE.IcosahedronBufferGeometry( 1, 0 );
+  const matA = new THREE.MeshStandardMaterial( { color: 0xff0000 } );
+  const meshA = new THREE.Mesh( geoA, matA );
+  sceneA.add( meshA );
+
+  const geoB = new THREE.BoxBufferGeometry( 2, 2, 2 );
+  const matB = new THREE.MeshStandardMaterial( { color: 0x0000ff } );
+  const meshB = new THREE.Mesh( geoB, matB );
+  sceneB.add( meshB );
+
+}
+
+function initLights() {
+  
+  const light1 = new THREE.DirectionalLight();
+  light1.position.set( 20, 20, 20 );
+  sceneA.add( light1 );
+  sceneB.add( light1.clone() );
+
+  const light2 = new THREE.DirectionalLight();
+  light2.position.set( -20, 20, 20 );
+  sceneA.add( light2 );
+  sceneB.add( light2.clone() );
+  
+}
+
+function initRenderer() {
+
+  rendererA = new THREE.WebGLRenderer( { antialias: true } );
+  rendererA.setSize( container.clientWidth, container.clientHeight );
+  rendererA.setPixelRatio( window.devicePixelRatio );
+  
+  //rendererA.domElement.classList.add( 'left-canvas' );
+  containerA.appendChild( rendererA.domElement );
+  
+  rendererB = new THREE.WebGLRenderer( { antialias: true } );
+  rendererB.setSize( container.clientWidth, container.clientHeight );
+  rendererB.setPixelRatio( window.devicePixelRatio );
+  
+  //rendererB.domElement.classList.add( 'right-canvas' );
+  containerB.appendChild( rendererB.domElement );
+
+}
+
+function update() {
+
+
+}
+
+function render() {
+
+  rendererA.render( sceneA, camera );
+  rendererB.render( sceneB, camera );
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+
+  rendererA.setSize( container.clientWidth, container.clientHeight );
+  rendererB.setSize( container.clientWidth, container.clientHeight );
+
+}
+
+window.addEventListener( 'resize', onWindowResize );
+
+init();
+
+function initComparisons() {
+  
+  const slider = document.querySelector( '.comp-slider' );
+  const overlayCanvas = document.querySelector( '.right-container' );
+  const w = overlayCanvas.offsetWidth;
+  const h = overlayCanvas.offsetHeight;
+  overlayCanvas.style.width = (w / 2) + 'px';
+    
+  let clicked = 0;
+  
+  const slideReady = () => { 
+    clicked = 1;
+    controls.enabled = false;
+  };
+  const slideFinish = () => { 
+    clicked = 0;
+    controls.enabled = true;
+  };
+
+  const slideMove = (e) => {
+    
+    if ( clicked == 0 ) return false;
+
+    const pos = getCursorPos(e)
+    
+    //prevent the slider from being positioned outside the canvas
+    if ( pos < 0 ) pos = 0;
+    if ( pos > w ) pos = w;
+    
+    slide( pos );
+    
+  }
+  
+  function getCursorPos( e ) {
+
+    e = e || window.event;
+  
+    return ( e.pageX - overlayCanvas.offsetLeft ) - window.pageXOffset;
+    
+  }
+  
+  function slide(x) {
+
+    overlayCanvas.style.width = x + "px";
+    //position the slider
+    slider.style.left = overlayCanvas.offsetWidth - (slider.offsetWidth / 2) + "px";
+  }
+  
+  slider.addEventListener( 'mousedown', slideReady );
+  window.addEventListener( 'mouseup', slideFinish );
+  slider.addEventListener( 'touchstart', slideReady );
+  window.addEventListener( 'touchstop', slideFinish );
+  window.addEventListener( 'mousemove', slideMove );
+  window.addEventListener( 'touchmove', slideMove );
+  
+} 
+
+initComparisons();
+
+</script>
+</html>

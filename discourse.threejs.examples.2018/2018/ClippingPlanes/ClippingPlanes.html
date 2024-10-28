@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/clipping-intersection/1993/2 -->
+<!-- https://jsfiddle.net/k89e45L8/6/ -->
+<head>
+  <title> clippingPlanes </title>
+  <meta charset="utf-8" />
+  <style> 
+	body {
+	margin: 0px;
+	background-color: #000000;
+	overflow: hidden;
+	}
+	
+	button {
+	position: absolute;
+	top: 10px;
+	cursor: pointer;
+	}
+	
+	#btn1 {
+	left: 10px;
+	}
+	
+	#btn2 {
+	left: 150px;
+	}
+  </style> 
+
+</head>
+
+<body>
+	<button id="btn1">show white box</button>
+	<button id="btn2">show red box</button>
+</body>
+<script src="../js/three.min.90.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/Tween.min.js"></script>
+
+<script>
+
+// @author chenxiaoleizi (updated looeee)
+
+var camera, scene, renderer, controls;
+var isTransformRoom = false,
+  roomIndex = 1,
+  tween;
+var planeConstant = {
+  constant: 5.1
+};
+var clipPlanes = [
+  new THREE.Plane(new THREE.Vector3(1, 0, 0), -10),
+  new THREE.Plane(new THREE.Vector3(0, -1, 0), 10),
+  new THREE.Plane(new THREE.Vector3(0, 0, -1), -10)
+];
+var clipPlanes1 = [
+  new THREE.Plane(new THREE.Vector3(1, 0, 0), -10),
+  new THREE.Plane(new THREE.Vector3(0, 1, 0), -10),
+  new THREE.Plane(new THREE.Vector3(0, 0, -1), -10)
+];
+init();
+render();
+var btn1 = document.getElementById("btn1");
+var btn2 = document.getElementById("btn2");
+btn1.onclick = function() { // show white box
+  if (roomIndex == 1) {
+    return
+  };
+  isTransformRoom = true;
+  planeConstant = {
+    constant: 5.1
+  };
+  tween = new TWEEN.Tween(planeConstant);
+  tween.easing(TWEEN.Easing.Quadratic.Out);
+  tween.to({
+    constant: -5.1
+  }, 500);
+  tween.start();
+};
+btn2.onclick = function() { // show red box
+  if (roomIndex == 2) {
+    return
+  };
+  isTransformRoom = true;
+  planeConstant = {
+    constant: 5.1
+  };
+  tween = new TWEEN.Tween(planeConstant);
+  tween.easing(TWEEN.Easing.Quadratic.Out);
+  tween.to({
+    constant: -5.1
+  }, 500);
+  tween.start();
+};
+
+function init() {
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.localClippingEnabled = true;
+  document.body.appendChild(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 200);
+  camera.position.set(0, 0, 20);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  var light = new THREE.HemisphereLight(0xffffff, 0x080808, 1);
+  scene.add(light);
+  scene.add(new THREE.AmbientLight(0xffffff));
+  var pointLight = new THREE.PointLight(0xffffff, 0.4);
+  pointLight.position.set(20, 20, 20);
+  scene.add(pointLight)
+
+  var geometry = new THREE.BoxGeometry(7, 7, 7);
+  var material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0xffffff),
+    side: THREE.DoubleSide,
+    clippingPlanes: clipPlanes,
+    clipIntersection: true
+  });
+  var whiteBox = new THREE.Mesh(geometry, material);
+  scene.add(whiteBox);
+
+  var geometry1 = new THREE.BoxGeometry(6, 6, 6);
+  var material1 = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0xff0000),
+    side: THREE.DoubleSide,
+    clippingPlanes: clipPlanes1,
+    clipIntersection: true
+  });
+  var redBox = new THREE.Mesh(geometry1, material1);
+  scene.add(redBox);
+};
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+  controls.update();
+  if (isTransformRoom) {
+    TWEEN.update();
+    if (roomIndex == 1) {
+      clipPlanes[1].constant = planeConstant.constant;
+      clipPlanes1[1].constant = -planeConstant.constant;
+      if (clipPlanes[1].constant <= -5.1) {
+        isTransformRoom = false;
+        roomIndex = 2
+      }
+    } else {
+      clipPlanes[1].constant = -planeConstant.constant;
+      clipPlanes1[1].constant = planeConstant.constant;
+      if (clipPlanes[1].constant >= 5.1) {
+        isTransformRoom = false;
+        roomIndex = 1
+      }
+    }
+  }
+}
+</script>
+</html>

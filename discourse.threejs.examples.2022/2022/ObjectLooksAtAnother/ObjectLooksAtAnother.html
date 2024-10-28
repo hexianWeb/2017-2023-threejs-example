@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/make-object-a-always-look-at-object-b/45120 -->
+<!-- https://jsfiddle.net/tfoller/0y5dmwpn/ -->
+<head>
+  <title> ObjectLooksAtAnother </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+	margin: 0px;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author tfoller 
+
+// Simple three.js example
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+
+var red, blue, renderer, scene, camera, controls;
+
+init();
+animate();
+
+function init() {
+
+    // renderer
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    document.body.appendChild( renderer.domElement );
+
+    // scene
+    scene = new THREE.Scene();
+    
+    // camera
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.set( 20, 20, 20 );
+
+    // controls
+    controls = new OrbitControls( camera, renderer.domElement );
+    
+    // ambient
+    scene.add( new THREE.AmbientLight( 0x222222 ) );
+    
+    // light
+    var light = new THREE.DirectionalLight( 0xffffff, 1 );
+    light.position.set( 20,20, 0 );
+    scene.add( light );
+    
+    // axes
+    scene.add( new THREE.AxesHelper( 20 ) );
+
+    // geometry
+    var geo1 = new THREE.BoxGeometry(5, 1, 1);
+    
+    // material
+    var mat1 = new THREE.MeshPhongMaterial( {
+        color: 0xff0000,
+    } );
+    var mat2 = new THREE.MeshPhongMaterial( {
+        color: 0x0000ff, 
+    } );
+       
+    red = new THREE.Mesh( geo1, mat1 );
+    blue = new THREE.Mesh(geo1, mat2);
+       
+    scene.add( red, blue);
+    
+    Object.defineProperty(blue, 'quaternion', {
+			configurable: true,
+			enumerable: true,
+			get: () => { return red.quaternion },
+		});
+    
+    const obj = new THREE.Object3D();
+    Object.defineProperty(blue, 'position', {
+			configurable: true,
+			enumerable: true,
+			get: () => { 
+      	obj.setRotationFromQuaternion(blue.quaternion);
+        obj.position.set(0, 0, 0);
+        obj.translateX(10);
+      	return obj.position;
+      },
+		});
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    red.rotation.y += .01;
+    red.rotation.z += .02;
+/*
+		blue.position.set(0,0,0);
+    blue.quaternion.copy(red.quaternion);
+  	blue.translateX(10);
+*/
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

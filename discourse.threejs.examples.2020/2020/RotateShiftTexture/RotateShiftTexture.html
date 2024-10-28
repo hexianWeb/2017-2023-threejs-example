@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/texture-center-not-working-as-expected/14687/7 -->
+<!-- https://jsfiddle.net/wy1obf80/2/ -->
+<head>
+  <title> RotateShiftTexture </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+		margin: 0;
+	}
+	canvas {
+		display: block;
+	}
+	</style>  
+</head>
+
+<body></body>
+
+<script src="../js/three.min.115.js"></script>
+<script src="../js/dat.gui.min.0.7.6.js"></script>
+
+<script>
+
+// @author Click_Clock_Boom
+
+var camera, scene, renderer;
+var texture;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+	
+	'https://threejs.org/examples/textures/uv_grid_opengl.jpg'	
+    var url = 'uv_grid_opengl.jpg';
+    
+    var image = new Image();
+   	image.crossOrigin = "anonymous";
+    
+    image.onload = function() {
+    	
+      var canvas = document.createElement( 'canvas' );
+      
+      canvas.width = image.width + 2;
+      canvas.height = image.height + 2;
+      
+      var context = canvas.getContext( '2d' );
+      
+      context.drawImage( image, 1, 1 );
+      
+      texture.image = canvas;
+      texture.needsUpdate = true;
+    
+    }
+    
+    image.src = url;
+    
+		var loader = new THREE.TextureLoader();
+		texture = new THREE.CanvasTexture();
+		
+		texture.wrapS = THREE.ClampToEdgeWrapping;
+		texture.wrapT = THREE.ClampToEdgeWrapping;
+		texture.minFilter = THREE.LinearFilter;
+		texture.generateMipmaps = false;
+		
+    var x = 0;
+    var y = 0;
+    
+		texture.center.set(  0.5 + x, 0.5 + y );
+		texture.offset.set( -x, -y );
+    
+    var gui = new dat.GUI();
+    	
+    var object = { x: 0, y: 0, size: 1 };
+      
+    gui.add( object, 'x', -1, 1, 0.01 ).onChange( function ( value ) {
+    	
+      texture.center.x = 0.5 + value * 0.5;
+      texture.offset.x = -value * 0.5;
+    
+    }); 
+    
+     gui.add( object, 'y', -1, 1, 0.01 ).onChange( function ( value ) {
+    	
+      texture.center.y = 0.5 + value * 0.5;
+      texture.offset.y = -value * 0.5;
+    
+    }); 
+    
+    gui.add( texture, 'rotation', -1, 1, 0.1 );
+    
+    gui.add( object, 'size', 0.1, 2.0, 0.1 ).onChange( function( value ) {
+    
+    	texture.repeat.set( 1 / value, 1 / value );
+      
+    }); 
+
+    geometry = new THREE.PlaneBufferGeometry();
+    material = new THREE.MeshBasicMaterial( { map: texture } );
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+   	requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

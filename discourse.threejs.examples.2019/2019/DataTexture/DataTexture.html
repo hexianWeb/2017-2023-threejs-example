@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/create-data-texture/10060 -->
+<!-- https://jsfiddle.net/4rdgmanL/ -->
+<head>
+  <title> DataTexture </title>
+   <style>
+	body {
+		margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.109.js"></script>
+
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+		
+		const loader = new THREE.ImageLoader();
+		loader.load( 'https://threejs.org/examples/textures/crate.gif', ( image ) => {
+		
+			const canvas = document.createElement( 'canvas' );
+			canvas.width = 256;
+			canvas.height = 256;
+			const context = canvas.getContext( '2d' );
+			
+			context.drawImage( image, 0, 0 );
+			const imageData = context.getImageData( 0, 0, 256, 256 );
+	
+			const texture = new THREE.DataTexture( imageData.data, 256, 256, THREE.RGBAFormat );
+			
+			const geometry = new THREE.PlaneBufferGeometry();
+			const material = new THREE.MeshBasicMaterial( { map: texture } ); // just render the data
+
+			const mesh = new THREE.Mesh( geometry, material );
+   	 	scene.add( mesh );
+		
+		} );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

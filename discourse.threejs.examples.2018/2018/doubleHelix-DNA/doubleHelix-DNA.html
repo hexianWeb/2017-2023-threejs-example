@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/solved-creating-a-helical-sweep-with-a-flat-profile/3163/6 -->
+<!-- https://codepen.io/looeee/pen/Lrevew -->
+
+<head>
+  <title> doubleHelix-DNA </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	background-color: #000;
+	margin: 0px;
+	overflow: hidden;
+	color: white;
+	text-align: center;
+	}
+
+	#container {
+	position: absolute;
+	top: 0;
+	z-index: -1;
+	width: 100%;
+	height: 100%;
+	}
+  </style>   
+</head>
+
+<body>
+	<div id="container">
+	<!-- This div will hold our scene-->
+	</div>
+</body>
+
+<script src="../js/three.min.97.js"></script> <!-- updated -->
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author looeee
+
+let camera;
+let renderer;
+
+function init() {
+  
+  const container = document.querySelector( '#container' );
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color( 0x8FBCD4 );
+
+  camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+  camera.position.set( 40, 20, 40 );
+
+  const controls = new THREE.OrbitControls( camera, container );
+  controls.enableDamping = true; // gives a feeling of "weight" to the controls
+
+  // create a global illumination light
+  const ambientLight = new THREE.AmbientLight( 0x333333, 1.0 );
+  scene.add( ambientLight );
+
+  // create an omnidirectional light
+  const pointLight = new THREE.PointLight( 0xffffff, 0.5 );
+  pointLight.position.set( 0, 0, 20 );
+  scene.add( pointLight );
+
+  // set up the renderer
+  renderer = new THREE.WebGLRenderer( { antialias: true } );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer.setClearColor( 0xffffff, 1 );
+
+
+  container.appendChild( renderer.domElement );
+
+  const DNA = createDNA();
+  scene.add( DNA );
+
+  // set up a simple animation loop
+  renderer.setAnimationLoop( () => {
+    renderer.render( scene, camera );
+
+    DNA.rotation.z -= 0.01;
+
+    controls.update();
+  } );
+}
+
+
+function randomColor() {
+  return new THREE.Color( Math.random(), Math.random(), Math.random() );
+}
+
+// formula for a point on a DNA helix as described by Crick And Watson
+function helixPoint( a, b, t ) {
+
+  return new THREE.Vector3( a * Math.cos( t ), a * Math.sin( t ), b * t );
+
+}
+
+function helixPointsArray( a, b ) {
+
+  const curvePoints = [];
+
+  for ( let t = -20; t < 12; t += 0.5 ) {
+
+    curvePoints.push( helixPoint( a, b, t ) );
+
+  }
+
+  return curvePoints;
+
+}
+
+function helixMesh( pointsOnCurve, color ) {
+
+  const curve = new THREE.CatmullRomCurve3( pointsOnCurve );
+
+  const geometry = new THREE.TubeBufferGeometry( curve, 100, 0.25, 12, false );
+  const material = new THREE.MeshToonMaterial( { color } );
+  return new THREE.Mesh( geometry, material );
+
+}
+
+// assume same number of upper and lower points for simplicity
+function createConnectingRods( DNA, upperHelixPoints, lowerHelixPoints ) {
+
+  upperHelixPoints.forEach( ( upperPoint, index ) => {
+
+    if( index % 2 !== 0 ) return;
+
+    const lowerPoint = lowerHelixPoints[ index ];
+
+    const curve = new THREE.LineCurve3( upperPoint, lowerPoint );
+
+    const geometry = new THREE.TubeBufferGeometry( curve, 100, 0.25, 12, false );
+    const material = new THREE.MeshToonMaterial( { color: randomColor() } );
+    DNA.add( new THREE.Mesh( geometry, material ) );
+
+  } );
+}
+
+function createDNA() {
+
+  const DNA = new THREE.Group();
+
+  const upperHelixPoints = helixPointsArray( 3, 3, 0xff00ff );
+  const lowerHelixPoints = helixPointsArray( -3, 3 );
+
+  const upperHelix = helixMesh( upperHelixPoints, 0xff00ff );
+  const lowerHelix = helixMesh( lowerHelixPoints, 0x00ff00 );
+
+  DNA.add( upperHelix, lowerHelix );
+
+  createConnectingRods( DNA, upperHelixPoints, lowerHelixPoints );
+
+  return DNA;
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+window.addEventListener( 'resize', onWindowResize );
+
+init();
+
+</script>
+</html>

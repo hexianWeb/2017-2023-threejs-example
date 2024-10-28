@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/instanced-mesh-paint-trail/42618 -->
+<!-- https://jsfiddle.net/notchris/qzm2ho0b/ -->
+<head>
+  <title> InstancedMeshPaintTrail </title>
+  <meta charset="utf-8" />
+<style>
+    * {
+        box-sizing: border-box;
+        text-rendering: optimizeLegibility;
+        font-kerning: auto;
+        outline: none;
+    }
+    
+    html {
+        font-family: sans-serif;
+    }
+    
+    body {
+        margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author notchris
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+import {RoundedBoxGeometry} from '../jsm/RoundedBoxGeometry.136.js';
+
+let renderer, scene, camera, controls, mesh, normal, line, decalMaterial, decalMesh
+let angle = 0
+let raycaster = new THREE.Raycaster()
+let mouse = new THREE.Vector2()
+let axis = new THREE.Vector3()
+
+let vA = new THREE.Vector3();
+let vB = new THREE.Vector3();
+let vC = new THREE.Vector3();
+let vnorm = new THREE.Vector3();
+let count = 0;
+
+let mouseHelper = new THREE.Mesh(new THREE.BoxBufferGeometry(1, 1, 10), new THREE.MeshNormalMaterial());
+mouseHelper.visible = false;
+
+const position = new THREE.Vector3();
+const orientation = new THREE.Euler();
+const size = new THREE.Vector3(4, 4, 4);
+const decals = [];
+
+const intersection = {
+  intersects: false,
+  point: new THREE.Vector3(),
+  normal: new THREE.Vector3()
+};
+let intersects = [];
+init()
+animate()
+
+function init() {
+
+  // renderer
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  })
+  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer.setSize(window.innerWidth, window.innerHeight)
+  document.body.appendChild(renderer.domElement)
+
+  renderer.domElement.addEventListener("pointermove", onMouseMove)
+
+  // scene
+  scene = new THREE.Scene()
+
+  // ambient light
+  let ambient = new THREE.AmbientLight(0x404040)
+  scene.add(ambient)
+
+  // directional light
+  let directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
+  directionalLight.position.set(10, 10, 10)
+  scene.add(directionalLight)
+
+  // camera
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.z = 120;
+
+  controls = new OrbitControls(camera, renderer.domElement)
+
+  decalMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff
+  })
+
+
+  // material
+  let material = new THREE.MeshStandardMaterial()
+
+  // geometry
+  let geometry = new RoundedBoxGeometry(30, 30, 30, 10, 4)
+
+  // mesh
+  mesh = new THREE.Mesh(geometry, material)
+  scene.add(mesh)
+
+  scene.add(mouseHelper)
+
+  decalMesh = new THREE.InstancedMesh(
+    new THREE.SphereBufferGeometry(1),
+    decalMaterial,
+    1000
+  )
+
+
+
+  const color = new THREE.Color();
+  const palette = [
+    0xfac89e,
+    0xe3e891,
+    0xc2fc99,
+    0xa3fcb3,
+    0x92e8d5,
+    0x96c8f2,
+    0xada8ff,
+    0xce94f7,
+    0xed94dd,
+    0xfea8bb
+  ]
+
+  for (let i = 0; i < 1000; i++) {
+    color.setHex(palette[Math.floor(Math.random() * palette.length)]);
+    decalMesh.setColorAt(i, color);
+  }
+
+
+  scene.add(decalMesh)
+
+
+}
+
+function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+  raycaster.setFromCamera(mouse, camera);
+  raycaster.intersectObject(mesh, false, intersects);
+
+  if (intersects.length > 0) {
+
+
+
+    const p = intersects[0].point;
+    mouseHelper.position.copy(p);
+    intersection.point.copy(p);
+
+    const n = intersects[0].face.normal.clone();
+    n.transformDirection(mesh.matrixWorld);
+    n.multiplyScalar(10);
+    n.add(intersects[0].point);
+    mouseHelper.lookAt(n);
+
+    intersection.normal.copy(intersects[0].face.normal);
+    intersection.intersects = true;
+
+    intersects.length = 0;
+    orientation.copy(mouseHelper.rotation);
+    position.copy(intersection.point);
+
+
+    const matrix = new THREE.Matrix4()
+    matrix.makeTranslation(position.x, position.y, position.z)
+
+    decalMesh.setMatrixAt(count, matrix)
+
+    decalMesh.instanceMatrix.needsUpdate = true
+
+    count += 1
+
+    if (count > 100) {
+      count = 0
+    }
+
+
+
+  } else {
+
+    intersection.intersects = false;
+
+  }
+}
+
+// render
+function render() {
+  renderer.render(scene, camera)
+}
+
+// animate
+function animate() {
+  requestAnimationFrame(animate)
+  render()
+}
+</script>
+</html>

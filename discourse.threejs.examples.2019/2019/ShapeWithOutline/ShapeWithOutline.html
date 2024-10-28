@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/cant-get-mesh-to-work-with-line-vertices-convert-vertices-or-line-to-mesh/6408 -->
+<!-- https://jsfiddle.net/prisoner849/tzsevaL8/ -->
+<head>
+  <title> ShapeWithOutline </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+		margin: 0;
+	}
+  </style> 
+</head>
+<body> </body>
+
+<script src="../js/three.min.102.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 20);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+
+var vertices = [
+	new THREE.Vector2(0, 0),
+	new THREE.Vector2(8, 0),
+	new THREE.Vector2(8, -2),
+	new THREE.Vector2(10, -2),
+	new THREE.Vector2(10, -10),
+	new THREE.Vector2(0, -10),
+	new THREE.Vector2(0, 0)
+];
+var shape = new THREE.Shape(vertices);
+var shapeGeom = new THREE.ShapeBufferGeometry(shape);
+var shapeMesh = new THREE.Mesh(shapeGeom, new THREE.MeshBasicMaterial({color: "red"}));
+scene.add(shapeMesh);
+
+var geometry = new THREE.BufferGeometry();
+geometry.attributes.position = shapeGeom.attributes.position;
+var material = new THREE.MeshBasicMaterial({ color: "yellow" });
+let line = new THREE.LineLoop(geometry, material);
+scene.add(line);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+
+</script>
+
+</html>

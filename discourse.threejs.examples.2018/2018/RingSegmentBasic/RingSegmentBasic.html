@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/ringsegment-function-leads-to-strange-behaviour/4212/6 -->
+<!-- https://codepen.io/prisoner849/pen/PdvWap -->
+<head>
+  <title> RingSegmentBasic </title>
+  <meta charset="utf-8" />
+  <style>
+		html, body {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+	}
+	canvas {
+	width: 100%;
+	height: 100%;
+	display; block;
+	}
+</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.96.js"></script>
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, 1, 1, 1000);
+camera.position.set(0, 0, 20);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+var canvas = renderer.domElement
+document.body.appendChild(canvas);
+
+var angle = 45;
+
+var shape = new THREE.Shape();
+shape.absarc(-5, 0, 10, 0, THREE.Math.degToRad(angle), false); // CCW
+shape.absarc(-5, 0, 5, THREE.Math.degToRad(angle), 0, true); // CW
+
+var shapeGeom = new THREE.ShapeGeometry(shape);
+var shapeMat = new THREE.MeshBasicMaterial({color: 0x00ff00});
+var shapeMesh = new THREE.Mesh(shapeGeom, shapeMat);
+scene.add(shapeMesh);
+
+render();
+
+function resize(renderer) {
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function render() {
+  if (resize(renderer)) {
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+</script>
+</html>

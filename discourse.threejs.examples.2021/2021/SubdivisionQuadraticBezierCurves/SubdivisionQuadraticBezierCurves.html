@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/adaptive-sampling-subdivision-of-quadratic-bezier-curves/22932 -->
+ <!-- https://jsfiddle.net/tfoller/81qyh0w2/188/ -->
+<head>
+  <title> SubdivisionQuadraticBezierCurves </title>
+  <meta charset="utf-8" />
+<style>
+* {
+  margin: 0px;
+  padding: 0px;
+}
+
+body {
+background: #333;
+}
+#sec1, #sec2 {
+  margin: 5px 0px 10px 10px;
+  display: inline-block;
+  width: 300px;
+  font-size: 18px;
+  color: #ff55ff;
+}
+button {
+  padding: 0px 3px 0px 3px;
+}
+input[type="text"] {
+  width: 50px;
+  padding: 2px;
+  font-size: 14px;
+  color: #000;
+}
+</style>
+
+<body>
+
+	<div id="sec1">
+	<div>Standard Curves</div>
+	<div id="tot1"></div>
+	<button id="btn1">Toggle points </button>
+	</div>
+	
+	<div id="sec2">	
+	<div>Adaptive Curves</div>
+	<div id="tot2"></div>
+	<button id="btn2">Toggle points </button>
+	<input type="text" spellcheck="false" id="maxdist"/>
+	<button id="update">Update maxDist</button>
+	</div>
+	
+</body>
+
+<script type="module">
+
+// @author  tfoller 
+
+import * as THREE from "../jsm/three.module.125.js";
+
+let camera, scene, renderer;
+
+const Shape1 = (obj) => {
+obj.moveTo(182.75, -71.95)
+.quadraticCurveTo(184.3, -65.1, 189.65, -59.8)
+.quadraticCurveTo(197.25, -52.15, 208.05, -52.15)
+.quadraticCurveTo(218.85, -52.15, 226.5, -59.8)
+.quadraticCurveTo(234.15, -67.4, 234.15, -78.2)
+.quadraticCurveTo(234.15, -89, 226.5, -96.65)
+.quadraticCurveTo(218.85, -104.3, 208.05, -104.3)
+.quadraticCurveTo(213.5, -117.65, 213.5, -133.35)
+.quadraticCurveTo(213.5, -165, 191.15, -187.4)
+.quadraticCurveTo(178.25, -200.3, 162.3, -205.75)
+.lineTo(170.3, -160.4)
+.quadraticCurveTo(170.3, -146.45, 159.95, -136.55)
+.quadraticCurveTo(149.65, -126.65, 134.95, -126.65)
+.quadraticCurveTo(120.35, -126.65, 110, -136.55)
+.quadraticCurveTo(99.6, -146.45, 99.6, -160.4)
+.quadraticCurveTo(105.75, -185.2, 108.35, -204.4)
+.quadraticCurveTo(94.5, -198.8, 83.15, -187.4)
+.quadraticCurveTo(60.75, -165, 60.75, -133.35)
+.quadraticCurveTo(60.75, -120.1, 64.7, -108.45)
+.quadraticCurveTo(54.75, -105.45, 46.9, -97.55)
+.quadraticCurveTo(34.1, -84.75, 34.1, -66.7)
+.quadraticCurveTo(34.1, -48.65, 46.9, -35.85)
+.quadraticCurveTo(59.65, -23.05, 77.75, -23.05)
+.quadraticCurveTo(95.8, -23.05, 108.6, -35.85)
+.quadraticCurveTo(118.4, -45.65, 120.7, -58.65)
+.quadraticCurveTo(128.6, -57, 137.15, -57)
+.quadraticCurveTo(163, -57, 182.75, -71.95);
+return obj;
+}
+
+const Shape2 = (obj) => {
+obj.moveTo(106.15, -170.95)
+.quadraticCurveTo(106.15, -159.15, 114.55, -150.75)
+.quadraticCurveTo(122.9, -142.4, 134.7, -142.4)
+.quadraticCurveTo(146.55, -142.4, 154.9, -150.75)
+.quadraticCurveTo(163.25, -159.15, 163.25, -170.95)
+.lineTo(156.25, -212.4)
+.quadraticCurveTo(145.45, -276.25, 240.55, -289.75)
+.quadraticCurveTo(173.15, -295.8, 159.65, -384)
+.quadraticCurveTo(146.05, -472.1, 145.3, -485.4)
+.quadraticCurveTo(119.7, -346.4, 16.5, -218.2)
+.quadraticCurveTo(143.7, -329.05, 106.15, -170.95)
+return obj;
+}
+
+const updateTotal = (cont, tot) => {
+	cont.innerHTML = 'Total points: ' + tot;
+}
+
+const vsb = {};
+const toggle = (...names) => {
+	names.forEach((nm)=>{
+  	const shape = scene.getObjectByName(nm);
+    if(shape) {
+    shape.visible = !shape.visible;
+    vsb[nm] = shape.visible;
+    }
+  });
+  renderScene();
+}
+
+const update = (...names) => {
+	names.forEach((nm)=>{
+  	const mesh = scene.getObjectByName(nm);
+    if(mesh) {
+    	scene.remove(mesh);
+    	mesh.geometry.dispose();
+      mesh.material.dispose();
+    }
+  });
+  init_adaptive();
+}
+
+const input = document.getElementById('maxdist');
+input.value = 0.33;
+
+document.getElementById('btn1').addEventListener('click', function(){toggle('p1','p2')});
+document.getElementById('btn2').addEventListener('click', function(){toggle('p1A','p2A')});
+
+document.getElementById('update').addEventListener('click', function(){update('m1A','m2A','p1A','p2A')});
+
+const [w, h] = [600, 600];
+
+init();
+
+function init() {
+
+  camera = new THREE.OrthographicCamera(-w/2, w/2, h/2, -h/2, 0,1);
+
+  scene = new THREE.Scene();
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio( window.devicePixelRatio );
+  document.body.appendChild(renderer.domElement);
+
+  scene.background = new THREE.Color(0x000000);
+  
+  // standard curves
+  
+  const shape1 = Shape1(new THREE.Shape());
+  const geom1 = new THREE.ShapeBufferGeometry(shape1);
+  const mat1 = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+  const mat1p = new THREE.PointsMaterial({ color: 0x99ffff, size: 2 });
+  
+  const shape2 = Shape2(new THREE.Shape());
+  const geom2 = new THREE.ShapeBufferGeometry(shape2);
+  const mat2 = new THREE.MeshBasicMaterial({ color: 0x339933 });
+  const mat2p = mat1p.clone(); 
+  
+  const mesh1 = new THREE.Mesh(geom1, mat1);
+	const mesh2 = new THREE.Mesh(geom2, mat2); 
+  
+  const mesh1p = new THREE.Points(geom1, mat1p);
+  const mesh2p = new THREE.Points(geom2, mat2p);
+  [mesh1p.name, mesh2p.name] = ['p1', 'p2'];
+
+	const [x, y] = [-w/2, h/2];
+
+  mesh1.position.set(x, y, -0.5);
+  mesh2.position.set(x, y, -0.5);
+  
+  scene.add(mesh1);
+  scene.add(mesh2);
+  
+  mesh1p.position.set(x, y, -0.45);
+  mesh2p.position.set(x, y, -0.45);
+  
+  scene.add(mesh1p);
+  scene.add(mesh2p);
+
+	renderScene();
+  
+  let tot = geom1.attributes.position.count + geom2.attributes.position.count;
+  updateTotal(document.getElementById('tot1'), tot);
+}
+
+function renderScene() {
+  renderer.render(scene, camera);
+}
+
+function init_adaptive() {
+
+  // adaptive curves 
+
+	const adaptPoints1 = Shape1(new POINTS());
+  const shape1 = new THREE.Shape().setFromPoints(adaptPoints1.data.map((v) => new THREE.Vector2(v[0], v[1])));
+  const geom1 = new THREE.ShapeBufferGeometry(shape1);
+  const mat1 = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+  const mat1p = new THREE.PointsMaterial({ color: 0x99ffff, size: 2 });
+  
+  const adaptPoints2 = Shape2(new POINTS());
+  const shape2 = new THREE.Shape().setFromPoints(adaptPoints2.data.map((v) => new THREE.Vector2(v[0], v[1])));
+  const geom2 = new THREE.ShapeBufferGeometry(shape2);
+  const mat2 = new THREE.MeshBasicMaterial({ color: 0x339933 });
+  const mat2p = mat1p.clone(); 
+  
+  const mesh1 = new THREE.Mesh(geom1, mat1);
+	const mesh2 = new THREE.Mesh(geom2, mat2); 
+  [mesh1.name, mesh2.name] = ['m1A', 'm2A'];
+  
+  const mesh1p = new THREE.Points(geom1, mat1p);
+  const mesh2p = new THREE.Points(geom2, mat2p);
+  [mesh1p.name, mesh2p.name] = ['p1A', 'p2A'];
+
+   mesh1p.visible = vsb.p1A == undefined ? true : vsb.p1A;
+   mesh2p.visible = vsb.p2A == undefined ? true : vsb.p2A;
+
+	const [x, y] = [-w/2 + 300, h/2];
+
+  mesh1.position.set(x, y, -0.5);
+  mesh2.position.set(x, y, -0.5);
+  
+  scene.add(mesh1);
+  scene.add(mesh2);
+  
+  mesh1p.position.set(x, y, -0.45);
+  mesh2p.position.set(x, y, -0.45);
+  
+  scene.add(mesh1p);
+  scene.add(mesh2p);
+  
+  renderScene();
+  
+  let tot = geom1.attributes.position.count + geom2.attributes.position.count;
+  updateTotal(document.getElementById('tot2'), tot);
+}
+
+function POINTS() {
+  this.maxdist = input.value;
+  this.maxpoints = 1000;
+	this.data = [];
+}
+
+POINTS.prototype.distLinePoint = function (p1, p2, x0, y0) {
+    const dx = p2[0] - p1[0];
+    const dy = p2[1] - p1[1];
+    const num = Math.abs(dy * x0 - dx * y0 + p2[0] * p1[1] - p2[1] * p1[0]);
+    const den = Math.sqrt(dy * dy + dx * dx);
+    if (den == 0) console.error('distLinePoint(): division by zero');
+    return num / den;
+}
+
+POINTS.prototype.moveTo = function(x, y) {
+	this.data.push([x, y]);
+  return this;
+}
+
+POINTS.prototype.lineTo = function(x, y) {
+	this.data.push([x, y]);
+  return this;
+}
+
+POINTS.prototype.quadraticCurveTo = function(ax, ay, x, y) {
+  const obj = this.data;      
+  const p0 = obj[obj.length - 1];
+
+  // ~ line
+  if (this.distLinePoint(p0, [x, y], ax, ay) <= this.maxdist) {
+    obj.push([x, y]);
+    return this;
+  }
+
+  const p01 = [p0[0] - ax, p0[1] - ay];
+  const p21 = [x - ax, y - ay];
+
+  const f = (t) => { // param quadratic bezier
+    const m = (1 - t);
+    const m2 = m * m;
+    const t2 = t * t;
+    return [ax + m2 * p01[0] + t2 * p21[0], ay + m2 * p01[1] + t2 * p21[1]];
+  }
+
+  const res = [p0, [x, y]];
+  const trm1 = p21[1] + p01[1];
+  const trm2 = p21[0] + p01[0];
+
+  const checkDist = (beg, end) => {
+    const [pt1, pt2] = [res[beg], res[end]];
+    // if (test && (isNaN(pt1) || isNaN(pt2))) console.log(beg, end);
+    // max dist between the arc and the line with shared beg/end points
+    // is where the arc's 1 derivative == the line slope k
+    // B`(t) = 2(1-t)(p1-p0)+2t(p2-p1); B`(t)y = k * B`(t)x
+    const [dx, dy] = [pt2[0] - pt1[0], pt2[1] - pt1[1]];
+    const rot = Math.abs(dx) >= Math.abs(dy) ? false : true;
+    let k, t, dist, pmid;
+    if (!rot) {
+      k = dy / dx;
+      t = (p01[1] - k * p01[0]) / (trm1 - k * trm2);
+      pmid = f(t);
+      dist = this.distLinePoint(pt1, pt2, ...pmid);
+    } else {
+      // solve in rotated 90 ccw coord system to preserve precision
+      // [x', y'] -> [y, -x]
+      k =  - dx / dy;
+      t = (p01[0] + k * p01[1]) / (trm2 + k * trm1);
+      pmid = f(t);
+      dist = this.distLinePoint([pt1[1], -pt1[0]], [pt2[1], -pt2[0]], pmid[1], -pmid[0]);
+    }
+    return dist <= this.maxdist ? [true, pmid] : [false, pmid];
+  }
+
+  const maxpoints = this.maxpoints;
+  (function recurse(beg = 0, end = 1) {
+    if (end == maxpoints) {
+      console.error('QB curve recurse(): max points reached ', p0, [ax, ay], [x, y]);
+      return end;
+    }
+    const [ok, pmid] = checkDist(beg, end);
+    let ret = end;
+    if (!ok) {
+      res.splice(end, 0, pmid);
+      const beg2 = recurse(beg, end);
+      ret = recurse(beg2, beg2 + 1);
+    }
+    return ret;
+  })();
+
+  obj.push(...(res.slice(1)));
+  
+  return this;
+}
+
+init_adaptive();
+
+</script>
+</html>

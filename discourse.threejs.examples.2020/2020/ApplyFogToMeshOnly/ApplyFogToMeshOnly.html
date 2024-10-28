@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/is-there-a-way-to-apply-fog-to-mesh-only-and-not-be-visible/12511/5 -->
+<!-- https://jsfiddle.net/prisoner849/Lqpbzca2/ -->
+<head>
+  <title> ApplyFogToMeshOnly </title>
+  <meta charset="utf-8" />
+<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+	<script src="../js/three.min.112.js"></script>
+	<script src="../js/OrbitControls.js"></script>
+	
+<script>
+
+// @author prisoner849
+
+var fog = new THREE.Fog(0xffffff, 1, 10);
+var scene = new THREE.Scene();
+scene.fog = fog;
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 0, 2);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+//var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var boxGeom = new THREE.BoxBufferGeometry();
+var boxMat = new THREE.MeshBasicMaterial({color: 0x202020});
+for (let i = 0; i < 10; i++){
+	let b = new THREE.Mesh(boxGeom, boxMat);
+  b.position.set(-2, 0, -i * 2);
+  scene.add(b);
+}
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera)
+});
+
+</script>
+</html>

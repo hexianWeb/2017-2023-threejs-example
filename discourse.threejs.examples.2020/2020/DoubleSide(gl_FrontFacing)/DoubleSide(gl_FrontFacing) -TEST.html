@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-have-different-colors-textures-on-bottom-and-top-side-of-a-plane/12644/5 -->
+<!-- simplified, based on @author prisoner849  https://codepen.io/prisoner849/pen/OJVVpZO -->
+<head>
+  <title> SimpleDoubleSide(gl_FrontFacing) </title>
+  <meta charset="utf-8" /> 
+</head>
+<body> </body>
+<script src="../js/three.min.112.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script>
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 60, 1, 0.01, 1000 );
+camera.position.set( 1, 0, 3 );
+
+const renderer = new THREE.WebGLRenderer({  antialias: true });
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );
+
+const controls = new THREE.OrbitControls(camera, container);
+
+// https://threejs.org/examples/textures/metal.jpg
+// https://threejs.org/examples/textures/uv_grid_opengl.jpg
+// https://threejs.org/examples/textures/flakes.png
+const tex = new THREE.TextureLoader().load( "/textures/green.png" );
+const texBack = new THREE.TextureLoader().load( "/textures/green.png" );
+
+const planeMat = new THREE.MeshBasicMaterial( { map: tex, side: THREE.DoubleSide } );
+const planeUniforms = { backTexture: { value: texBack } };
+
+planeMat.onBeforeCompile = shader => {
+	shader.uniforms.backTexture = planeUniforms.backTexture;
+	shader.vertexShader =
+		`
+	attribute vec2 backUV;
+	varying vec2 vBackUV;
+	` + shader.vertexShader;
+	shader.vertexShader = shader.vertexShader.replace(
+		`#include <fog_vertex>`,
+		`#include <fog_vertex>
+	vBackUV = backUV;
+	`
+	);
+	shader.fragmentShader =
+		`
+	uniform sampler2D backTexture;
+	varying vec2 vBackUV;
+	` + shader.fragmentShader;
+	shader.fragmentShader = shader.fragmentShader.replace(
+		`#include <map_fragment>`,
+		`
+	#ifdef USE_MAP
+	
+	vec4 texelColor = gl_FrontFacing ? texture2D( map, vUv ) : texture2D( backTexture, vBackUV );
+	texelColor = mapTexelToLinear( texelColor );
+	diffuseColor *= texelColor;
+	
+	#endif
+	`
+	);
+};
+
+const planeGeom = new THREE.PlaneBufferGeometry( 0.5, 1 );	
+ planeGeom.setAttribute( "backUV", new THREE.Float32BufferAttribute([ 1,1, 0,1, 1,0, 0,0 ], 2 ) );
+// planeGeom.setAttribute( "backUV", new THREE.Float32BufferAttribute([ 0,0, 1,0, 0,1, 1,1 ], 2 ) ); // head over
+// planeGeom.setAttribute( "backUV", new THREE.Float32BufferAttribute([ 0,1, 1,1, 0,0, 1,0 ], 2 ) ); // mirrored
+// planeGeom.setAttribute( "backUV", new THREE.Float32BufferAttribute([ 1,0, 0,0, 1,1, 0,1 ], 2 ) ); // head over, mirrored
+const plane = new THREE.Mesh(planeGeom, planeMat );
+scene.add(plane);
+ 
+render();
+
+function render( ) {
+
+	renderer.render( scene, camera );
+	requestAnimationFrame( render );
+}
+
+</script>
+</html>

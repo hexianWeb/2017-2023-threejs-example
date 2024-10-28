@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/create-circle-with-fuzzy-edge-made-of-individual-random-particles/30150/6 -->
+
+<!-- see also 
+	https://discourse.threejs.org/t/how-move-all-points-to-sphere/1836/2 
+	and 
+	https://codepen.io/looeee/pen/LQLQRd
+-->
+
+<head>
+  <title> PointsToCircleRandomMultiple </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin: 0;
+	overflow: hidden;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script type="module">
+
+// @author  looeee - strongly changed by hofk
+
+import * as THREE from "../jsm/three.module.132.js";
+import { OrbitControls } from "../jsm/OrbitControls.132.js";
+
+let camera, renderer, scene;
+
+const v = new THREE.Vector2();
+let r;
+let positions = [];
+  
+const distributionA = n => 0.1 * Math.tan( n * Math.PI / 2 );
+const distributionB = n => 0.2 * Math.pow( n, 1 / 4 );
+const distributionC = n => 0.6 * Math.pow( Math.random( ), 4 );
+
+window.addEventListener( 'resize', onWindowResize );
+init();
+randomPoints();
+animate();
+
+function onWindowResize() {
+  
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  
+}
+
+function init() {
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize( window.innerWidth, window.innerHeight ); 
+  renderer.setPixelRatio( window.devicePixelRatio );
+
+  document.body.appendChild( renderer.domElement );
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 1000 );
+  camera.position.set( 2, -3, 4 );
+  
+  const controls = new OrbitControls( camera, renderer.domElement );
+  
+}
+  
+function randomPoints() {
+  
+  //      count, rMin, distribution
+  pushpos( 1200,  1.2, distributionA );
+  pushpos( 2000,  1.1, distributionB );
+  pushpos(  300,  0.4, distributionC );
+  
+  const geometry = new THREE.BufferGeometry( );
+  geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( positions, 3 ) );
+  const material = new THREE.PointsMaterial( { color: 0xffff34, size: 0.001 } );
+  const particles = new THREE.Points(geometry, material);
+  scene.add( particles );
+
+}
+
+function animate() {
+  
+  requestAnimationFrame( animate ); 
+  renderer.render( scene, camera );
+
+}
+
+// .......................
+
+function pushpos( count, rMin, distribution ) {
+
+	for ( let i = 0; i < count; i ++ ) {
+	
+		const phi = Math.random( ) * Math.PI * 2;	
+		const rnd = Math.random( )
+		
+		r = rMin + distribution( rnd );
+		
+		v.x = r * Math.cos( phi );
+		v.y = r * Math.sin( phi );
+		
+		positions.push( v.x, v.y, 0 );
+	 
+  }
+  
+}  
+
+</script>
+</html>

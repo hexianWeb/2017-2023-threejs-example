@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/stencil-clipping-gltf-weird-backfaces/41936/11 -->
+<!-- https://jsfiddle.net/048dthn2/ -->
+<head>
+  <title>RealTimeSlicing</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author makc3d
+
+import * as THREE from '../jsm/three.module.137.js';
+import { GLTFLoader } from '../jsm/GLTFLoader.137.js';
+
+// init
+
+const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+camera.position.z = 1;
+
+const scene = new THREE.Scene();
+
+const material = new THREE.MeshNormalMaterial();
+
+const mesh = new THREE.Group();
+scene.add( mesh );
+
+scene.add( new THREE.HemisphereLight(
+	0xffee77, 0x332211, 1
+) );
+// https://threejs.org/examples/models/gltf/Horse.glb
+new GLTFLoader().load('Horse.glb', function( horse ) {
+		const kek = horse.scene.getObjectByProperty( 'isMesh', true );
+    kek.geometry.computeVertexNormals();
+    kek.scale.setScalar( 0.004 );
+    kek.material = new THREE.MeshPhongMaterial();
+    kek.material.onBeforeCompile = function( eh ) {
+    	eh.fragmentShader =
+      eh.fragmentShader.substr(0,
+      eh.fragmentShader.length - 1
+      ) +
+      'if(vViewPosition.x - vViewPosition.z + 1.0 > 0.0)discard;}';
+    };
+
+    mesh.add( kek );
+
+    const kek2 = kek.clone();
+    kek2.material = new THREE.MeshPhongMaterial( { side: THREE.BackSide } );
+    kek2.material.onBeforeCompile = function( eh ) {
+    	eh.fragmentShader =
+      eh.fragmentShader.substr(0,
+      eh.fragmentShader.length - 1
+      ) +
+      'if(vViewPosition.x - vViewPosition.z + 1.0 > 0.0)discard; else gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);}';
+    };
+    
+    mesh.add( kek2 );
+});
+
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setAnimationLoop( animation );
+document.body.appendChild( renderer.domElement );
+
+// animation
+
+function animation( time ) {
+
+	mesh.rotation.x = time / 2000;
+	mesh.rotation.y = time / 1000;
+
+	renderer.render( scene, camera );
+
+}
+</script>
+</html>

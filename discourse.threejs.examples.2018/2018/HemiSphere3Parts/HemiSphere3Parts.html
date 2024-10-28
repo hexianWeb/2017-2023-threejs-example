@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/tetrahedral-mesh-generation-with-points/4901/29 -->
+<!-- http://threejs.hofk.de/sphere/00_hemiSphere3.html -->
+
+<head>
+  <title> HemiSphere3Parts </title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+tripartite north and south hemisphere
+	<input type="text" size="5" id="rs" value="10" > rings 
+	<input type="checkbox"  id="helper" checked="checked" > numbers helper
+	<button type="button" id="show">  -> show new sphere </button> ( 3 parts, with pole face)
+</body>
+
+	<script src="../js/three.min.97.js"></script> <!-- don't use r98: https://discourse.threejs.org/t/error-when-changing-from-r97-to-r98/4905 -->
+	<script src="../js/OrbitControls.js"></script>
+	<script src="../js/THREEx.WindowResize.js"></script>
+
+<script>
+
+// @author hofk
+
+'use strict'
+
+var scene  = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(45,160/ 90 , 0.1, 100000);
+camera.position.set(0,0,250);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setClearColor(0xcccccc);
+document.body.appendChild(renderer.domElement);
+THREEx.WindowResize(renderer, camera);
+var controls = new THREE.OrbitControls( camera, renderer.domElement );	
+var clock  = new THREE.Clock( true );	
+var time;
+
+var g, gg, north, south;
+var sphere;
+var radius;
+var rs; // rings
+var rvSum; // sum of ring vertices
+var vertexCount;
+var x, y, z;
+var a, b, c;
+var ni, nji; // relative i, j
+var Alpha;
+var sinAlpha;
+var cosAlpha;
+
+var vertexNumbersHelperNorth;
+var vertexNumbersHelperSouth;
+
+var showGeo = false;
+
+var material = new THREE.MeshBasicMaterial( { color: 0x551155, side: THREE.DoubleSide, wireframe: true } );
+
+document.getElementById( "show" ).onclick = showNewSphere;
+
+animate();
+
+//..............
+
+function showNewSphere() {
+
+	if ( sphere ) {
+	
+		sphere.remove( north );
+		sphere.remove( south );
+		
+		if ( vertexNumbersHelperNorth ) sphere.remove( vertexNumbersHelperNorth );
+		if ( vertexNumbersHelperSouth ) sphere.remove( vertexNumbersHelperSouth );
+		
+		scene.remove( sphere);
+		g.dispose();
+		gg.dispose();
+	
+		showGeo = false;
+				
+	}
+
+	g = new THREE.Geometry(); 
+	radius = 50;
+	
+	rs = Math.floor( document.getElementById( "rs" ).value ); // rings
+	
+	vertexCount = 3 / 2 * rs * ( rs + 1 ) ;
+	
+	for ( var i = 0; i < vertexCount; i ++ ) { 
+				
+		g.vertices.push( new THREE.Vector3( 0, 0, 0 ) ); 
+			
+	}
+	
+	// face 0:  pole
+	g.faces.push( new THREE.Face3( 0, 1, 2 ) );
+	
+	rvSum = 0; 
+	
+	for ( var i = 1; i < rs; i ++ ) {
+	
+		for ( var q = 0; q < 3; q ++ ) {			// 1/3 ring
+			
+			for ( var j = 0; j < i + 1 ; j ++ ) {  
+								
+				if ( j === 0 ) {
+				
+					//  first face 
+					
+					a = rvSum;
+					b = a + 3 * i + q;
+					c = b + 1;
+			
+					g.faces.push( new THREE.Face3( a, b, c ) );
+					
+				} else {
+				
+					//  two faces / vertex
+		
+					a = j + rvSum; 
+					b = a - 1; 
+					c = a + 3 * i + q;
+					if ( q === 2 && j === i ) a = a - 3 * i; // connect to first vertex of circle
+				
+					g.faces.push( new THREE.Face3( a, b, c ) );
+					
+					// a  from first face 
+					b = c; // from first face
+					c = b + 1;
+					
+					if ( q === 2 && j === i ) c = c - 3 * ( i + 1 ); // connect to first vertex of next circle
+											
+					g.faces.push( new THREE.Face3( a, b, c ) );
+					
+				}
+				
+			}
+			
+			rvSum += i;
+		}
+		
+	}
+	
+	
+	
+	rvSum = 0; 
+	
+	for ( var i = 1; i <= rs; i ++ ) {
+	
+		ni = i / rs;
+		Alpha = Math.PI / 2 * ni;
+		sinAlpha = Math.sin( Alpha );
+		cosAlpha = Math.cos( Alpha );
+		
+		for ( var j = 0; j < i * 3; j ++ ) { 
+		
+			nji = j / ( i * 3 );
+					
+			x = radius * sinAlpha * Math.cos( 2 * Math.PI * nji );
+			y = radius * cosAlpha;
+			z = - radius * sinAlpha * Math.sin( 2 * Math.PI * nji );		
+			
+			g.vertices[  rvSum + j ].set( x, y, z );
+			
+		}
+		
+		rvSum += i * 3;
+		
+	}
+
+	north = new THREE.Mesh( g, material );
+	gg =  g.clone();
+	south = new THREE.Mesh( gg , material );
+	south.rotation.x = Math.PI;
+	
+	if ( document.getElementById( "helper" ).checked ) {
+	
+		vertexNumbersHelperNorth = new vertexNumbersHelper( north, 2.5, 0x3300ff);
+		vertexNumbersHelperNorth.update();
+		
+		vertexNumbersHelperSouth = new vertexNumbersHelper( south, 2.5, 0xff0033);
+		vertexNumbersHelperSouth.update();
+	
+	}
+	
+	sphere = new THREE.Group()
+	sphere.add( north );
+	sphere.add( south );
+	scene.add( sphere );
+	
+	showGeo = true;
+
+}
+
+function animate(){
+
+	requestAnimationFrame(animate);  // rekursiver Aufruf
+    time = clock.getElapsedTime();
+	
+	if ( showGeo ) {
+	
+		sphere.rotation.x = 0.2 * time;
+		sphere.rotation.y = 0.05 * time;
+		south.position.y = 12 * ( Math.sin( 0.4 * time ) - 1 );
+		
+	}
+	
+	renderer.render(scene, camera);
+}
+
+function vertexNumbersHelper( mesh, size, color ) {	
+	 
+	var vertexNumbers = [];
+	var materialDigits = new THREE.LineBasicMaterial( { color: color } );
+	var geometryDigit = [];
+	var digit = [];
+	var d100, d10, d1;		// digits
+	var coordDigit = [];	// design of the digits
+	
+	coordDigit[ 0 ] = [ 0,0, 0,9, 6,9, 6,0, 0,0 ];
+	coordDigit[ 1 ] = [ 0,6, 3,9, 3,0 ];
+	coordDigit[ 2 ] = [ 0,9, 6,9, 6,6, 0,0, 6,0 ];
+	coordDigit[ 3 ] = [ 0,9, 6,9, 6,5, 3,5, 6,5, 6,0, 0,0 ];
+	coordDigit[ 4 ] = [ 0,9, 0,5, 6,5, 3,5, 3,6, 3,0 ];
+	coordDigit[ 5 ] = [ 6,9, 0,9, 0,5, 6,5, 6,0, 0,0 ];
+	coordDigit[ 6 ] = [ 6,9, 0,9, 0,0, 6,0, 6,5, 0,5 ];
+	coordDigit[ 7 ] = [ 0,9, 6,9, 6,6, 0,0 ];
+	coordDigit[ 8 ] = [ 0,0, 0,9, 6,9, 6,5, 0,5, 6,5, 6,0, 0,0 ];
+	coordDigit[ 9 ] = [ 6,5, 0,5, 0,9, 6,9, 6,0, 0,0 ];
+	
+	if ( mesh.geometry.isGeometry) {
+		
+	 	var verticesCount = mesh.geometry.vertices.length;
+		
+		for ( var i = 0; i<10; i ++ ) {
+			
+			geometryDigit[ i ]  = new THREE.Geometry();
+			
+			for ( var j = 0; j < coordDigit[ i ].length/ 2; j ++ ) {
+				
+				geometryDigit[ i ].vertices.push( new THREE.Vector3( 0.1 * size * coordDigit[ i ][ 2 * j ], 0.1 * size * coordDigit[ i ][ 2 * j + 1 ], 0 ) );
+				
+			}
+			
+			digit[ i ] = new THREE.Line( geometryDigit[ i ], materialDigits );
+			
+		}
+		
+	}
+	
+	// numbering the vertices, hundreds ...
+	var i100 =  0;
+	var i10  =  0;
+	var i1   = -1;
+	
+	for ( var i = 0; i < verticesCount ; i ++ ) {
+		
+		// Number on board, up to three digits are pinned there
+		
+		if ( mesh.geometry.isGeometry) {
+			
+			var board = new THREE.Mesh( new THREE.Geometry() );
+			
+		}	
+		
+		i1 ++;														// starts with  -1 + 1 = 0
+		
+		if ( i1   === 10 ) {i1   = 0; i10 ++ }
+		if ( i10  === 10 ) {i10  = 0; i100 ++ }
+		if ( i100 === 10 ) {i100 = 0 }								// hundreds (reset when overflow)
+		
+		if ( i100 > 0 ) {
+			
+			d100 = digit[ i100 ].clone();							// digit for hundreds
+			board.add( d100 );										// on the board ...
+			d100.position.x = -8 * 0.1 * size;						// ... move slightly to the left
+			
+		}
+		
+		if ( ( i100 > 0 ) || ( ( i100 === 0 ) && ( i10 > 0 ) ) ) {	// no preceding zeros tens
+			
+			d10 = digit[ i10 ].clone();								// digit for tenth
+			board.add( d10 );										// on the board
+			
+		}
+		
+		d1 =   digit[ i1 ].clone();									// digit 
+		board.add( d1 );											//  on the board ...
+		d1.position.x = 8 * 0.1 * size;		 						// ... move slightly to the right
+		
+		vertexNumbers.push( board );								// place the table in the numbering data field
+		mesh.add( vertexNumbers[ i ] );
+		
+	}
+	
+	this.update = function ( ) {
+		
+		if ( mesh.geometry.isGeometry ) {
+			
+			for( var n = 0; n < vertexNumbers.length; n ++ ) {
+				
+				vertexNumbers[ n ].position.set( mesh.geometry.vertices[ n ].x, mesh.geometry.vertices[ n ].y, mesh.geometry.vertices[ n ].z ); 
+				vertexNumbers[ n ].lookAt( camera.position );
+				
+			}
+			
+		}
+		
+	}
+	
+}
+</script>
+</html>

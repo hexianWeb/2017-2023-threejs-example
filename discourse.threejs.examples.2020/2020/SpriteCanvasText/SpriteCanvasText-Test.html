@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/which-method-of-text-presentation-is-preferable/13231 -->
+<head>
+	<title>   CanvasText  </title>
+	<meta charset="utf-8" />
+	<style>
+	body {
+		overflow: hidden;
+		margin:0;
+		padding: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.123.js"></script>
+<script src="../js/OrbitControls.123.js"></script>
+<script>
+
+ // @author hofk
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.001, 10000 );
+camera.position.set( 0, 0, 3 );
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+renderer.setClearColor( 0xdedede, 1 );
+
+new THREE.OrbitControls( camera, renderer.domElement );
+ 
+let txt = '♯';
+const canvas = document.createElement( "canvas" );
+canvas.width = 32;
+canvas.height = 32;
+
+const ctx = canvas.getContext( "2d" );
+
+//ctx.font = "16pt LucidaSansUnicode";
+ctx.font = "0.1vh Arial";
+ctx.fillStyle = "#ffff44";
+ctx.textAlign = "center";
+ctx.textBaseline = "top";
+
+ctx.fillText( txt, 0, 0 );
+	
+
+const geoPlane = new THREE.PlaneBufferGeometry( 2, 1 );
+
+const tex = new THREE.Texture( canvas );
+tex.needsUpdate = true;
+
+const spriteMat = new THREE.SpriteMaterial( { map: tex } );
+const sprite = new THREE.Sprite( spriteMat );
+scene.add( sprite);
+
+/*
+const tex1 = new THREE.TextureLoader().load( 'tex1.png' );
+const matPlane = new THREE.MeshBasicMaterial( { map: tex1, side: THREE.DoubleSide } );
+const plane = new THREE.Mesh( geoPlane, matPlane );
+scene.add( plane);
+*/
+
+
+
+
+
+animate();
+
+function animate() {
+	
+	requestAnimationFrame(animate);
+	renderer.render(scene, camera);
+	
+}
+
+</script>
+
+</html>

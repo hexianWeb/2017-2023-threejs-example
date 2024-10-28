@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/questions-about-beginner-tutorial/4590/2 -->
+<!-- http://threejs.hofk.de/OBJLoader/loadExampleObject.html -->
+<head>
+  <title> loadOBJ </title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+	License:
+	https://poly.google.com/
+	
+	Spinner
+	Hennadiy Kyseliov
+</body>
+
+<script src="../js/three.min.97.js"></script>
+<script src="../js/OrbitControls.js"></script>
+<script src="../js/THREEx.WindowResize.js"></script>
+
+<script src="../js/OBJLoader.js"></script> 
+<script src="../js/MTLLoader.js"></script>
+
+<script>
+
+/*
+License:
+https://poly.google.com/
+
+Spinner
+Hennadiy Kyseliov
+
+Remix this content
+This content is published under a CC-BY license.
+If you name the author, you can use this content for free.
+*/
+
+// @author hofk
+
+'use strict'
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 20000 );
+camera.position.set( 2, 5, 20 );
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xeeeeee, 1 );	
+var container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+THREEx.WindowResize( renderer, camera );
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+controls.enableZoom = true;
+var clock  = new THREE.Clock( true );	
+var time;	// for animate
+
+var light = new THREE.PointLight(0xeeeeee);
+light.position.set(10, 50, 20);
+scene.add(light);
+
+var lightAmb = new THREE.AmbientLight(0xff77ff);
+scene.add(lightAmb);
+
+var exampleObject = new THREE.Object3D();
+
+var mtlLoaderExample = new THREE.MTLLoader( );
+
+mtlLoaderExample.load(
+
+	'spiner.mtl',  // License
+	
+	function (materials) {
+
+		materials.preload();
+
+		var objLoaderExample = new THREE.OBJLoader( );
+		
+		objLoaderExample.setMaterials( materials );
+		
+		objLoaderExample.load(
+		
+			'spiner.obj', // License
+			
+			function (object) {
+
+				exampleObject.add(object);
+			
+			}
+			
+		);
+	
+	}
+	
+);
+
+exampleObject.scale.set( 2.5, 2.5, 2.5);
+
+scene.add( exampleObject );
+
+animate();
+
+//..................
+
+function animate() {
+
+	requestAnimationFrame( animate );
+	time = clock.getElapsedTime();
+		
+	exampleObject.rotation.x = 0.4 * Math.sin( time / 2);
+	exampleObject.rotation.y = Math.cos( time );
+	exampleObject.rotation.z = Math.sin( time / 2);
+		
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+</script>
+</html>

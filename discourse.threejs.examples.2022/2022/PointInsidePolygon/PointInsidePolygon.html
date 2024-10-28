@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/remove-the-point-outside-of-draw-plane/42037/11 -->
+<!-- @author rrrr_rrrr    _P_In_Polygon.html (2.9 KB)    download    -->
+
+<title>PointInsidePolygon</title>
+<meta charset=utf-8>
+<style>
+body { font-size; 0; background: #111 }
+</style>
+<script>
+var poly = { vx: [], box: [] };
+
+
+function draw(_a) {
+var ctx = cv.getContext('2d');
+var box = [ Infinity, Infinity, -Infinity, -Infinity ];
+var r = 100, x_m = cv.width/2, y_m = cv.height/2;
+
+poly.vx = [];
+ctx.strokeStyle = '#00FFFF';
+ctx.lineWidth = 3;
+ctx.beginPath();
+
+for( var a, x, y, i = 0, il = _a ? _a.length : 5; i < il; i++ ) {
+if( _a ) [ x,y ] = _a[i];
+else {
+a = (2*i + il/2 + 1) * Math.PI / il;
+x = Math.round( x_m + r * Math.cos(a) );
+y = Math.round( y_m + r * Math.sin(a) );
+}
+ctx.lineTo(x, y);
+if( box[0] > x ) box[0] = x;
+if( box[1] > y ) box[1] = y;
+if( box[2] < x ) box[2] = x;
+if( box[3] < y ) box[3] = y;
+poly.vx.push( [x,y] );
+}
+ctx.closePath();
+ctx.stroke();
+//          ======       ctx.fillStyle = '#000'; ctx.fill();
+poly.box = box.slice(0);
+}
+
+
+function p_in_poly(p) {
+var [ x,y ] = p;
+var inx = !1;
+
+if( x < poly.box[0] || y < poly.box[1] || x > poly.box[2] || y > poly.box[3] ) return 0;
+
+for( var i = 0, il = poly.vx.length, ii = il - 1; i < il; ii = i++ ) {
+if( (( poly.vx[i][1] > y) !== ( poly.vx[ii][1] > y )) &&
+( x < ( poly.vx[ii][0] - poly.vx[i][0] ) * ( y - poly.vx[i][1] ) / ( poly.vx[ii][1] - poly.vx[i][1] ) + poly.vx[i][0] ) ) inx = !inx;
+}
+return +inx;
+}
+
+window.onkeydown = (event) => {
+var kc = event.keyCode, x = div_p.offsetLeft, y = div_p.offsetTop;
+if( ! [37,38,39,40].includes(kc) ) return;
+event.preventDefault();
+
+if( kc == 37 && x > 4 ) div_p.style.left = --x + 'px';
+if( kc == 39 && x < 1260 ) div_p.style.left = ++x + 'px';
+if( kc == 38 && y > 4 ) div_p.style.top = --y + 'px';
+if( kc == 40 && y < 700 ) div_p.style.top = ++y + 'px';
+x += 8;
+y += 8;
+div_i.textContent = x + ', ' + y; //getComputedStyle(div_p)['top'])
+div_p.style.borderColor = [ '#FC8', '#5BF' ][ p_in_poly( [ x,y ] ) ];
+};
+
+</script>
+<body onload="draw([ [385, 243], [444, 251], [259, 169], [478, 167], [431, 102], [445, 53], [540, 107], [740, 100], [795, 31], [754, 154], [809, 92], [878, 201], [1052, 263], [775, 300], [935, 304], [1115, 349], [1007, 354], [714, 324], [1111, 501], [960, 441], [925, 511], [748, 414], [837, 532], [744, 511], [662, 405], [643, 459], [573, 468], [427, 350], [231, 384], [86, 402], [297, 349], [126, 337] ])">
+<div id=div_c style="width: 1280px; height: 720px; position: relative; border: 2px dashed #CCC; margin: 10px auto">
+<canvas id=cv width=1280 height=720 style="cursor: crosshair" 
+onclick="if(event.ctrlKey) alert( event.offsetX + '\n' + event.offsetY)"></canvas>
+<div id=div_p style="position: absolute; left: 632px; top: 352px; width:8px; height: 8px; border: 4px solid #999; border-radius: 8px; pointer-events: none"></div>
+<div id=div_i style="position: absolute; bottom: -34px; right: 0; width: 110px; height: 26px; font-size: 22px; font-family: arial; color: #8FA; background: #333; padding-left: 4px"></div>
+</div>
+</body>

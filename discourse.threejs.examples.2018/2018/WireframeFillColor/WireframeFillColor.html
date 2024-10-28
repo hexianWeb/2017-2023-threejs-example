@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/object-wireframe-with-fill-color-in-my-current-code/4576 -->
+<!-- https://jsfiddle.net/f2Lommf5/15326/ -->
+<head>
+  <title> WireframeFillColor </title>
+  <meta charset="utf-8" />
+   <style>
+	body {
+	  margin: 0;
+	}	
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.97.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 2;
+
+    scene = new THREE.Scene();
+
+		// base mesh
+
+    geometry = new THREE.SphereBufferGeometry();
+    material = new THREE.MeshNormalMaterial();
+		mesh = new THREE.Mesh( geometry, material );
+		scene.add( mesh );
+		
+		// wireframe helper
+		
+		const wireframeGeometry = new THREE.WireframeGeometry( geometry );
+		const wireframeMaterial = new THREE.LineBasicMaterial( { color: 0xff0000 } );
+		const wireframe = new THREE.LineSegments( wireframeGeometry, wireframeMaterial );
+		mesh.add( wireframe );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+
+    mesh.rotation.x += 0.001;
+    mesh.rotation.y += 0.002;
+
+    renderer.render( scene, camera );
+
+}
+</script>
+</html>

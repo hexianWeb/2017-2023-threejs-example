@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/sphere-parts-angle-per-instance/37465 -->
+<!-- https://codepen.io/prisoner849/pen/bGayOoj -->
+<head>
+  <title> SphereParts(angle-per-instance) </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.139.js';
+import {OrbitControls} from '../jsm/OrbitControls.139.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 5000);
+camera.position.set(0, 0, 15);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+const MAX_COUNT = 10000;
+let g = new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, Math.PI * 0.25, Math.PI * 0.5);
+let m = new THREE.MeshLambertMaterial({
+  side: THREE.DoubleSide,
+  onBeforeCompile: shader => {
+    shader.vertexShader = `
+      attribute float instPhi;
+      
+      
+      vec3 setFromSphericalCoords( float radius, float phi, float theta ) {
+
+        float sinPhiRadius = sin( phi ) * radius;
+
+        float x = sinPhiRadius * sin( theta );
+        float y = cos( phi ) * radius;
+        float z = sinPhiRadius * cos( theta );
+
+        return vec3(x, y, z);
+
+      }
+      
+      ${shader.vertexShader}
+    `.replace(
+      `#include <beginnormal_vertex>`,
+      `#include <beginnormal_vertex>
+        
+        vec3 sphPos = setFromSphericalCoords(1., instPhi * (1. - uv.y), PI * 2. * uv.x);
+        objectNormal = normalize(sphPos);
+        
+     `).replace(
+      `#include <begin_vertex>`,
+       `#include <begin_vertex>
+        transformed = sphPos;
+       `
+     );
+    //console.log(shader.vertexShader);
+  }
+});
+let im = new THREE.InstancedMesh(g, m, MAX_COUNT);
+scene.add(im);
+
+let v3 = new THREE.Vector3();
+let c = new THREE.Color();
+let instPhi = [];
+let objMats = new Array(MAX_COUNT).fill().map((o, omIdx) => {
+  let om = new THREE.Object3D();
+  om.position.random().subScalar(0.5).multiplyScalar(100);
+  om.rotation.setFromVector3(v3.random().multiplyScalar(Math.PI));
+  om.userData = {
+    rotStart: om.rotation.clone(),
+    rotSpeed: new THREE.Euler().setFromVector3(v3.random().multiplyScalar(Math.PI * 0.25))
+  }
+  om.updateMatrix();
+  im.setMatrixAt(omIdx, om.matrix);
+  im.setColorAt(omIdx, c.set(Math.random() * 0xffffff))
+  instPhi.push(Math.random() * Math.PI * 0.4 + 0.1);
+  return om;
+});
+g.setAttribute("instPhi", new THREE.InstancedBufferAttribute(new Float32Array(instPhi), 1));
+console.log(objMats);
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+  
+  let t = clock.getElapsedTime();
+  controls.update();
+  objMats.forEach((om, omIdx) => {
+    let ud = om.userData;
+    om.rotation.set(
+      ud.rotStart.x + ud.rotSpeed.x * t,
+      ud.rotStart.y + ud.rotSpeed.y * t,
+      ud.rotStart.z + ud.rotSpeed.z * t
+    );
+    om.updateMatrix();
+    im.setMatrixAt(omIdx, om.matrix);
+  })
+  im.instanceMatrix.needsUpdate = true;
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

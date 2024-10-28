@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/extrude-geometry-apply-texture-to-all-faces-of-the-mesh/48246/2 -->
+<!-- https://codepen.io/boytchev/pen/KKxVzzp-->
+<head>
+  <title> TexturesForExtrudedGeometries </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+ 
+// general setup of environment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gainsboro' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 0, 30, 100 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    renderer.setAnimationLoop( animationLoop );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var hemisphereLight = new THREE.HemisphereLight( 'yellow','crimson' );
+    scene.add( hemisphereLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// a cnavas to generate a texture image
+
+var canvas = document.createElement( 'CANVAS' );
+    canvas.width = 32;
+    canvas.height = 32;
+
+
+// procedurally defining of a thick black border with tan interior
+
+var context = canvas.getContext( '2d' );
+    context.fillStyle = 'tan';
+    context.fillRect( 0, 0, 32, 32 );
+    context.strokeStyle = 'black';
+    context.lineWidth = 2;
+    context.strokeRect( 1, 1, 31, 31 );
+
+
+// finally creating a canvas
+
+var texture = new THREE.CanvasTexture( canvas );
+		texture.repeat.set( 2, 2 );
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+
+
+// a shape to be extruded
+
+var shape = new THREE.Shape();
+			shape.moveTo(  0, 0 );
+			shape.quadraticCurveTo(  4, 8, 0, 8.2 );
+			shape.quadraticCurveTo( -4, 8, 0, 0 );
+			// a hole in the shape
+			var hole = new THREE.Path();
+			hole.moveTo(  1.7, 6.1 );
+			hole.absarc( 0, 6.1, 1.7, 0, Math.PI*2, false );
+			shape.holes.push( hole );
+
+
+// creating a 3D geomarker via extrusion
+
+var extrudeSettings = {
+			depth: 2,
+			bevelEnabled: true,
+			bevelSegments: 2,
+			steps: 2,
+			bevelSize: 0.1,
+			bevelThickness: 0.1,
+			curveSegments: 60 };
+
+var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings ),
+		material = new THREE.MeshPhongMaterial( {specular: 'white', map: texture} );
+
+
+// a horde of geomarkers
+
+for( var i=0; i<200; i++ )
+{
+		var geoMarker = new THREE.Mesh( geometry, material );
+				geoMarker.position.set( 140*Math.random()-70, -10, 140*Math.random()-70 );
+				var scale = 1/2+Math.random();
+				geoMarker.scale.set( scale, scale, scale );
+				geoMarker.rotation.set( 0, 2*Math.PI*Math.random(), 0 );
+	
+		scene.add( geoMarker );
+}
+
+
+
+// animation loop
+
+function animationLoop( t )
+{    
+		light.position.copy( camera.position );
+    controls.update( );
+    renderer.render( scene, camera );
+}
+
+</script>
+</html>

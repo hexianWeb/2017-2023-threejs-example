@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/multiple-transparent-planes-on-different-heights/47618 -->
+ <!-- https://jsfiddle.net/kptyfh15/4/ -->
+<head>
+  <title>HeightToColor(shader)</title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+        margin: 0px;
+    }
+  </style>
+</head>
+
+<script type="module">
+
+// @author Mugen87
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+let mesh, renderer, scene, camera, controls;
+
+init().then( render );
+
+async function init() {
+
+  // renderer
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  document.body.appendChild(renderer.domElement);
+
+  // scene
+  scene = new THREE.Scene();
+
+  // camera
+  camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.set(40, 20, 40);
+
+  // controls
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.addEventListener( 'change', render );
+
+  // axes
+  scene.add(new THREE.AxesHelper(20));
+
+  // geometry
+  const geometry = new THREE.CylinderGeometry(1, 1, 20);
+  geometry.translate(0, 10, 0);
+  
+  
+  const loader = new THREE.TextureLoader(); // https://threejs.org/examples/textures/uv_grid_opengl.jpg
+  const texture = await loader.loadAsync( './uv_grid_opengl.jpg' );
+
+  // material
+  const material = new THREE.MeshBasicMaterial( { /* map: texture */ } );
+  material.onBeforeCompile = function(shader) {
+    shader.vertexShader = 'varying float height;\n' + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <project_vertex>',
+      `vec4 mvPosition = vec4( transformed, 1.0 );
+
+        #ifdef USE_INSTANCING
+
+        mvPosition = instanceMatrix * mvPosition;
+
+        #endif
+
+        height = vec3( modelMatrix * mvPosition).y; // add
+
+        mvPosition = modelViewMatrix * mvPosition;
+
+        gl_Position = projectionMatrix * mvPosition; 
+        `
+    );
+    shader.fragmentShader = 'varying float height;\n' + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#if defined( USE_COLOR_ALPHA )
+
+          diffuseColor *= vColor;
+
+        #elif defined( USE_COLOR )
+
+          diffuseColor.rgb *= vColor;
+
+        #endif
+        
+        // add
+        
+        if ( height < 13.5 ) {
+        
+        	diffuseColor.rgb *= vec3( 1.0, 0.0, 0.0 );
+        
+        } else if ( height >= 13.5 && height < 14.5 ) {
+        
+          diffuseColor.rgb *= vec3( 1.0, 1.0, 0.0 );
+        
+        } else if ( height >= 14.5 && height < 15.0 ) {
+        
+          diffuseColor.rgb *= vec3( 0.0, 1.0, 0.0 );
+        
+        }`
+    );
+  };
+
+  // mesh
+  mesh = new THREE.Mesh(geometry, material);
+  scene.add(mesh);
+
+}
+
+function render() {
+
+  renderer.render(scene, camera);
+
+}
+
+</script>
+</html>

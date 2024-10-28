@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/3d-mesh-from-cloud-of-points/12324/11   11 original ... 16 changed: - + hofk -->
+<!-- https://jsfiddle.net/prisoner849/c9ewjnox/ ...  original -->
+<head>
+  <title> CloudOfPointsMesh </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body>
+
+</body>
+<script src="../js/three.min.112.js"></script>
+<script src="../js/ConvexHull.js"></script>
+<script src="../js/ConvexGeometry.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+THREE.Vector3.prototype.equals = function( v, epsilon = Number.EPSILON ) {
+
+    return ( ( Math.abs( v.x - this.x ) < epsilon ) && ( Math.abs( v.y - this.y ) < epsilon ) && ( Math.abs( v.z - this.z ) < epsilon ) );
+
+}
+</script>
+
+<script>
+
+// @author prisoner849 (changed hofk)
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 12, 18);
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper(10, 10));
+	
+
+var pts = [];
+var ptsCount = 100;
+for(let i = 0; i < ptsCount; i++){
+	pts.push(
+  	new THREE.Vector3().setFromSphericalCoords(
+    	THREE.Math.randFloat(1, 5),
+      Math.random() * Math.PI,
+      Math.random() * 2 * Math.PI
+    )
+  )
+}
+
+/* ********** - hofk *************
+var ptsGeom = new THREE.BufferGeometry().setFromPoints(pts);
+var ptsMat = new THREE.PointsMaterial({size: 0.25, color: "aqua"});
+var points = new THREE.Points(ptsGeom, ptsMat);
+scene.add(points);
+*/
+// ******************************
+
+// convex
+var unitPts = pts.map( p => {
+ return new THREE.Vector3().copy(p).setLength(10);
+});
+
+var unitPtsGeom = new THREE.BufferGeometry().setFromPoints(unitPts);
+var unitPtsMat = new THREE.PointsMaterial({size: 0.25, color: "magenta"});
+var unitPoints = new THREE.Points(unitPtsGeom, unitPtsMat);
+scene.add(unitPoints);
+
+var convexGeom = new THREE.ConvexBufferGeometry(unitPts);
+
+var convexMat = new THREE.MeshNormalMaterial({wireframe: false});
+ 
+var convex = new THREE.Mesh(convexGeom, convexMat);
+scene.add(convex);
+
+//********** + hofk *************
+ /*
+var convexGeomU = new THREE.ConvexBufferGeometry(unitPts);
+var convexMatU = new THREE.MeshNormalMaterial({wireframe: true});
+var convexU = new THREE.Mesh(convexGeomU, convexMatU);
+scene.add(convexU);
+ */
+// ******************************
+
+var convexPos = convexGeom.attributes.position;
+console.log(convexPos);
+var currV3 = new THREE.Vector3();
+var tempV3 = new THREE.Vector3();
+
+for (let i = 0; i < convexPos.count; i++){
+
+	currV3.fromBufferAttribute(convexPos, i);
+  //console.log(currV3.clone());
+
+	for(let j = 0; j < pts.length; j++){
+  	
+  	tempV3.copy(pts[j]).setLength(10);
+    
+    let res = currV3.equals(tempV3, 0.001);
+    
+    if (res) {
+	
+    	convexPos.setXYZ(i, pts[j].x, pts[j].y, pts[j].z);
+      
+    }
+  }
+}
+
+convexPos.needsUpdate = true;
+
+// ****************** + hofk *********************
+
+const lsGeo = new THREE.BufferGeometry( );
+const lsPos = new Float32Array( 200 * 3 );
+lsGeo.setAttribute( 'position', new THREE.BufferAttribute( lsPos, 3 ) );
+for ( i = 0; i < pts.length; i ++ ) {		 
+	lsPos[ i * 6     ] = pts[ i ].x;
+	lsPos[ i * 6 + 1 ] = pts[ i ].y;
+	lsPos[ i * 6 + 2 ] = pts[ i ].z;	
+	lsPos[ i * 6 + 3 ] = unitPts[ i ].x;
+	lsPos[ i * 6 + 4 ] = unitPts[ i ].y;
+	lsPos[ i * 6 + 5 ] = unitPts[ i ].z;	
+}
+const  lsMaterial = new THREE.LineBasicMaterial({ color: "white"});
+const  ls = new THREE.LineSegments( lsGeo, lsMaterial );
+scene.add( ls );
+
+// *******************************************
+
+renderer.setAnimationLoop(()=>{
+	renderer.render(scene, camera);
+})
+
+</script>
+
+</html>

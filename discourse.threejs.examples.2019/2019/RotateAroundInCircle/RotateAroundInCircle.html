@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/rotate-object-around-in-circle/8228/2 -->
+<!-- https://jsfiddle.net/blackstrings/rd8ecfmx/ -->
+<!-- see also  https://jsfiddle.net/prisoner849/opau47vk/ -->
+<head>
+  <title> RotateAroundInCircle </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	margin:0;
+	}
+  </style>  
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.105.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author blackstrings0
+
+var objects = []; 
+var scene = new THREE.Scene();
+
+var width = window.innerWidth;
+var height = window.innerHeight;
+
+var camera = new THREE.PerspectiveCamera( 35, width/height, 0.1, 1000 );
+var renderer = new THREE.WebGLRenderer();
+
+renderer.setSize( width, height );
+renderer.setClearColor( 0xcccccc, 1 ); 
+document.body.appendChild( renderer.domElement );
+scene.add(camera);
+
+controls = new THREE.OrbitControls(camera);
+controls.screenSpacePanning = true;
+setToFullOrbit(controls)
+camera.position.copy(new THREE.Vector3(fti(5), fti(5), fti(5)) );
+// fix first frame render issue going invisible
+camera.lookAt(new THREE.Vector3(0,0,0));
+
+var axisHelper = new THREE.AxisHelper();
+scene.add(axisHelper);
+
+var grid = new THREE.GridHelper(fti(12), 12);
+scene.add(grid);
+
+// ---- playground here
+
+// an empty mesh container to house the 4 circles
+// once parent contains the 4 circles, you just rotate the parent.
+// this is one way to do it vs rotating each child independentaly
+var parentContainer = new THREE.Mesh();
+scene.add(parentContainer);
+
+var circles = createAll4CirclesWithOffsetPositions();
+circles.forEach(c => {
+	parentContainer.add(c);
+});
+
+// rotate the parent in the animation render()
+
+// ---- end of playground
+function createAll4CirclesWithOffsetPositions(){
+  var raidus = 3;
+  var segments = 10;
+	
+  var circles = [
+  	createCircle(raidus, segments),
+    createCircle(raidus, segments),
+    createCircle(raidus, segments),
+    createCircle(raidus, segments)
+  ];
+  
+  var offsetDistance = 20;
+  
+  // east, north, west, south
+  var offsetVectors = [
+  	new THREE.Vector3(1,0,0),
+    new THREE.Vector3(0,1,0),
+    new THREE.Vector3(-1,0,0),
+    new THREE.Vector3(0,-1,0)
+  ];
+  
+  // apply the offset distance to each offsetVector
+  offsetVectors.forEach(offsetVector => {
+  	offsetVector.setLength(offsetDistance);
+  });
+  
+  // add the offset vectors to each circle to give them their offset starting position
+  for(var i=0; i<circles.length; i++){
+  	circles[i].position.add(offsetVectors[i]);
+  }
+  
+  return circles;
+}
+function createCircle(radius = 1, sections = 8){
+	var geo = new THREE.CircleGeometry(radius, sections);
+  var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0xffffff, map: new THREE.TextureLoader().load("https://threejs.org/examples/textures/UV_Grid_Sm.jpg")}));
+  scene.add(mesh);
+  return mesh;
+}
+
+var render = function () {
+
+	// rotate the parent
+  if(parentContainer){
+     parentContainer.rotateZ(.001);
+     // keeps the circle upright
+     circles.forEach(c => {c.rotateZ(-0.001)});
+  }
+  
+  requestAnimationFrame( render );
+  renderer.render( scene, camera );
+};
+
+function fti(feet){
+	return feet * 12;
+}
+
+function setToFullOrbit(orbitControl) {
+  // how far you can orbit vertically
+  orbitControl.minPolarAngle = 0;
+  orbitControl.maxPolarAngle = Math.PI;
+
+  // How far you can dolly in and out ( PerspectiveCamera only )
+  orbitControl.minDistance = 0;
+  orbitControl.maxDistance = Infinity;
+
+  orbitControl.enableZoom = true; // Set to false to disable zooming
+  orbitControl.zoomSpeed = 1.0;
+
+  orbitControl.enableRotate = true;
+
+  // allow keyboard arrows
+  orbitControl.enableKeys = true;
+
+  // Set to false to disable panning (ie vertical and horizontal translations)
+  orbitControl.enablePan = true;
+}
+
+render();
+
+</script>
+</html>

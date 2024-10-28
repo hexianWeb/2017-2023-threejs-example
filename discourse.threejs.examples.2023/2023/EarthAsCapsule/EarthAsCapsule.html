@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/scaling-and-positioning-in-door-configurator/52902/9 -->
+<!-- https://codepen.io/boytchev/pen/VwVjOre -->
+    <!-- see also  -->
+    <!-- https://codepen.io/boytchev/full/yLQJZdr -->
+    <!-- https://codepen.io/boytchev/full/qBQNmMZ -->
+    
+<head>
+  <title>EarthAsCapsule</title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+
+// general setup, boring, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'black' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 4, 1, -4 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+});
+
+var controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true;
+
+var ambientLight = new THREE.AmbientLight( 'white', 0 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 1 );
+    light.position.set( 1, 1, 1 );
+    scene.add( light );
+
+
+// next comment
+
+// create the Earth 
+
+var earthMap = new THREE.TextureLoader().load( EARTH ),
+		earthGeo = new THREE.SphereGeometry( 1, 64, 32 ),
+		earthPos = earthGeo.getAttribute( 'position' ),
+		earthMat = new THREE.MeshStandardMaterial( {
+				map: earthMap,
+				roughnessMap: earthMap,
+				metalness: 1,
+		} ),
+		earth = new THREE.Mesh( earthGeo, earthMat );
+
+scene.add( earth );
+
+
+// red belt
+var redGeo = new THREE.CylinderGeometry( 1, 1, 1, 64, 1, true ).rotateX( Math.PI/2 ), 
+		redMat = new THREE.LineBasicMaterial( {
+									color: 'crimson',
+							} ),
+		redMat2 = new THREE.MeshBasicMaterial( {
+									color: 'crimson',
+									transparent: true,
+									opacity: 0.1,
+							} ),
+		redBelt = new THREE.LineSegments( new THREE.EdgesGeometry(redGeo,10), redMat ),
+		redBelt2 = new THREE.Mesh( redGeo, redMat2 ),
+		redScale = 4/32;
+		scene.add( redBelt, redBelt2 );
+
+// function to transform the Earth shape
+var frame = 0,
+		v = new THREE.Vector3(),
+		w = new THREE.Vector3(),
+		dGray = [ [0,0,2,2], [0, 0,-2,-2], [0,1,0,1], [ 0,-1,0,-1],
+						  [2,0,0,2], [-2,0,0,-2] ];
+
+function transformEarth( )
+{
+		v.set( ...dGray[ (frame>>8) % 6 ] ).divideScalar( 500 );
+
+		redBelt.lookAt( v );
+		redBelt.scale.z = 2*redScale;
+	
+		redBelt2.lookAt( v );
+		redBelt2.scale.z = 2*redScale;
+	
+		redScale += dGray[ (frame>>8) % 6 ][3]/500;
+			
+		for( var i=0; i<earthPos.count; i++ )
+		{
+				w.set( earthPos.getX(i), earthPos.getY(i), earthPos.getZ(i) );
+				w.x += Math.sign(Math.round(100*w.x))*v.x;
+				w.y += Math.sign(Math.round(100*w.y))*v.y;
+				w.z += Math.sign(Math.round(100*w.z))*v.z;
+				earthPos.setXYZ( i, w.x, w.y, w.z)
+		}
+	
+		earthPos.needsUpdate = true;
+		frame++;
+}
+
+function animationLoop( t )
+{
+		transformEarth( );
+	
+    controls.update( );
+		light.position.copy( camera.position );
+    renderer.render( scene, camera );
+}
+
+
+renderer.setAnimationLoop( animationLoop );
+
+</script>
+</html>

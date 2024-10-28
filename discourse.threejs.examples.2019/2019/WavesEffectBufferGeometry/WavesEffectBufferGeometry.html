@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/create-waves-effect-with-buffer-geometry/10694/2 -->
+ <!-- https://jsfiddle.net/prisoner849/yxb8j7Lf/ -->
+<head>
+  <title> WavesEffectBufferGeometry </title>
+  <meta charset="utf-8" />
+    <style>
+	body {
+    padding: 0;
+    margin: 0;
+	}
+	canvas {
+	display: block;
+	}
+    </style>
+</head>
+
+<body> </body>
+
+<script src="../js/three.min.110.js"></script>
+<script src="../js/stats.min.js"></script>
+ 
+<script>
+
+// @author sanprieto + prisoner849
+
+var camera, scene, renderer, mesh, material, stats, plane, planeBuffer;
+init();
+animate();
+
+function init() {
+    // Renderer.
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+
+    renderer.setPixelRatio( window.devicePixelRatio );
+
+    renderer.gammaFactor = 2.2;
+    renderer.gammaOutput = true;
+
+    renderer.physicallyCorrectLights = true;
+
+    document.body.appendChild(renderer.domElement);
+
+    // Create camera.
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
+    camera.position.z = 40;
+
+    // Create scene.
+    scene = new THREE.Scene();
+
+    var geometry = new THREE.PlaneGeometry( 15, 20, 32 );
+    var material = new THREE.MeshPhongMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+    plane = new THREE.Mesh( geometry, material );
+    scene.add( plane );
+    plane.rotation.set(0,.4,THREE.Math.degToRad(90));
+    plane.position.y = 10;
+    
+    var material2 = new THREE.MeshPhongMaterial( {color: 0xff0000, side: THREE.DoubleSide} );
+    var geometry2 = new THREE.PlaneBufferGeometry( 15, 20, 32 );
+    planeBuffer = new THREE.Mesh( geometry2, material2 );
+    scene.add( planeBuffer );
+    planeBuffer.rotation.set(0,.4,THREE.Math.degToRad(90));
+    planeBuffer.position.y = -10;
+    console.log ( 'planeBuffer', planeBuffer );
+
+    // Create ambient light and add to scene.
+    var light = new THREE.AmbientLight(0x404040); // soft white light
+    scene.add(light);
+
+    // Create directional light and add to scene.
+    var directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+    directionalLight.position.set(1, 1, 1).normalize();
+    scene.add(directionalLight);
+
+    // Add listener for window resize.
+    window.addEventListener('resize', onWindowResize, false);
+
+    // Add stats to page.
+    stats = new Stats();
+    document.body.appendChild( stats.dom );
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+		waves( plane, .8, 2);
+    wavesBuffer( .8 , 2);
+    renderer.render(scene, camera);
+    stats.update();
+}
+
+function waves( plane, waveSize, magnitude ){
+
+	const theTime =  performance.now() * .001 ;
+
+	    var center = new THREE.Vector2(0,0);
+
+	    var vLength = plane.geometry.vertices.length;
+
+	    for (var i = 0; i < vLength; i++) {
+	      var v = plane.geometry.vertices[i];
+	      var dist = new THREE.Vector2(v.x, v.y).sub(center);
+
+	      v.z = Math.sin(dist.length()/- waveSize + (theTime)) * magnitude;
+	    }
+
+	    plane.geometry.verticesNeedUpdate = true;
+
+}
+
+function wavesBuffer( waveSize, magnitude ){
+
+  const theTime =  performance.now() * .001;
+  var pos = planeBuffer.geometry.attributes.position;
+
+  let center = new THREE.Vector3(0,0,0);
+  var vec3 = new THREE.Vector3(); // re-use
+  for ( var i = 0, l = pos.count; i < l; i ++ ) {
+
+    vec3.fromBufferAttribute(pos, i);
+		vec3.sub(center);
+    
+    var z = Math.sin( vec3.length() /- waveSize + (theTime)) * magnitude;
+    
+    pos.setZ(i, z);
+
+  }
+
+  pos.needsUpdate = true
+
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+</script>
+
+</html>

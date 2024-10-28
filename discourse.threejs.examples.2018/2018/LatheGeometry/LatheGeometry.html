@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/mesh-generated-with-threecsg-and-problem-of-vertices/1815/4 -->
+<!-- https://jsfiddle.net/prisoner849/vbhuw3jt/ -->
+
+<!-- see also  https://codepen.io/andreamk5/pen/ZrKLoZ  @author andreamk -->
+
+<head>
+  <title> LatheGeometry </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+  	margin: 0;
+	}
+  </style>   
+</head>
+
+<body> </body>
+<script src="../js/three.min.89.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(0, 10, 30);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+var points = [
+  new THREE.Vector2(1, 0),
+  new THREE.Vector2(3, 0),
+  new THREE.Vector2(7, 7.5),
+  new THREE.Vector2(7, 8),
+  new THREE.Vector2(3, 8),
+  new THREE.Vector2(3, 6),
+  new THREE.Vector2(4, 6),
+  new THREE.Vector2(4, 7),
+  new THREE.Vector2(6, 7),
+  new THREE.Vector2(2.75, 1),
+  new THREE.Vector2(1, 1),
+  new THREE.Vector2(1, 0)
+];
+
+var latheGeometry = new THREE.LatheGeometry(points, 64);
+latheGeometry.translate(0, -4, 0);
+var latheMaterial = new THREE.MeshPhongMaterial({
+  color: "aqua"
+});
+var lathe = new THREE.Mesh(latheGeometry, latheMaterial);
+scene.add(lathe);
+
+var profileGeometry = new THREE.BufferGeometry().setFromPoints(points);
+var line = new THREE.Line(profileGeometry, new THREE.LineBasicMaterial({
+  color: "yellow", depthTest: false
+}));
+line.position.set(0, -4, 0);
+scene.add(line);
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  renderer.render(scene, camera);
+}
+
+
+</script>
+
+</html>

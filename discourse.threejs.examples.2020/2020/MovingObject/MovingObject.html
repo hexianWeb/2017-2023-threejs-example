@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+ <!-- https://discourse.threejs.org/t/moving-a-single-object-from-a-scene-of-multiple-objects-using-keyboard-controls/13288/3 -->
+ <!-- https://jsfiddle.net/pgf0sdqn/ -->
+<head>
+  <title> MovingObject </title>
+  <meta charset="utf-8" />
+  <style>
+	body { 
+		margin: 0;
+	}
+	canvas {
+		display: block;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.114.js"></script>
+<script src="../js/OrbitControls.114.js"></script>
+<script>
+
+ // @authors Athira_Narayan (updated Mugen87)
+ 
+ let scene, camera, renderer,controls;
+      let objects=[];
+      //Creating Scene
+      scene = new THREE.Scene();
+       //Creating Camera
+       camera = new THREE.OrthographicCamera(window.innerWidth / - 50, window.innerWidth / 50, window.innerHeight / 50, window.innerHeight / -50,0.1,1000);
+      camera.position.set(13,13,13);
+      camera.lookAt(scene.position);
+      //Creating renderer
+      renderer = new THREE.WebGLRenderer({antialias:true});
+      renderer.setSize(window.innerWidth,window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+      controls = new THREE.OrbitControls(camera, renderer.domElement );
+			controls.enableKeys = false;
+			
+			document.addEventListener( 'keydown', onKeyDown );
+     
+      //Adding Lights
+      var light = new THREE.DirectionalLight(0xffffff, 0.5);
+      light.position.setScalar(1);
+      scene.add(light);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+      function vehicle(){
+          var geometry2= new THREE.BoxBufferGeometry(5,5,5);
+          var material= new THREE.MeshBasicMaterial({color:"brown"});
+          var head= new THREE.Mesh(geometry2,material);
+          var geometry1=new THREE.BoxBufferGeometry(8,4,5);
+          var material1= new THREE.MeshBasicMaterial({color:"green"});
+          var body= new THREE.Mesh(geometry1,material1);
+          const geometry = head.geometry;
+          const positionAttribute = geometry.getAttribute( 'position' );
+          const vertex1 = new THREE.Vector3();
+          vertex1.fromBufferAttribute( positionAttribute, 0 );
+          head.localToWorld( vertex1 );
+          console.log(vertex1);
+          const vertex2 = new THREE.Vector3();
+          vertex2.fromBufferAttribute( positionAttribute, 1);
+          head.localToWorld( vertex2 );
+          console.log(vertex2);
+          const vertex3 = new THREE.Vector3();
+          vertex3.fromBufferAttribute( positionAttribute, 2 );
+          head.localToWorld( vertex3 );
+          console.log(vertex3);
+          const vertex4 = new THREE.Vector3();
+          vertex4.fromBufferAttribute( positionAttribute, 3 );
+          head.localToWorld( vertex4 );
+          console.log(vertex4);
+          const vertex5 = new THREE.Vector3();
+          vertex5.fromBufferAttribute( positionAttribute, 4 );
+          head.localToWorld( vertex5 );
+          console.log(vertex5);
+          const vertex6 = new THREE.Vector3();
+          vertex6.fromBufferAttribute( positionAttribute, 5 );
+          head.localToWorld( vertex6 );
+          console.log(vertex6);
+          const vertex7 = new THREE.Vector3();
+          vertex7.fromBufferAttribute( positionAttribute, 6 );
+          head.localToWorld( vertex7);
+          console.log(vertex7);
+          const vertex8 = new THREE.Vector3();
+          vertex8.fromBufferAttribute( positionAttribute, 7 );
+          head.localToWorld( vertex8 );
+          console.log(vertex8);
+          //.............................................//
+          const geometry3 = body.geometry;
+          const positionAttribute1 = geometry3.getAttribute( 'position' );
+          const vertex9 = new THREE.Vector3();
+          vertex9.fromBufferAttribute( positionAttribute1, 0 );
+          body.localToWorld( vertex9 );
+          console.log(vertex9);
+          const vertex10 = new THREE.Vector3();
+          vertex10.fromBufferAttribute( positionAttribute1, 1);
+          body.localToWorld( vertex10 );
+          console.log(vertex10);
+          const vertex11 = new THREE.Vector3();
+          vertex11.fromBufferAttribute( positionAttribute1, 2 );
+          body.localToWorld( vertex11 );
+          console.log(vertex11);
+          const vertex12 = new THREE.Vector3();
+          vertex12.fromBufferAttribute( positionAttribute1, 3 );
+          body.localToWorld( vertex12 );
+          console.log(vertex12);
+          const vertex13 = new THREE.Vector3();
+          vertex13.fromBufferAttribute( positionAttribute1, 4 );
+          body.localToWorld( vertex13 );
+          console.log(vertex13);
+          const vertex14 = new THREE.Vector3();
+          vertex14.fromBufferAttribute( positionAttribute1, 5 );
+          body.localToWorld( vertex14 );
+          console.log(vertex14);
+          const vertex15 = new THREE.Vector3();
+          vertex15.fromBufferAttribute( positionAttribute1, 6 );
+          body.localToWorld( vertex15);
+          console.log(vertex15);
+          const vertex16 = new THREE.Vector3();
+          vertex16.fromBufferAttribute( positionAttribute1, 7 );
+          body.localToWorld( vertex16 );
+          console.log(vertex16);
+          //............................................//
+          body.position.set(-6.5,-0.5,0);
+          scene.add(head);
+          head.add(body);
+          /*var singlegeometry = new THREE.Geometry();
+          var headmesh = new THREE.Mesh(geometry);
+          var bodymesh = new THREE.Mesh(geometry1);
+          headmesh.position.set(20,20,200);
+          headmesh.updateMatrix();
+          singlegeometry.merge(headmesh.geometry,headmesh.Matrix);
+          bodymesh.updateMatrix();
+          singlegeometry.merge(bodymesh.geometry,bodymesh.Matrix);
+          var material= new THREE.MeshBasicMaterial({color:"brown"});
+          var mesh = new THREE.Mesh(singlegeometry,material);
+          scene.add(mesh);*/
+      }
+      function fov1(){
+      var material = new THREE.MeshBasicMaterial({wireframe: false, color: "aqua", transparent:true, opacity:0.5, polygonOffset: true});
+      //Creating Pyramid
+      var geometry = new THREE.Geometry();
+      //Creating Vectors
+      geometry.vertices.push(
+          new THREE.Vector3(3,3,3),
+          new THREE.Vector3(13,5,-1),
+          new THREE.Vector3(13,1,-1),
+          new THREE.Vector3(13,1,7),
+          new THREE.Vector3(13,5,7)
+      );
+      geometry.faces.push(
+          new THREE.Face3(0,1,2),
+          new THREE.Face3(0,2,3),
+          new THREE.Face3(0,3,4),
+          new THREE.Face3(0,4,1),
+          new THREE.Face3(4,3,1),
+          new THREE.Face3(3,2,1)
+      );
+      geometry.computeFaceNormals();
+      geometry.computeVertexNormals();
+      var pyramid= new THREE.Mesh( geometry, material ) ;
+      var edges=new THREE.EdgesGeometry(geometry);
+      var lines = new THREE.LineSegments(edges,new THREE.LineBasicMaterial({color:"lightcyan"}));
+      let worldpos=new THREE.Vector3();
+      lines.getWorldPosition(worldpos);
+      console.log(worldpos);
+
+      lines.add(pyramid);
+      
+      scene.add(lines);
+      lines.name='fov';
+      //pyramid.scale.set(40.5,40.5,40.5);
+      lines.position.set(-0.5,-0.5,-3);
+      objects.push(lines);
+
+      }
+      function onKeyDown(e){
+          var distance = 0.15;
+          var fov = scene.getObjectByName('fov');
+          if(e.keyCode =='37'){
+              fov.position.x -= distance;
+              }
+          else if (e.keyCode == '38'){
+              fov.position.z -= distance;
+          }
+          else if (e.keyCode == '39'){
+            fov.position.x += distance;
+          }
+          else if (e.keyCode == '40'){
+            fov.position.z -= distance;
+          }
+        }
+      function animate() {
+        renderer.render(scene,camera);
+        requestAnimationFrame(animate);
+      }
+      fov1();
+      vehicle();
+      animate();
+	  
+</script>
+</html>

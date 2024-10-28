@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/applying-correct-scale-after-a-rotation/1779/4 -->
+<!-- https://jsfiddle.net/prisoner849/rbek42gL/ -->
+<head>
+  <title> ScaleAfterRotation </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+	overflow: hidden;
+  	margin: 0;
+	}
+  </style> 
+</head>
+
+<body> </body>
+<script src="../js/three.min.89.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
+camera.position.set(0, 10, 20);
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var helperGeom = new THREE.EdgesGeometry(new THREE.BoxGeometry(10, 10, 10));
+var helper = new THREE.LineSegments(helperGeom, new THREE.LineBasicMaterial({
+  color: "yellow"
+}));
+scene.add(helper);
+
+var helperBox = new THREE.Box3().setFromObject(helper);
+var helperSize = helperBox.getSize();
+
+var cubeGeom = new THREE.BoxGeometry(2, 5, 10);
+var dummyCube = new THREE.Mesh(cubeGeom, new THREE.MeshBasicMaterial());
+dummyCube.visible = false;
+scene.add(dummyCube);
+var cube = new THREE.Mesh(cubeGeom, new THREE.MeshBasicMaterial({
+  color: "red",
+  wireframe: true
+}));
+scene.add(cube);
+
+var cubeBox = new THREE.Box3();
+var cubeSize = new THREE.Vector3();
+
+var ratioSize = new THREE.Vector3();
+var ratio = 0;
+
+render();
+
+function render() {
+  requestAnimationFrame(render);
+  
+  dummyCube.rotation.x += 0.01;
+  dummyCube.rotation.y += 0.0314;
+  cube.quaternion.copy(dummyCube.quaternion);
+
+  cubeBox.setFromObject(dummyCube).getSize(cubeSize);
+  ratioSize.copy(helperSize).divide(cubeSize);
+  ratio = Math.min(Math.min(ratioSize.x, ratioSize.y), ratioSize.z);
+  cube.scale.setScalar(ratio);
+  
+  renderer.render(scene, camera);
+}
+
+</script>
+</html>

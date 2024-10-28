@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-create-a-segmented-tube/51229/3 -->
+<!-- https://codepen.io/prisoner849/pen/rNqpZGN -->
+<head>
+  <title>NonCylindricalTunnel</title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    background-color: black; 
+    }
+  </style>
+</head>
+<body> 
+ 
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.6.3/dist/es-module-shims.js" crossorigin="anonymous"></script>
+    <script type="importmap">
+    {
+        "imports": {
+        "three": "https://unpkg.com/three@0.152.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.152.0/examples/jsm/"
+        }
+    }
+    </script>    
+ 
+</body>
+<script type="module">
+
+// @author prisoner849 
+ /* 
+import * as THREE from '../jsm/three.module.149.js';
+import { OrbitControls } from '../jsm/OrbitControls.149.js';
+import { mergeGeometries } from '../jsm/BufferGeometryUtils.149.js'; // ERROR ?
+*/
+   
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+ 
+console.clear();
+
+let scene = new THREE.Scene();
+scene.background = new THREE.Color("pink");
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 1, 1).setLength(100);
+camera.lookAt(scene.position);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+//renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+//let controls = new OrbitControls(camera, renderer.domElement);
+//controls.enableDamping = true;
+
+let light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 0.5));
+
+let segments = 1000;
+let radSegments = 10;
+let gs = new Array(3).fill().map((_, idx) => {
+  let a = Math.PI * 0.4;
+  let g = new THREE.CylinderGeometry(2, 2, segments, radSegments, segments, true, Math.PI * 0.5 * (idx - 1) - (a * 0.5), a);
+  return g;
+})
+gs.push( new THREE.PlaneGeometry(2.5, segments, radSegments, segments).translate(0, 0, 1.5).rotateY(Math.PI));
+
+let g = mergeGeometries(gs).translate(0, -0.5 * segments, 0).rotateX(Math.PI * -0.5);
+let m = new THREE.MeshLambertMaterial({
+  //wireframe: true,
+  side: THREE.DoubleSide,
+  onBeforeCompile: shader => {
+    shader.fragmentShader = `
+      ${shader.fragmentShader}
+    `.replace(
+      `#include <color_fragment>`,
+      `#include <color_fragment>
+        vec2 tUv = vUv * 250.;
+        diffuseColor.rgb = mix(vec3(1, 0.5, 0.5), vec3(0.25), step(0.5, fract(tUv).y));
+      `
+    );
+    //console.log(shader.fragmentShader)
+  }
+});
+m.defines = {"USE_UV" : ""}
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let curvePts = new Array(5).fill().map(p => {return new THREE.Vector3().randomDirection().setLength(Math.random() * 50 + 50)})
+let curve = new THREE.CatmullRomCurve3(
+  curvePts,
+  true
+)
+let lg = new THREE.BufferGeometry().setFromPoints(curve.getSpacedPoints(segments));
+let lm = new THREE.LineBasicMaterial({color: "aquamarine"})
+let l = new THREE.Line(lg, lm);
+scene.add(l);
+
+// <bend along the curve>
+let strade = (radSegments + 1) * 4;
+
+let curveFrames = curve.computeFrenetFrames(segments, true);
+let curvePoints = curve.getSpacedPoints(segments);
+
+let vert = new THREE.Vector3();
+let normal = new THREE.Vector3();
+let binormal = new THREE.Vector3();
+let position2 = new THREE.Vector3();
+
+for(let i = 0; i < g.attributes.position.count; i++){
+    vert.fromBufferAttribute(g.attributes.position, i);
+    let frameIdx = Math.round(vert.z);
+    normal.copy( curveFrames.normals[ frameIdx ] ).multiplyScalar( vert.x );
+    binormal.copy( curveFrames.binormals[ frameIdx ] ).multiplyScalar( vert.y );
+
+    position2.copy( curvePoints[ frameIdx ] ).add( normal ).add( binormal );
+    g.attributes.position.setXYZ(i, position2.x, position2.y, position2.z);
+
+}
+g.computeVertexNormals();
+// </bend along the curve>
+
+let lookAt = new THREE.Vector3();
+let mat = new THREE.Matrix4();
+let curveLen = curve.getLength();
+let clock = new THREE.Clock();
+
+// based on https://codepen.io/ycw/pen/OJRwedY
+renderer.setAnimationLoop((_) => {
+  let t = ((clock.getElapsedTime() * 10) % curveLen) / curveLen;
+  curve.getPointAt(t, camera.position);
+  //curve.getPointAt((t+0.001) % 1, lookAt);
+  //camera.lookAt(lookAt);
+  //controls.update();
+  
+  camera.setRotationFromMatrix(mat.lookAt(
+        /* eye */ camera.position,
+        /* target */ curve.getPointAt(Math.min(1.0, t + 0.01)),
+        /* up */ curveFrames.binormals[t * segments | 0]
+    ));
+  
+  renderer.render(scene, camera);
+});
+
+</script>
+</html>

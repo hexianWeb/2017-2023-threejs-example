@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--https://discourse.threejs.org/t/three-js-video-with-rounded-corners/28543/13--> 
+<head>
+	<title> RoundedRectangleVideo </title>
+	<meta charset="utf-8" />
+	<style>	
+	body {  margin: 0; }
+	</style>
+</head>
+<body>
+	<video id="video" loop crossOrigin="anonymous"  playsinline style="display:none" >	
+		<source src="Robin - 21375.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"'>	
+	</video>
+	
+</body>
+ 
+ <script type="module">
+ 
+// @author hofk
+ 
+import * as THREE from "../jsm/three.module.130.js";
+import { OrbitControls } from "../jsm/OrbitControls.130.js";
+
+window.addEventListener( "click", play, false );
+
+const scene = new THREE.Scene( );
+const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.01, 10000 );
+camera.position.set( 0, 6, 40 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xdedede, 1 );	
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement );
+
+const controls = new OrbitControls( camera, renderer.domElement );
+
+const w = 16;	// width
+const h = 9;	// height
+const r = 2;	// radius corner
+const s = 18;	// smoothness
+
+// helper const's
+const wi = w / 2 - r;
+const hi = h / 2 - r;
+const w2 = w / 2;
+const h2 = h / 2;
+const ul = r / w;
+const ur = ( w - r ) / w;
+const vl = r / h;
+const vh = ( h - r ) / h;
+
+let positions = [
+
+	-wi, -h2, 0,  wi, -h2, 0,  wi, h2, 0,
+	-wi, -h2, 0,  wi,  h2, 0, -wi, h2, 0,	
+	-w2, -hi, 0, -wi, -hi, 0, -wi, hi, 0,
+	-w2, -hi, 0, -wi,  hi, 0, -w2, hi, 0,	
+	 wi, -hi, 0,  w2, -hi, 0,  w2, hi, 0,
+	 wi, -hi, 0,  w2,  hi, 0,  wi, hi, 0
+	 
+];
+
+let uvs = [
+	
+	ul,  0, ur,  0, ur,  1,
+	ul,  0, ur,  1, ul,  1,
+	 0, vl, ul, vl, ul, vh,
+	 0, vl, ul, vh,  0, vh,
+	ur, vl,  1, vl,  1, vh,
+	ur, vl,  1, vh,	ur, vh 
+	
+];
+
+let phia = 0; 
+let phib, xc, yc, uc, vc;
+
+for ( let i = 0; i < s * 4; i ++ ) {
+
+	phib = Math.PI * 2 * ( i + 1 ) / ( 4 * s );
+	
+	
+	xc = i < s || i >= 3 * s ? wi : - wi;
+	yc = i < 2 * s ? hi : -hi;
+
+	positions.push( xc, yc, 0, xc + r * Math.cos( phia ), yc + r * Math.sin( phia ), 0,  xc + r * Math.cos( phib ), yc + r * Math.sin( phib ), 0 );
+	
+	uc = xc = i < s || i >= 3 * s ? ur : ul;
+	vc = i < 2 * s ? vh : vl;
+	
+	uvs.push( uc, vc, uc + ul * Math.cos( phia ), vc + vl * Math.sin( phia ), uc + ul * Math.cos( phib ), vc + vl * Math.sin( phib ) );
+	
+	phia = phib;
+		
+}
+
+const videoTexture = new THREE.VideoTexture( video );
+videoTexture.minFilter = THREE.LinearFilter;
+videoTexture.magFilter = THREE.LinearFilter;
+videoTexture.format = THREE.RGBFormat;
+ 
+const material = new THREE.MeshBasicMaterial( { map: videoTexture , side: THREE.DoubleSide, wireframe: false } );
+ 
+const geometry = new THREE.BufferGeometry( );
+geometry.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array( positions ), 3 ) );
+geometry.setAttribute( 'uv', new THREE.BufferAttribute( new Float32Array( uvs ), 2 ) );
+const mesh = new THREE.Mesh( geometry, material );
+scene.add( mesh );
+
+animate( );  
+
+function animate( ) {
+	
+	requestAnimationFrame( animate );
+	renderer.render( scene, camera );
+		
+} 
+
+function play( ) {
+
+	video.play( );
+
+}
+
+</script>
+
+</html>

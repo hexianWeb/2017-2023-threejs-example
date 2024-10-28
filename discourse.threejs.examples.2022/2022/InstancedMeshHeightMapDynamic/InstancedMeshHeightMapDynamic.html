@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/use-gpucomputationrenderer-texture-for-dynamic-instancedmesh-objects-positions/37741/7 -->
+<!-- https://codepen.io/prisoner849/pen/zYRGBmK -->
+<head>
+  <title> InstancedMeshHeightMapDynamic </title>
+  <meta charset="utf-8" />
+<style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body>
+    <canvas id="heightmap" width="256" height="256" style="position:absolute; border: 1px solid aqua; margin: 10px;"></canvas>
+</body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.140.js';
+import {OrbitControls} from '../jsm/OrbitControls.140.js';
+
+console.clear();
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 5, 10);
+let renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+let canvas = document.getElementById("heightmap");
+let heightMap = new THREE.CanvasTexture(canvas);
+let ctx = canvas.getContext("2d");
+createHeightMap();
+setInterval(createHeightMap, 5000);
+
+let light = new THREE.HemisphereLight(0xffffff, 0x7f7f7f);
+scene.add(light);
+
+let planeG = new THREE.PlaneGeometry(20, 20, 100, 100);
+planeG.rotateX(Math.PI * -0.5);
+const MAX_COUNT = planeG.attributes.position.count;
+
+let g = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+g.setAttribute(
+  "instUV",
+  new THREE.InstancedBufferAttribute(planeG.attributes.uv.array, 2)
+);
+let u = {
+  heightMap: {value: heightMap}
+}
+let m = new THREE.MeshLambertMaterial({
+  onBeforeCompile: shader => {
+    shader.uniforms.heightMap = u.heightMap;
+    shader.vertexShader = `
+      uniform sampler2D heightMap;
+      attribute vec2 instUV;
+      varying float vHeight;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <project_vertex>`,
+      `
+      vec4 mvPosition = vec4( transformed, 1.0 );
+      #ifdef USE_INSTANCING
+        mat4 im = instanceMatrix;
+        float h = texture2D(heightMap, instUV).r;
+        vHeight = h;
+        im[3].y += h * 5.;
+        mvPosition = im * mvPosition;
+      #endif
+      mvPosition = modelViewMatrix * mvPosition;
+      gl_Position = projectionMatrix * mvPosition;
+      `
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+      varying float vHeight;
+      ${shader.fragmentShader}
+    `.replace(
+      `vec4 diffuseColor = vec4( diffuse, opacity );`,
+      `
+      vec3 col = mix(vec3(1, 0.125, 0), vec3(0, 1, 1), vHeight);
+      vec4 diffuseColor = vec4( col, opacity );`
+    );
+    console.log(shader.fragmentShader);
+  }
+});
+let io = new THREE.InstancedMesh(g, m, MAX_COUNT);
+
+let dummy = new THREE.Object3D();
+let v3 = new THREE.Vector3();
+for (let i = 0; i < MAX_COUNT; i++) {
+  dummy.position.fromBufferAttribute(planeG.attributes.position, i);
+  dummy.rotation.setFromVector3(v3.random().multiplyScalar(Math.PI));
+  dummy.updateMatrix();
+  io.setMatrixAt(i, dummy.matrix);
+}
+
+scene.add(io);
+
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+function createHeightMap() {
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 100; i++) {
+    var x = Math.floor(Math.random() * 255);
+    var y = Math.floor(Math.random() * 255);
+    var radius = 50;
+    var grd = ctx.createRadialGradient(x, y, 1, x, y, radius);
+    var h8 = Math.floor(Math.random() * 255);
+    grd.addColorStop(0, "rgb(" + h8 + "," + h8 + "," + h8 + ")");
+    grd.addColorStop(1, "transparent");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, 256, 256);
+  }
+  heightMap.needsUpdate = true;
+}
+
+</script>
+</html>

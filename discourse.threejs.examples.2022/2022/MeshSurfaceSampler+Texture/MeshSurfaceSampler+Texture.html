@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/using-color-weighted-attribute-for-meshsurfacesampler/40871 -->
+<!-- https://codepen.io/prisoner849/pen/KKoKWdx -->
+<head>
+  <title> MeshSurfaceSampler+Texture </title>
+  <meta charset="utf-8" />
+  <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js'  
+import {MeshSurfaceSampler} from '../jsm/MeshSurfaceSampler.136.js' 
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 10, 10).setLength(30);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", event => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+})
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let texture = createHeatMap();
+
+let g = new THREE.PlaneGeometry(30, 30, 100, 100);
+g.rotateX(-Math.PI * 0.5);
+let m = new THREE.MeshBasicMaterial({wireframe: true, map: texture});
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+readTextureToGeometry(g, texture);
+
+
+const sampler = new MeshSurfaceSampler( o )
+	.setWeightAttribute( 'heat' )
+	.build();
+
+let pointCount = 100000;
+let pointPts = new Array(pointCount).fill().map(p => {
+  let v3 = new THREE.Vector3();
+  sampler.sample(v3);
+  return v3;
+})
+
+let pG = new THREE.BufferGeometry().setFromPoints(pointPts);
+let pM = new THREE.PointsMaterial({size: 0.1, color: "aqua"});
+let p = new THREE.Points(pG, pM);
+scene.add(p);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+
+function createHeatMap(){
+  var canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  var heightMap = new THREE.CanvasTexture(canvas);
+  var ctx = canvas.getContext("2d");
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, 256, 256);
+  for(let i = 0; i < 100; i++){
+    var x = Math.floor(Math.random() * 255);
+    var y = Math.floor(Math.random() * 255);
+    var radius = 50;
+    var grd = ctx.createRadialGradient(x, y, 1, x, y, radius);
+    var h8 = Math.floor(Math.random() * 255);
+    grd.addColorStop(0, "rgb("+ h8 + "," + h8 + "," + h8 +")");
+    grd.addColorStop(1, "transparent");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, 256, 256);
+  }
+  heightMap.needsUpdate = true;
+  return heightMap;
+}
+
+function readTextureToGeometry(g, t){
+  var canvas = document.createElement("canvas");
+  canvas.width = t.image.width;
+  canvas.height = t.image.height;
+  var ctx = canvas.getContext("2d");
+  ctx.drawImage(t.image, 0, 0, t.image.width, t.image.height);
+
+  let v2 = new THREE.Vector2();
+  let heat = [];
+  for(let i = 0; i < g.attributes.uv.count; i++){
+      v2.fromBufferAttribute(g.attributes.uv, i);
+      let imgData = ctx.getImageData(Math.round(v2.x * canvas.width), Math.round((1. - v2.y) * canvas.height), 1, 1).data;
+      let val = imgData[0] / 255.0;
+      val = Math.pow(val, 3); // emphasise (not mandatory)
+      heat.push(val);
+  }
+  g.setAttribute("heat", new THREE.Float32BufferAttribute(heat, 1));
+  console.log("done");
+}
+
+</script>
+</html>

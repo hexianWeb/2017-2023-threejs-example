@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-draw-line-in-diffrent-parent/20839/3 -->
+<!-- https://codepen.io/mjurczyk/pen/qBNGLjp -->
+<head>
+  <title> ConnectObjectsInWorldSpace </title>
+  <meta charset="utf-8" />
+<style>
+*{
+  margin: 0;
+}
+</style>
+
+<body> </body>
+
+<script src="../js/three.min.122.js"></script>
+<script src="../js/OrbitControls.122.js"></script>
+
+<script>
+
+//@author mjurczyk
+
+// Question Reference: discourse.threejs.org/t/how-to-draw-line-in-diffrent-parent/20839
+
+let camera, scene, renderer, controls;
+
+const createMesh = (color) => {
+  const box = new THREE.Mesh(
+    new THREE.BoxBufferGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: color })
+  );
+  
+  return box;
+}
+
+const createWorld = () => {
+  // Create boxes (second box is placed inside the first one, to make it a bit more interesting)
+  const firstBox = createMesh(0xff9999);
+  scene.add(firstBox);
+
+  const secondBox = createMesh(0x99ff99);
+  secondBox.position.set(-2.0, 0.0, -1.0);
+  firstBox.add(secondBox);
+
+  const thirdBox = createMesh(0x9999ff);
+  thirdBox.position.set(1.0, 0.0, 2.0);
+  scene.add(thirdBox);
+  
+  const boxes = [ thirdBox, firstBox, secondBox ]; // Left to right
+  
+  // Create line geometry (it will connect boxes in the update interval below)
+  // Line is added to the scene, not any of the boxes, as it will use world positions to connect objects
+  const line = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0xffff99 })
+  );
+
+  scene.add(line);
+  
+  // Place the camera
+  
+  camera.lookAt(firstBox.position);
+  
+  // Update scene
+  
+  let dt = 0;
+  
+  setInterval(() => {
+    // Move boxes
+    dt++;
+    
+    boxes.forEach((box, index) => {
+      box.position.y = Math.sin((dt / 360) + index);
+    });
+    
+    // Update the line with world positions of boxes
+    const points = boxes.map(box => {
+      const boxPosition = new THREE.Vector3();
+
+      box.getWorldPosition(boxPosition);
+      
+      return boxPosition;
+    });
+
+    line.geometry.setFromPoints(points);
+  }, 1 / 120);
+};
+
+const init = () => {
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000.0);
+  camera.position.set(-5, 5, 7);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x333333);
+
+  scene.add(new THREE.HemisphereLight(0xffffcc, 0x19bbdc, 1));
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  document.body.appendChild(renderer.domElement);
+  
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  
+  createWorld();
+}
+
+const animate = () => {
+  requestAnimationFrame(animate);
+  
+  controls.update();
+
+  renderer.render(scene, camera); 
+}
+
+init();
+animate();
+
+</script>
+</html>

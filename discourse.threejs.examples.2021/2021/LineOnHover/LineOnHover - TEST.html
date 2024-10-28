@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/draw-a-horizontal-line-around-object-on-mouse-hover/31766/4 -->
+<!-- https://jsfiddle.net/prisoner849/casg4f0r/ -->
+<head>
+  <title> LineOnHover </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from '../jsm/three.module.134.js';
+import {OrbitControls} from '../jsm/OrbitControls.134.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 8, 13).setLength(15);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(1);
+scene.add(light, new THREE.AmbientLight(0xffffff, 1.5));
+
+scene.add(new THREE.GridHelper())
+
+//let g = new THREE.IcosahedronGeometry(5, 0);
+let g = new THREE.SphereGeometry( 5,100, 100);
+g.rotateX(-Math.PI * 0.5);
+let uniforms = {
+	planeMousePos: {value: new THREE.Vector2()}
+}
+//console.log(uniforms)
+let m = new THREE.MeshStandardMaterial({
+	color:0xff007f,
+  roughness: 0.6,
+  metalness: 0.5,
+  wireframe: true,
+  onBeforeCompile: shader => {
+  	shader.uniforms.planeMousePos = uniforms.planeMousePos;
+    shader.vertexShader = `
+    	varying vec3 vPos;
+      ${shader.vertexShader}
+    `.replace(
+    	`#include <begin_vertex>`,
+      `#include <begin_vertex>
+      	vPos = transformed;
+      `
+    );
+    //console.log(shader.vertexShader);
+    shader.fragmentShader = `
+    	#define ss(a, b, c) smoothstep(a, b, c)
+    	uniform vec2 planeMousePos;
+      varying vec3 vPos;
+      ${shader.fragmentShader}
+    `.replace(
+    	`#include <dithering_fragment>`,
+      `#include <dithering_fragment>
+      	vec3 col = vec3(0.5, 1, 1);
+        float e = fwidth(vPos.y) * 2.;
+        float f = ss(e, 0., abs(vPos.y - planeMousePos.y));
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, col, f);
+      
+      `
+    );
+    //console.log(shader.fragmentShader);
+  }
+});
+let plane = new THREE.Mesh(g, m);
+scene.add(plane);
+
+let mouse = new THREE.Vector3();
+let raycaster = new THREE.Raycaster();
+let intersects = [];
+
+window.addEventListener("resize", onWindowResize);
+window.addEventListener("pointermove", event => {
+  mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+  mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+  getMousePos();
+});
+
+animate();
+
+function getMousePos(){
+	raycaster.setFromCamera(mouse, camera);
+  intersects = raycaster.intersectObject(plane);
+  if(intersects.length > 0){
+  	uniforms.planeMousePos.value.copy(plane.worldToLocal(intersects[0].point));
+  } else {
+  	uniforms.planeMousePos.value.set(0, 10000, 0);
+  }
+}
+
+function animate() {
+
+  requestAnimationFrame( animate );
+  renderer.render(scene, camera);
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth, innerHeight);
+
+}
+
+</script>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-can-i-make-this-calculation-or-is-there-any-built-in-function/42173/22 -->
+<!-- https://jsfiddle.net/YinCognito/z0b3xevn/ -->
+<head>
+  <title> PlaneCalculations </title>
+  <meta charset="utf-8" />
+</head>
+<script src="../js/three.min.144.js"></script>
+<body> </body>
+
+<script>
+
+// @author Yin_Cognyto
+
+var camera, scene, renderer, group, outer, back, raycaster;
+var line, plane, planehelper;
+
+function mouseMove(event)
+{
+  // Update the plane rotation and position just like it was done when created
+  plane.setFromNormalAndCoplanarPoint(outer.getWorldDirection(new THREE.Vector3()),
+                                      outer.getWorldPosition(new THREE.Vector3()));
+  // Update the similar properties of the plane helper too
+  planehelper.updateMatrixWorld(true);
+  
+  // Get the [-1..1] normalized mouse coordinates and cast a ray from the camera to those coordinates
+  const mouse = mouseNormalized(event);
+  raycaster.setFromCamera(mouse, camera);
+  
+  // Get the ray intersection with the plane into a corresponding vector
+  const cursor = new THREE.Vector3();
+  raycaster.ray.intersectPlane(plane, cursor);
+  
+  // Subtract position, invert rotation, divide scale of the object to get the vector values in relation to origin
+  cursor.sub(outer.getWorldPosition(new THREE.Vector3()).clone());
+  cursor.applyQuaternion(outer.getWorldQuaternion(new THREE.Quaternion()).clone().invert());
+  cursor.divide(outer.getWorldScale(new THREE.Vector3()).clone());
+  
+  // Compute the intersection point angle with the local X axis via the arc of the y / x tangent
+  let radian = Math.atan2(cursor.y, cursor.x);
+  if (radian < 0) {radian = Math.PI * 2 + radian;};
+  
+  // Set the thetaStart and thetaLength values for the ring's start and length angles
+  const thetaStart = Math.PI * 2 - Math.PI / 3;
+  const thetaLength = Math.max(0, Math.min((radian + Math.PI / 3) % (Math.PI * 2), (5 * Math.PI) / 3));
+  
+  // Recreate the object with the new values for its angles
+  outer.geometry.dispose();
+  outer.geometry = new THREE.RingGeometry(20, 40, 128, 1, thetaStart, thetaLength);
+  
+  // Show the relevent info for debugging purposes
+  console.log(mouse, cursor, radian, thetaStart, thetaLength);
+};
+
+function init() {
+  scene = new THREE.Scene();
+  
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.z = 300;
+  scene.add(camera);
+  
+  group = new THREE.Group();
+  
+  const backMaterial = new THREE.MeshBasicMaterial({color: 0x962015});
+  const backGeometry = new THREE.RingGeometry(20, 40, 128, 1, 5.2, 5.2);
+  back = new THREE.Mesh(backGeometry, backMaterial);
+  
+  const outerMaterial = new THREE.MeshBasicMaterial({color: 0xFE3423});
+  const outerGeometry = new THREE.RingGeometry(20, 40, 128, 1, 5.2, 5.2);
+  outer = new THREE.Mesh(outerGeometry, outerMaterial);
+  
+  outer.position.set(7, 0, 0);
+  outer.rotation.set(-0.5, 0.0, 0.0);
+  outer.scale.set(3, 1, 1);
+  
+  const edgesGeometry = new THREE.EdgesGeometry(backGeometry);
+  line = new THREE.LineSegments(edgesGeometry, new THREE.LineBasicMaterial({color: 0xffffff, visible: true}));
+  
+  group.add(back);
+  group.add(outer);
+  group.add(line);
+  
+  scene.add(group);
+    
+  group.position.set(0, 7, 0);
+  group.rotation.set(-0.5, 0.0, 0.0);
+  //group.scale.set(1, 3, 1); // NON UNIFORMLY SCALED PARENTS NOT SUPPORTED (https://github.com/mrdoob/three.js/issues/3845)
+  
+  // Create a plane from: normal = object's direction; coplanar point = object's position
+  plane = new THREE.Plane();
+  plane.setFromNormalAndCoplanarPoint(outer.getWorldDirection(new THREE.Vector3()),
+                                      outer.getWorldPosition(new THREE.Vector3()));
+  // Create a plane from: normal = object's direction; coplanar point = object's position (alternative)
+  //plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1).applyQuaternion(outer.getWorldQuaternion(
+  //                                    new THREE.Quaternion())), outer.getWorldPosition(new THREE.Vector3()));
+  
+  // Add a plane helper to better visualize things
+  planehelper = new THREE.PlaneHelper(plane, 500, 0x00ff00);
+  
+  scene.add(planehelper);
+
+  raycaster = new THREE.Raycaster();
+  
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  
+  document.body.appendChild(renderer.domElement);
+  document.addEventListener('mousemove', mouseMove);
+};
+
+function mouseNormalized(event)
+{
+  return (new THREE.Vector2(event.clientX / window.innerWidth * 2 - 1, - event.clientY / window.innerHeight * 2 + 1));
+};
+
+function animate()
+{
+  requestAnimationFrame(animate);
+  render();
+};
+
+function render()
+{
+  renderer.render(scene, camera);
+};
+
+init();
+animate();
+
+</script>
+</html>

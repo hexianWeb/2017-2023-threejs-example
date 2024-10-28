@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-can-i-apply-png-as-a-2side-pattern-texure-on-a-ringbuffergeometry/43117/10 -->
+<!-- https://codepen.io/prisoner849/pen/VwxxbMJ -->
+<head>
+  <title> Ring </title>
+  <meta charset="utf-8" />
+ <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author  prisoner849 
+
+import * as THREE from '../jsm/three.module.136.js';
+import {OrbitControls} from '../jsm/OrbitControls.136.js';
+import { GUI } from '../jsm/lil-gui.module.min.136.js';
+
+console.clear();
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(
+  60,
+  innerWidth / innerHeight,
+  0.1,
+  100
+);
+camera.position.set(0, 0, 10);
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setClearColor(0x404040);
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+window.addEventListener("resize", (event) => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let ringParams = {
+  rMin: 3.5,
+  rMax: 4,
+  texRepeat: 12
+}
+
+let g = new THREE.PlaneGeometry(1, 1, 72, 3);
+bend(g, ringParams.rMin, ringParams.rMax);
+                                // "https://threejs.org/examples/textures/uv_grid_opengl.jpg"
+let m = new THREE.MeshBasicMaterial({map: new THREE.TextureLoader().load("uv_grid_opengl.jpg", tex => {
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set( ringParams.texRepeat, 1 );
+})});
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let gui = new GUI();
+gui.add(ringParams, "rMin", 1, 5).name("radius min").onChange(val => {
+  bend(g, ringParams.rMin, ringParams.rMax);
+});
+gui.add(ringParams, "rMax", 1, 5).name("radius max").onChange(val => {
+  bend(g, ringParams.rMin, ringParams.rMax);
+});
+gui.add(ringParams, "texRepeat", 1, 20).name("repeat").onChange(val => {
+  m.map.repeat.x = val;
+})
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
+
+function bend(g, rMin, rMax) {
+  let pos = g.attributes.position;
+  let uv = g.attributes.uv;
+  let v3 = new THREE.Vector3();
+  let v2 = new THREE.Vector2();
+  let fullTurn = Math.PI * 2;
+  for(let i = 0; i < pos.count; i++){
+    v2.fromBufferAttribute(uv, i);
+    let a = fullTurn * v2.x;
+    let r = THREE.MathUtils.lerp(rMax, rMin, v2.y);
+    pos.setXY(i, Math.cos(a) * r, Math.sin(a) * r);
+  }
+  pos.needsUpdate = true;
+}
+
+</script>
+</html>

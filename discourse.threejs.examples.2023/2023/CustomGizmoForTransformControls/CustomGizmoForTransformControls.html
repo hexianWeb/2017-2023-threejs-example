@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/changing-rotation-handle-shape/48361/6 -->
+<!-- https://codepen.io/boytchev/pen/NWLROdz -->
+<head>
+  <title>CustomGizmoForTransformControls</title>
+  <meta charset="utf-8" />
+    <style>
+    body{
+    overflow: hidden;
+    margin: 0;
+    }
+    </style>
+</head>
+<body> </body>
+<script type="module">
+
+// @author PavelBoytchev
+
+import * as THREE from '../jsm/three.module.149.js';
+import { TransformControls } from '../jsm/TransformControls.149.js';
+
+// general setup, boring, skip to the next comment
+
+var scene = new THREE.Scene();
+    scene.background = new THREE.Color( 'gray' );
+
+var camera = new THREE.PerspectiveCamera( 30, innerWidth/innerHeight );
+    camera.position.set( 2, 3, 7 );
+    camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer( {antialias: true} );
+    renderer.setSize( innerWidth, innerHeight );
+    document.body.appendChild( renderer.domElement );
+			
+window.addEventListener( "resize", (event) => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix( );
+    renderer.setSize( innerWidth, innerHeight );
+		renderer.render( scene, camera );
+});
+
+var ambientLight = new THREE.AmbientLight( 'white', 0.5 );
+    scene.add( ambientLight );
+
+var light = new THREE.DirectionalLight( 'white', 0.5 );
+    light.position.set( 3, 6, 2 );
+    scene.add( light );
+
+
+// next comment
+
+// an object that will be transformed
+
+var object = new THREE.Mesh(
+			new THREE.BoxGeometry( 1, 1, 1 ),
+    	new THREE.MeshLambertMaterial( {color:'tan'} )
+    );	
+		object.rotation.set( 1, 2, 1 );
+		scene.add( object );
+
+
+// the transform control
+
+var controls = new TransformControls( camera, renderer.domElement );
+		controls.setMode( 'rotate' );
+		controls.addEventListener( 'change', ()=>renderer.render( scene, camera ) );
+		controls.attach( object );
+		scene.add( controls );
+
+
+// prepare a texture for the gizmo
+
+// first create a canvas
+
+var canvas = document.createElement( 'CANVAS' );
+    canvas.width = 64;
+    canvas.height = 64;
+
+// draw arrows in it
+
+var context = canvas.getContext( '2d' );
+		context.fillStyle = 'crimson';
+		context.strokeStyle = 'white';
+		context.lineWidth = 4;
+
+		// draw the line
+		context.beginPath( );
+				context.moveTo( 0, 32 );
+				context.lineTo( 64, 32 );
+    context.stroke( );
+
+		// draw the triangle
+		context.beginPath( );
+				context.moveTo( 40, 32 );
+				context.lineTo( 20, 42 );
+				context.lineTo( 20, 22 );
+				context.lineTo( 40, 32 );
+    context.stroke( );
+    context.fill( );
+
+
+// convert the canvas into a texture
+
+var texture = new THREE.CanvasTexture( canvas );
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+		texture.repeat.set( 4, 2 );
+		texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+
+// change the image of horizontal rotation gizmo
+
+var gizmoRotY = controls._gizmo.gizmo.rotate.children[2];
+		gizmoRotY.geometry = new THREE.TorusGeometry( 1.5, 0.2 )
+				.rotateX(- Math.PI/2)
+				.scale(1,0.1,1);
+		gizmoRotY.material = new THREE.MeshBasicMaterial({
+				color: 'white',
+				transparent: true,
+				map: texture
+		});
+
+
+// also change the invisible picker, because all mouse 
+// clicks are tested against the picker, not the gizmo
+// the material kept the same invisible material
+
+var pickerRotY = controls._gizmo.picker.rotate.children[2];
+		pickerRotY.geometry = new THREE.TorusGeometry( 1.5, 0.1 ).rotateX( -Math.PI/2 );
+
+
+renderer.render( scene, camera );
+</script>
+</html>

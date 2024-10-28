@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/updating-buffergeometry-indices-different-index-array-sizes/7155/2 -->
+<!-- https://jsfiddle.net/7ku0qexy/ -->
+<head>
+  <title> ChangeIndexBuffer </title>
+  <meta charset="utf-8" />
+    <style>
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.103.js"></script>
+
+<script>
+
+// @author Mugen87
+
+let camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+
+    const geometry = new THREE.PlaneBufferGeometry( 0.2, 0.2, 0.2 );
+    const material = new THREE.MeshNormalMaterial();
+    
+    // change index after 2 seconds
+    
+    setTimeout( () => {
+     
+      geometry.setIndex( [ 0, 2, 1 ] ); // just draw a single triangle, not two
+    
+    }, 2000 );
+
+    const mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+</script>
+
+</html>

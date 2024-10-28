@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/tetrahedron-non-indexed-buffer-geometry/12542 -->
+<!-- https://jsfiddle.net/prisoner849/jodt7ufx/ -->
+<head>
+  <title> TetrahedronSpecificUVs </title>
+  <meta charset="utf-8" />
+<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+	<script src="../js/three.min.112.js"></script>
+	<script src="../js/OrbitControls.js"></script>
+	
+<script>
+
+// @author prisoner849
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0.5, 1, 2);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+//renderer.setClearColor(0x404040);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+var light = new THREE.DirectionalLight(0xffffff, 0.5);
+light.position.setScalar(1);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+scene.add(new THREE.GridHelper(2, 4, 0x404040, 0x404040));
+
+// tetrahedron
+// ---------------------------------------------------------------------------------------
+var pts = [ // https://en.wikipedia.org/wiki/Tetrahedron#Coordinates_for_a_regular_tetrahedron
+  new THREE.Vector3(Math.sqrt(8 / 9), 0, -(1 / 3)),
+  new THREE.Vector3(-Math.sqrt(2 / 9), Math.sqrt(2 / 3), -(1 / 3)),
+  new THREE.Vector3(-Math.sqrt(2 / 9), -Math.sqrt(2 / 3), -(1 / 3)),
+  new THREE.Vector3(0, 0, 1)
+];
+
+var faces = [ //triangle soup
+  pts[0].clone(), pts[2].clone(), pts[1].clone(),
+  pts[0].clone(), pts[1].clone(), pts[3].clone(),
+  pts[1].clone(), pts[2].clone(), pts[3].clone(),
+  pts[2].clone(), pts[0].clone(), pts[3].clone()
+];
+
+var geom = new THREE.BufferGeometry().setFromPoints(faces);
+geom.rotateX(-Math.PI * 0.5);
+geom.computeVertexNormals();
+
+geom.setAttribute("uv", new THREE.Float32BufferAttribute([ // UVs
+  0.5, 1, 0.06698729810778059, 0.2500000000000001, 0.9330127018922194, 0.2500000000000001,
+  0.06698729810778059, 0.2500000000000001, 0.9330127018922194, 0.2500000000000001, 0.5, 1,
+  0.06698729810778059, 0.2500000000000001, 0.9330127018922194, 0.2500000000000001, 0.5, 1,
+  0.06698729810778059, 0.2500000000000001, 0.9330127018922194, 0.2500000000000001, 0.5, 1
+], 2));
+// ---------------------------------------------------------------------------------------
+
+var matPts = new THREE.PointsMaterial({
+  size: 0.1,
+  color: "red"
+});
+var points = new THREE.Points(geom, matPts);
+scene.add(points);
+
+var mat = new THREE.MeshLambertMaterial({ // "https://threejs.org/examples/textures/uv_grid_opengl.jpg"
+  map: new THREE.TextureLoader().load("uv_grid_opengl.jpg"),
+  side: THREE.DoubleSide,
+  alphaTest: 0.5
+});
+mat.defines = {
+  USE_UV: ""
+};
+var uniforms = {
+  vSides: {
+    value: 5
+  }
+};
+mat.onBeforeCompile = shader => {
+  console.log(shader.fragmentShader);
+  shader.uniforms.vSides = uniforms.vSides;
+    shader.fragmentShader = `
+  	uniform float vSides;
+    ` + shader.fragmentShader;
+  shader.fragmentShader = shader.fragmentShader.replace(
+    `#include <clipping_planes_pars_fragment>`,
+    `#include <clipping_planes_pars_fragment>
+
+float getShape(float outer, vec2 uv){
+    uv *= 2.0;
+    float a = atan(uv.x,-uv.y);
+    float r = 3.1415926 * 2. / vSides;
+    float d = cos( floor( .5 + a / r ) * r - a ) * length( uv );
+    return step(outer, d);
+}
+`
+  );
+  shader.fragmentShader = shader.fragmentShader.replace(
+    `vec4 diffuseColor = vec4( diffuse, opacity );`,
+    `vec4 diffuseColor = vec4( diffuse, opacity );
+    diffuseColor.a = getShape(0.25, vUv - 0.5);
+    `
+  );
+}
+var mesh = new THREE.Mesh(geom, mat);
+scene.add(mesh);
+
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera)
+});
+
+
+</script>
+
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-set-a-plane-gridhelper-how-to-have-my-gridhelper-oriented-by-a-plane-define-from-points/32439/6 -->
+<!-- https://jsfiddle.net/prisoner849/dtnbr2gs/ -->
+<head>
+  <title> PlaneGridHelper </title>
+  <meta charset="utf-8" />
+  <style>
+    body {
+    overflow: hidden;
+    margin: 0;
+    }
+  </style>
+</head>
+
+<body> 
+
+</body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from '../jsm/three.module.135.js';
+import {OrbitControls} from '../jsm/OrbitControls.135.js';
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 21, 34);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x202020);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper(100, 10));
+
+let shift = new THREE.Vector3()
+      	.random()
+        .subScalar(0.5)
+        .setLength(2 + Math.random() * 4);
+let triPts = new Array(3).fill().map(p => {
+	return new THREE.Vector3()
+  	.random()
+    .subScalar(0.5)
+    .multiplyScalar(5)
+    .add(shift);
+})
+
+let points = new THREE.Points(new THREE.BufferGeometry().setFromPoints(triPts), new THREE.PointsMaterial({color: "yellow"}));
+scene.add(points);
+
+let tri = new THREE.Triangle(triPts[0], triPts[1], triPts[2]);
+let c = new THREE.Vector3();
+tri.getMidpoint(c);
+let n = new THREE.Vector3();
+tri.getNormal(n);
+
+let grid = new THREE.GridHelper(10, 10, "aqua", "magenta");
+grid.geometry.rotateX(Math.PI * 0.5);
+grid.position.copy(c);
+grid.lookAt(c.add(n));
+scene.add(grid);
+
+window.addEventListener("resize", onWindowResize);
+
+animate();
+
+function animate() {
+
+  requestAnimationFrame( animate );
+  renderer.render(scene, camera);
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(innerWidth, innerHeight);
+
+}
+
+</script>
+</html>

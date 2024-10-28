@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-can-i-arrange-objects-in-order-in-the-scene/23015/13 -->
+<!-- https://jsfiddle.net/prisoner849/vpdkL0zt/ -->
+<head>
+  <title> SortAndRearrange </title>
+  <meta charset="utf-8" />
+  <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>	
+</head>
+
+<body>
+<button id="btnSort" style="position: absolute; margin: 10px;">
+  Sort and Rearrange
+</button>
+</body>
+
+<script type="module">
+
+// @author prisoner849  
+
+import * as THREE from "../jsm/three.module.125.js";
+import { OrbitControls } from "../jsm/OrbitControls.125.js";
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 5, 5);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+scene.add(new THREE.GridHelper(5, 5));
+
+let bars = [];
+let g = new THREE.BoxGeometry(0.5, 1, 0.5);
+g.translate(0, 0.5, 0);
+randomBars(5, 5);
+
+btnSort.addEventListener("click", sortAndRearrange, false);
+
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+})
+
+function randomBars(w, h){
+	let xStart = -(w * 0.5);
+  let yStart = -(h * 0.5);
+	for(let y = 0; y < h; y++){
+  	for (let x = 0; x < w; x++){
+    	
+    	let bar = new THREE.Mesh(g, new THREE.MeshLambertMaterial({color: Math.random() * 0x7f7f7f + 0x7f7f7f}));
+      bar.scale.y = THREE.MathUtils.randFloat(0.01, 4);
+      bar.position.set(
+      	xStart + 0.5 + x,
+        0,
+        yStart + 0.5 + y
+      )
+    	bars.push(bar);
+      scene.add(bar);
+    }
+  }
+}
+
+function sortAndRearrange(){
+	bars.sort( (a, b) => {
+  	return (a.scale.y > b.scale.y) ? 1 : ((b.scale.y > a.scale.y) ? -1 : 0);
+  })
+  console.log(bars.map(m => {return m.scale.y}));
+  
+  let diags = getDiagonalsOfMatrix(5);
+  console.log(diags);
+  let idxCounter = 0;
+  diags.forEach(d => {
+  	let items = d.forEach(it => {
+    	let val = it;
+      let y = 2 - it[1];
+      let x = it[0] - 2;
+      bars[idxCounter].position.set(x, 0, y);
+      idxCounter++;
+    })
+  })
+}
+
+function getDiagonalsOfMatrix(size){
+
+	let m = [];
+  let idxCounter = 0;
+  for(let y = 0; y < size; y++){
+  	m.push([]);
+  	for(let x = 0; x < size; x++){
+    	m[y].push([x, y]);
+      idxCounter++;
+    }
+  }
+
+  var s, x, y, d,
+      o = [];
+  for (s = 0; s < m.length; s++) {
+    d = [];
+    for(y = s, x = 0; y >= 0; y--, x++)
+      d.push(m[y][x]);
+    o.push(d);
+  }
+  for (s = 1; s < m[0].length; s++) {
+    d = [];
+    for(y = m.length - 1, x = s; x < m[0].length; y--, x++)
+      d.push(m[y][x]);
+    o.push(d);
+  }
+  return o;
+
+}
+</script>
+</html>

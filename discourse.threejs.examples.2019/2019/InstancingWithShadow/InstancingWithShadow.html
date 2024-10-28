@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/shadow-for-instances/7947/11 -->
+<!-- https://codepen.io/Fyrestar/pen/mYYEbK -->
+
+<head>
+  <title> InstancingWithShadow </title>
+  <meta charset="utf-8" />
+    <style>
+	body, html {
+	margin: 0;
+	padding: 0;
+	display: flex;
+	}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.104.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author Fyrestar 
+
+class App {
+  constructor() {
+    //
+  }
+
+  init() {
+    this.camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    this.camera.position.x = 30;
+    this.camera.position.z = 30;
+    this.camera.position.y = 30;
+
+    this.controls = new THREE.OrbitControls(this.camera);
+
+    this.scene = new THREE.Scene();
+
+    var geometry = new THREE.PlaneBufferGeometry(100, 100, 1);
+    geometry.rotateX(-Math.PI * 0.5); // this is how you can do it
+    var material = new THREE.MeshLambertMaterial({
+      diffuse: 0x888800,
+      side: THREE.DoubleSide,
+      lights: true
+    });
+    var plane = new THREE.Mesh(geometry, material);
+    plane.receiveShadow = true;
+    this.scene.add(plane);
+
+    var light = new THREE.AmbientLight(0x808080);
+    var light2 = new THREE.DirectionalLight(0xff4040, 1, 200);
+    //var pointLightHelper = new THREE.PointLightHelper(light2, 1.0);
+    light2.position.set(10, 20, 10);
+
+    light2.castShadow = true;
+    light2.shadow.camera.near = 1;
+    light2.shadow.camera.far = 100;
+    light2.shadow.bias = -0.005; // reduces self-shadowing on double-sided objects
+    light2.shadow.mapSize.width = 2048;  // default
+    light2.shadow.mapSize.height = 2048; // default
+    
+		light2.shadow.camera.left   = -100;
+		light2.shadow.camera.right  = 100;
+		light2.shadow.camera.top    = 100;
+		light2.shadow.camera.bottom = -100;  
+
+    this.scene.add(light, light2);
+
+    var geometry = new THREE.BoxBufferGeometry(2, 2, 2);
+
+    var instancedGeometry = new THREE.InstancedBufferGeometry();
+
+    var offset = new THREE.InstancedBufferAttribute(new Float32Array(300), 3);
+    var orientation = new THREE.InstancedBufferAttribute(
+      new Float32Array(400),
+      4
+    );
+    instancedGeometry.maxInstancedCount = 100;
+    instancedGeometry.addAttribute("offset", offset);
+    instancedGeometry.addAttribute("orientation", orientation);
+
+    for (var i = 0; i < 100; i++) {
+      offset.setXYZ(
+        i,
+        50 - Math.random() * 100,
+        Math.random() * 10,
+        50 - Math.random() * 100
+      );
+    }
+    offset.needsUpdate = true;
+
+    //we have to copy the meat - geometry into this wrapper
+    Object.keys(geometry.attributes).forEach(attributeName => {
+      instancedGeometry.attributes[attributeName] =
+        geometry.attributes[attributeName];
+    });
+
+    //along with the index
+    instancedGeometry.index = geometry.index;
+
+    /*
+ CREATING THE MATERIAL USING PHONG FROM SHADERLIB
+ */
+    
+
+    var wVertex = THREE.ShaderLib["lambert"].vertexShader;
+    var wFragment = THREE.ShaderLib["lambert"].fragmentShader;
+    var wUniforms = THREE.ShaderLib["lambert"].uniforms;
+    wVertex =
+      `
+
+            attribute vec3 offset;
+            attribute vec4 orientation;
+
+            vec3 applyQuaternionToVector( vec4 q, vec3 v ){
+               return v + 2.0 * cross( q.xyz, cross( q.xyz, v ) + q.w * v );
+            }
+
+         ` + wVertex;
+
+    wVertex = wVertex.replace(
+      "#include <project_vertex>",
+      `
+            vec3 vPosition = applyQuaternionToVector( orientation, transformed );
+     
+            vec4 mvPosition = modelViewMatrix * vec4( vPosition, 1.0 );
+transformed = offset + vPosition;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( offset + vPosition, 1.0 );
+            
+         `
+    );
+
+    var instanceMaterial = new THREE.ShaderMaterial({
+      uniforms: wUniforms,
+      vertexShader: wVertex,
+      fragmentShader: wFragment,
+      lights: true,
+      depthPacking: THREE.RGBADepthPacking,
+      name: "detail-material",
+      fog: true
+    });
+    instanceMaterial.color = new THREE.Color("#4400ff");
+    var object = new THREE.Mesh(instancedGeometry, instanceMaterial);
+    
+    object.customDepthMaterial = new THREE.MeshDepthMaterial({
+      depthPacking: THREE.RGBADepthPacking,
+      alphaTest: 0.5
+    });
+    object.customDepthMaterial.onBeforeCompile = shader => {
+      // app specific instancing shader code
+      shader.vertexShader =
+        `#define DEPTH_PACKING 3201
+            attribute vec3 offset;
+            attribute vec4 orientation;
+
+            vec3 applyQuaternionToVector( vec4 q, vec3 v ){
+               return v + 2.0 * cross( q.xyz, cross( q.xyz, v ) + q.w * v );
+            }
+` + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <project_vertex>",
+        `                     
+            vec3 vPosition = applyQuaternionToVector( orientation, transformed );
+     
+            vec4 mvPosition = modelViewMatrix * vec4( vPosition, 1.0 );
+transformed = offset + vPosition;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( offset + vPosition, 1.0 );`
+      );
+
+      shader.fragmentShader =
+        "#define DEPTH_PACKING 3201" + "\n" + shader.fragmentShader;
+    };
+
+    object.castShadow = true;
+    object.receiveShadow = true;
+
+    this.scene.add(object);
+
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true
+    });
+
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+
+    document.body.appendChild(this.renderer.domElement);
+
+    this.animate();
+  }
+
+  animate() {
+    requestAnimationFrame(() => this.animate());
+    this.update();
+    this.render();
+  }
+
+  update() {
+    // update orbit controls
+    if (this.controls) {
+      this.controls.update();
+    }
+  }
+
+  render() {
+    this.renderer.render(this.scene, this.camera);
+  }
+}
+
+let app = new App();
+app.init();
+
+</script>
+
+</html>

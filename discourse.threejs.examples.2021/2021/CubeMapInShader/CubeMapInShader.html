@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/loading-cubemap-into-a-shader/25738 -->
+<!-- https://jsfiddle.net/2gnupb0y/ -->
+<head>
+  <title> CubeMapInShader </title>
+  <meta charset="utf-8" />
+</head>
+<style>
+body {
+	  margin: 0;
+}
+</style>
+<body> </body>
+
+<!-- @author Mugen87 -->
+
+<script id="vertexShader" type="x-shader/x-vertex">
+
+varying vec4 coords;
+
+void main()	{
+
+	vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+	coords = modelMatrix * vec4( position, 1.0 );
+
+	gl_Position = projectionMatrix * mvPosition;
+
+}
+
+</script>
+
+<script id="fragmentShader" type="x-shader/x-fragment">
+
+	uniform samplerCube skybox;	
+
+	varying vec4 coords;
+
+  void main() {
+
+    gl_FragColor = textureCube(skybox, coords.xyz);
+		
+  }
+
+</script>
+
+<script type="module">
+
+// @author Mugen87
+
+import * as THREE from "../jsm/three.module.128.js";
+import { OrbitControls } from "../jsm/OrbitControls.128.js";
+
+let camera, scene, renderer;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera.position.z = 1;
+
+    scene = new THREE.Scene();
+		
+		const loader = new THREE.CubeTextureLoader();
+		//				'https://threejs.org/examples/textures/cube/Bridge2/'
+		loader.setPath( 'Bridge2/' );
+		const textureCube = loader.load( [ 'posx.jpg', 'negx.jpg', 'posy.jpg', 'negy.jpg', 'posz.jpg', 'negz.jpg' ] );
+
+    const geometry = new THREE.BoxGeometry( 1000, 1000, 1000 );
+    const material = new THREE.ShaderMaterial({
+			uniforms: {
+				skybox: { value: textureCube }
+			},
+			vertexShader: document.getElementById( 'vertexShader' ).textContent,
+			fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+			side: THREE.BackSide
+		});
+
+    const mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+		renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		const controls = new OrbitControls( camera, renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+    renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

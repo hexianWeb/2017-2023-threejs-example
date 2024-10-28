@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/clipping-planes-problem-radial-reveal-only-half-way/25108/16 -->
+<!-- https://jsfiddle.net/prisoner849/L5qj920a/ -->
+<!-- see also   https://jsfiddle.net/prisoner849/t2rm8awk/      https://jsfiddle.net/prisoner849/3b1enkyr/  -->
+<head>
+  <title> Clipping-RadialReveal  </title>
+  <meta charset="utf-8" />
+<style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}  
+ </style>
+</head>
+
+<body></body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.127.js";
+import {GUI} from "../jsm/dat.gui.module.127.js";
+import { OrbitControls } from "../jsm/OrbitControls.127.js";
+
+let camera, scene, renderer;
+
+let clock = new THREE.Clock();
+init();
+renderer.setAnimationLoop(render);
+
+function init() {
+
+  renderer = new THREE.WebGLRenderer( { antialias: true } );
+  renderer.setPixelRatio( window.devicePixelRatio );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer.setClearColor(0x204040);
+  document.body.appendChild( renderer.domElement );
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 200 );
+
+  camera.position.set( 0, 2.5, 3.0 ).multiplyScalar(10);
+
+  let controls = new OrbitControls( camera, renderer.domElement );
+  controls.enablePan = false;
+
+  let light = new THREE.HemisphereLight( 0xffffff, 0x080808, 1.5 );
+  light.position.set( - 1.25, 1, 1.25 );
+  scene.add( light );
+  
+  let loader = new THREE.CubeTextureLoader();
+  //loader.setPath( 'https://threejs.org/examples/textures/cube/Bridge2/' );
+  loader.setPath( 'Bridge2/' );
+  let textureCube = loader.load( [ 'posx.jpg', 'negx.jpg', 'posy.jpg', 'negy.jpg', 'posz.jpg', 'negz.jpg' ] );
+  //textureCube.encoding = THREE.sRGBEncoding;
+  
+  //scene.background = textureCube;
+	
+  let shape = new THREE.Shape();
+  shape.absarc(10, 0, 3, Math.PI * 0.5, Math.PI * 1.5);
+  shape.absellipse(10, 0, 1.5, 3, Math.PI * 1.5, Math.PI * 0.5, true);
+  
+  let geometry = new THREE.ExtrudeGeometry( shape, {steps: 100, depth: 2, bevelEnabled: false, curveSegments: 100} );
+  geometry.translate(0, 0, -1);
+  geometry.rotateY(Math.PI * 0.5);
+  
+  console.log(geometry);
+	
+
+  let uniforms = {
+    revealVal: {value: 0.65}
+  }
+
+  const materialSide = new THREE.MeshStandardMaterial( {
+  	roughness: 0.125,
+    metalness: 0.875,
+    color: 0xffff00,
+    envMap: textureCube
+  } );
+  const materialLids = new THREE.MeshBasicMaterial( {
+    color: 0xff4400,
+  } );
+	patchMaterial(materialSide, uniforms);
+  patchMaterial(materialLids, uniforms);
+
+  const torus = new THREE.Mesh(geometry, [materialLids, materialSide]);    
+  scene.add(torus);
+  
+  let gui = new GUI();
+  gui.add(uniforms.revealVal, "value", 0.0, 1.0).name("revealVal");
+
+
+  window.addEventListener( 'resize', onWindowResize );
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+  render();
+
+}
+
+function render() {
+  
+  renderer.render( scene, camera );
+
+}
+
+function patchMaterial(material, uniforms){
+	material.onBeforeCompile = shader => {
+      shader.uniforms.revealVal = uniforms.revealVal;
+      shader.vertexShader = `
+      	uniform float revealVal;
+        
+        // https://gist.github.com/yiwenl/3f804e80d0930e34a0b33359259b556c
+        mat4 rotationMatrix(vec3 axis, float angle) {
+            axis = normalize(axis);
+            float s = sin(angle);
+            float c = cos(angle);
+            float oc = 1.0 - c;
+
+            return mat4(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,  0.0,
+                        oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  0.0,
+                        oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
+                        0.0,                                0.0,                                0.0,                                1.0);
+        }
+
+        vec3 rotate(vec3 v, vec3 axis, float angle) {
+          mat4 m = rotationMatrix(axis, angle);
+          return (m * vec4(v, 1.0)).xyz;
+        }
+        
+        ${shader.vertexShader}
+      `.replace(
+      	`#include <uv_vertex>`,
+        `
+        	float ratio = position.x;
+          float ratioAngle = PI * ratio * revealVal;
+          vec3 axis = vec3(0, 1, 0);
+          
+        #include <uv_vertex>`
+        )
+        .replace(
+        	`#include <beginnormal_vertex>`,
+          `#include <beginnormal_vertex>
+          	objectNormal = rotate(objectNormal, axis, ratioAngle);
+          `
+        )
+        .replace(
+        	`#include <begin_vertex>`,
+          `#include <begin_vertex>
+          	vec3 pos = vec3(0., position.yz);
+          	transformed = rotate(pos, axis, ratioAngle);
+            
+          `
+        );
+      console.log(shader.vertexShader);
+    }
+}
+
+</script>
+</html>

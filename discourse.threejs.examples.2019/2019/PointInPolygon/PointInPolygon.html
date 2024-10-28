@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/check-points-is-inside-a-polygon-doesnt-work-correct/7291 -->
+<!-- https://codepen.io/prisoner849/pen/ROdXzw?editors=1010 -->
+<head>
+  <title> PointInPolygon </title>
+  <meta charset="utf-8" />
+  	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.104.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author prisoner849
+
+var wallsPoint = [{
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "X": 5,
+      "Y": 0
+    },
+    {
+      "X": 5,
+      "Y": 3
+    },
+    {
+      "X": 7,
+      "Y": 3
+    },
+    {
+      "X": 7,
+      "Y": 5
+    },
+    {
+      "X": 5,
+      "Y": 5
+    },
+    {
+      "X": 5,
+      "Y": 7
+    },
+    {
+      "X": 0,
+      "Y": 7
+    }
+  ];
+
+
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+camera.position.set(3.5, 10, 3.5);
+var renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(3.5, 0, -3.5);
+controls.update();
+
+var grid = new THREE.GridHelper(20, 20, 0x44ff44);
+grid.position.set(0, -0.01, 0);
+scene.add(grid);
+
+var wallPoints = wallsPoint.map(w => {
+        return new THREE.Vector3(w.X, 0, -w.Y)
+    });
+var geom = new THREE.BufferGeometry().setFromPoints(wallPoints);
+var points = new THREE.Points(geom, new THREE.PointsMaterial({
+    size: 1,
+    color: "red"
+}));
+var lines = new THREE.LineLoop(geom, new THREE.LineBasicMaterial({
+    color: "yellow"
+}));
+
+scene.add(points, lines);
+
+var marker = new THREE.Mesh(new THREE.SphereBufferGeometry(0.25, 8, 2), new THREE.MeshBasicMaterial({
+    color: "aqua"
+}));
+marker.position.set(3.5, 3.5, 0);
+scene.add(marker);
+
+document.addEventListener("mousemove", onMouseMove, false);
+
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+var plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+var iPoint = new THREE.Vector3();
+
+function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  raycaster.ray.intersectPlane(plane, marker.position);
+  marker.material.color.set(isInside(marker.position, wallPoints) ? "aqua" : "magenta");
+}
+
+function isInside(point, vs) {
+
+    var x = point.x,
+        y = point.z;
+
+    var inside = false;
+    for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        var xi = vs[i].x,
+            yi = vs[i].z;
+        var xj = vs[j].x,
+            yj = vs[j].z;
+
+        var intersect = ((yi > y) != (yj > y)) &&
+            (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+
+    return inside;
+}
+
+renderer.setAnimationLoop(() => {
+    renderer.render(scene, camera)
+});
+
+</script>
+</html>

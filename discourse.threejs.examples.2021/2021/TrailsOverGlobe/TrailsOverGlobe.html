@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/global-impacts-waves-trails/23445 -->
+<!-- https://jsfiddle.net/prisoner849/28ptvb41/  (and some more) -->
+<head>
+  <title> TrailsOverGlobe </title>
+  <meta charset="utf-8" />
+ <style>
+	body{
+	overflow: hidden;
+	margin: 0;
+	}
+  </style>	
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849  
+
+import * as THREE from "../jsm/three.module.125.js";
+import { OrbitControls } from "../jsm/OrbitControls.125.js";
+import {BufferGeometryUtils} from "../jsm/BufferGeometryUtils.125.js";
+import {TWEEN} from "../jsm/tween.module.min.125.js"; 
+
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 100);
+camera.position.set(0, 6.5, 10);
+let renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+scene.add(new THREE.GridHelper(10, 10, 0x444444, 0x444444));
+
+let sphere = new THREE.Points(new THREE.SphereGeometry(4, 90, 45), new THREE.PointsMaterial({size: 0.02}));
+scene.add(sphere);
+
+let paths = [];
+let pathsCount = 20;
+for(let i = 0; i < pathsCount; i++){
+
+  let pts = new Array(100 * 3).fill(0);
+  let g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  let m = new THREE.LineDashedMaterial({
+  	color: Math.random() * 0x7f7f7f + 0x7f7f7f,
+  	onBeforeCompile: shader => {
+    	shader.uniforms.actionRatio = m.userData.actionRatio;
+      shader.uniforms.lineLength = m.userData.lineLength;
+      shader.fragmentShader = `
+      	uniform float actionRatio;
+        uniform float lineLength;
+        ${shader.fragmentShader}
+      `.replace(
+      	`if ( mod( vLineDistance, totalSize ) > dashSize ) {
+		discard;
+	}`,
+        `
+        	float halfDash = dashSize * 0.5;
+        	float d = abs((vLineDistance + halfDash) - (lineLength + dashSize) * actionRatio);
+        	if (d > halfDash ) discard;
+        `
+      )
+      .replace(
+      	`vec4 diffuseColor = vec4( diffuse, opacity );`,
+        `
+        vec3 col = mix(vec3(1), diffuse, actionRatio);
+        vec4 diffuseColor = vec4( col, opacity );
+        `
+      );
+      console.log(shader.fragmentShader);
+    }
+  });
+  m.userData = {
+  	actionRatio: {value: 0},
+    lineLength: {value: 0}
+    
+  }
+  let l = new THREE.Line(g, m);
+  l.userData = {
+  	
+  	currPos: new THREE.Vector3().random().subScalar(0.5).setLength(4),
+    prevPos: new THREE.Vector3().random().subScalar(0.5).setLength(4)
+  }
+  setPath(l, l.userData.prevPos, l.userData.currPos, 1);
+  paths.push(l);
+  scene.add(l);
+
+}
+
+let tweens = [];
+for (let i = 0; i < pathsCount; i++){
+	tweens.push({
+  	runTween: () => {
+    	let path = paths[i];
+      let speed = 2;
+      let len = path.geometry.attributes.lineDistance.array[99];
+      let dur = len / speed;
+    	let tween = new TWEEN.Tween({value: 0})
+      	.to({value: 1}, dur * 1000)
+        .onUpdate( val => {
+        	path.material.userData.actionRatio.value = val.value;
+        })
+        .onComplete( _ => {
+        	path.userData.prevPos.copy(path.userData.currPos);
+          path.userData.currPos.random().subScalar(0.5).setLength(4);
+          setPath(path, path.userData.prevPos, path.userData.currPos, 1);
+          tweens[i].runTween();
+        });
+        tween.start();
+    }
+  });
+}
+
+tweens.forEach( twn => {twn.runTween()});
+
+window.addEventListener( 'resize', onWindowResize );
+
+//let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(() => {
+	//let t = clock.getElapsedTime();
+  TWEEN.update();
+  renderer.render(scene, camera);
+})
+
+
+// based on https://jsfiddle.net/prisoner849/fu59aved/
+function setPath(l, startPoint, endPoint, peakHeight, cycles) {
+	
+  let pos = l.geometry.attributes.position;
+  
+  let division = pos.count - 1;
+  let cycle = cycles || 1;
+  let peak = peakHeight || 1;
+
+  let points = [];
+
+  let radius = startPoint.length();
+  let angle = startPoint.angleTo(endPoint);
+
+  let arcLength = radius * angle;
+  let diameterMinor = arcLength / Math.PI;
+  let radiusMinor = (diameterMinor * 0.5) / cycle;
+
+  let peakRatio = peak / diameterMinor;
+
+  let radiusMajor = startPoint.length() + radiusMinor;
+  let basisMajor = new THREE.Vector3().copy(startPoint).setLength(radiusMajor);
+
+  let basisMinor = new THREE.Vector3().copy(startPoint).negate().setLength(radiusMinor);
+
+
+  // triangle (start, end, center)
+  let tri = new THREE.Triangle(startPoint, endPoint, new THREE.Vector3());
+  let nrm = new THREE.Vector3(); // normal
+  tri.getNormal(nrm);
+
+  // rotate startPoint around normal
+  let angleStep = angle / division;
+  let v3Major = new THREE.Vector3();
+  let v3Minor = new THREE.Vector3();
+  let v3Inter = new THREE.Vector3();
+  let vFinal = new THREE.Vector3();
+  for (let i = 0; i <= division; i++) {
+    let divisionRatio = i / division;
+    let angleValue = angle * divisionRatio;
+    v3Major.copy(basisMajor).applyAxisAngle(nrm, angleValue);
+    v3Minor.copy(basisMinor).applyAxisAngle(nrm, angleValue + Math.PI * 2 * divisionRatio * cycle);
+
+    v3Inter.addVectors(v3Major, v3Minor);
+    let newLength = ((v3Inter.length() - radius) * peakRatio) + radius;
+
+    vFinal.copy(v3Inter).setLength(newLength);
+    
+    pos.setXYZ(i, vFinal.x, vFinal.y, vFinal.z);
+  }
+	pos.needsUpdate = true;
+  l.computeLineDistances();
+  l.geometry.attributes.lineDistance.needsUpdate = true;
+  l.material.userData.lineLength.value = l.geometry.attributes.lineDistance.array[99];
+  l.material.dashSize = 2;
+  l.material.gapSize = l.material.userData.lineLength.value;
+  
+  //console.log(l);
+  //return new THREE.BufferGeometry().setFromPoints(points);
+
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+
+</script>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-modify-distort-a-geometry/9097/2 -->
+<!-- https://jsfiddle.net/h4oytk1a/1/ -->
+<head>
+  <title> ModifyGeometry </title>
+  <meta charset="utf-8" />
+       <style>
+		body {
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.107.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+var geometry, material, mesh;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+    camera.position.z = 3;
+
+    scene = new THREE.Scene();
+
+    geometry = new THREE.PlaneBufferGeometry( 1, 1, 10, 10 );
+		
+		// modify geometry
+		
+		var positionAttribute = geometry.attributes.position;
+		console.log( positionAttribute );
+		
+		for ( var i = 0; i < positionAttribute.count; i ++ ) {
+		
+			// access single vertex (x,y,z)
+		
+			var x = positionAttribute.getX( i );
+			var y = positionAttribute.getY( i );
+			var z = positionAttribute.getZ( i );
+			
+			// modify data (in this case just the z coordinate)
+		
+			z += Math.random() * 0.1;
+			
+			
+			
+			// write data back to attribute
+			
+			positionAttribute.setXYZ( i, x, y, z );
+		
+		}
+		
+		//
+		
+    material = new THREE.MeshNormalMaterial();
+
+    mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
+		
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+		
+		var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+		renderer.render( scene, camera );
+
+}
+
+</script>
+</html>

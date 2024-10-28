@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-render-shadow-map-one-time/7176 -->
+<!-- https://jsfiddle.net/2xbje0sn/ -->
+<head>
+  <title> RenderShadowMapOnTime </title>
+  <meta charset="utf-8" />
+  <style>
+	body {
+		margin: 0;
+	}
+  </style>
+</head>
+
+<body> </body>
+<script src="../js/three.min.103.js"></script>
+<script src="../js/OrbitControls.js"></script>
+
+<script>
+
+// @author Mugen87
+
+var camera, scene, renderer;
+
+var box;
+
+init();
+animate();
+
+function init() {
+
+    camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 25 );
+    camera.position.set( 2, 5, 5 );
+
+    scene = new THREE.Scene();
+    camera.lookAt( scene.position );
+    
+    //
+    
+    var hemiLight = new THREE.HemisphereLight( 0xffffff, 0x444444 );
+    hemiLight.position.set( 0, 20, 0 );
+    scene.add( hemiLight );
+    
+    var dirLight = new THREE.DirectionalLight( 0xffffff );
+    dirLight.position.set( - 3, 10, - 5 );
+    dirLight.castShadow = true;
+    dirLight.shadow.camera.top = 4;
+    dirLight.shadow.camera.bottom = - 4;
+    dirLight.shadow.camera.left = - 4;
+    dirLight.shadow.camera.right = 4;
+    dirLight.shadow.camera.near = 0.1;
+    dirLight.shadow.camera.far = 20;
+		scene.add( dirLight );
+    
+    // box
+
+    var boxGeometry = new THREE.BoxBufferGeometry();
+    var boxMaterial = new THREE.MeshStandardMaterial( { color: 0xff0000 } );
+    
+    box = new THREE.Mesh( boxGeometry, boxMaterial );
+    box.position.y = 2;
+    box.castShadow = true;
+    scene.add( box );
+    
+    // ground
+
+    var groundGeometry = new THREE.PlaneBufferGeometry( 10, 10 );
+    var groundMaterial = new THREE.MeshStandardMaterial();
+    
+    var ground = new THREE.Mesh( groundGeometry, groundMaterial );
+    ground.rotation.x = Math.PI * - 0.5;
+    ground.receiveShadow = true;
+    
+    scene.add( ground );
+
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.autoUpdate = false; // do not automatically update the shadow map
+    renderer.shadowMap.needsUpdate = true; // initial update
+    document.body.appendChild( renderer.domElement );
+    
+    // update shadow map once per second
+    
+    setInterval( () => {
+    
+    	renderer.shadowMap.needsUpdate = true;
+    
+    }, 1000 );
+    
+    new THREE.OrbitControls( camera );
+
+}
+
+function animate() {
+
+    requestAnimationFrame( animate );
+
+    box.rotation.x += 0.01;
+    box.rotation.y += 0.02;
+
+    renderer.render( scene, camera );
+
+}
+
+</script>
+
+</html>

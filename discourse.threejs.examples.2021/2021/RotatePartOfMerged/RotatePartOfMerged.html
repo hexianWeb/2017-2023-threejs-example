@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/rotate-each-buffer-geometry-thats-merged-by-buffergeometryutils-mergebuffergeometries-around-each-own-center/29377/8 -->
+<!-- https://jsfiddle.net/prisoner849/8krouz01/ -->
+<head>
+  <title> RotatePartOfMerged </title>
+  <meta charset="utf-8" />
+	<style>
+	body {
+	overflow: hidden;
+	margin: 0;
+	}
+	</style>
+</head>
+
+<body> </body>
+
+<script type="module">
+
+// @author prisoner849
+
+console.clear();
+
+import * as THREE from "../jsm/three.module.131.js";
+import { OrbitControls } from "../jsm/OrbitControls.131.js";
+import {  BufferGeometryUtils } from "../jsm/BufferGeometryUtils.131.js";
+ 
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
+camera.position.set(0, 8, 13).setLength(10);
+camera.lookAt(scene.position);
+let renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x202020);
+document.body.appendChild(renderer.domElement);
+
+let controls = new OrbitControls(camera, renderer.domElement);
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.setScalar(10);
+scene.add(light, new THREE.DirectionalLight(0xffffff, 0.5));
+
+scene.add(new THREE.GridHelper());
+
+let gs = [];
+gs.push(setInstance(new THREE.SphereGeometry(1, 36, 18), 0));
+gs.push(setInstance(new THREE.BoxGeometry(2, 2, 2, 10, 10, 10), 1));
+let g = BufferGeometryUtils.mergeBufferGeometries(gs);
+let m = new THREE.MeshLambertMaterial({
+  color: "aqua",
+  wireframe: true,
+  onBeforeCompile: shader => {
+  	shader.uniforms.instanceMatrices = m.userData.instanceMatrices;
+  	shader.vertexShader = `
+    	uniform mat4[${gs.length}] instanceMatrices;
+    	attribute float meshIdx;
+      ${shader.vertexShader}
+    `.replace(
+    	`#include <uv_vertex>`,
+      `
+      	mat4 instanceMatrix = instanceMatrices[int(floor(meshIdx + 0.1))];
+      #include <uv_vertex>`
+    ).replace(
+    	`#include <defaultnormal_vertex>`,
+      `vec3 transformedNormal = objectNormal;
+        mat3 m = mat3( instanceMatrix );
+        transformedNormal /= vec3( dot( m[ 0 ], m[ 0 ] ), dot( m[ 1 ], m[ 1 ] ), dot( m[ 2 ], m[ 2 ] ) );
+        transformedNormal = m * transformedNormal;
+      	transformedNormal = normalMatrix * transformedNormal;
+      `
+    ).replace(
+    	`#include <project_vertex>`,
+      `
+      vec4 mvPosition = vec4( transformed, 1.0 );
+      mvPosition = instanceMatrix * mvPosition;
+      mvPosition = modelViewMatrix * mvPosition;
+      gl_Position = projectionMatrix * mvPosition;
+      `
+    );
+    console.log(shader.vertexShader);
+  }
+});
+m.userData = {
+	instanceMatrices: {value: [ new THREE.Matrix4(), new THREE.Matrix4()]}
+}
+let o = new THREE.Mesh(g, m);
+scene.add(o);
+
+let dummy = new THREE.Object3D();
+let m4 = new THREE.Matrix4();
+
+setInstances();
+
+let clock = new THREE.Clock();
+
+renderer.setAnimationLoop(_ => {
+	let t = clock.getElapsedTime();
+	m.userData.instanceMatrices.value[1].decompose(dummy.position, dummy.quaternion, dummy.scale);
+  dummy.rotation.y = Math.sin(t);
+  dummy.updateMatrix();
+  m.userData.instanceMatrices.value[1].copy(dummy.matrix);
+  renderer.render(scene, camera);
+})
+
+function setInstances(){
+	
+  let pos = [
+  	new THREE.Vector3(-2, 1, 0),
+    new THREE.Vector3(2, 0, 0)
+  ]
+ 
+  pos.forEach((p, idx) => {
+  	dummy.position.copy(p);
+    dummy.updateMatrix();
+    m.userData.instanceMatrices.value[idx].copy(dummy.matrix);
+  })
+
+}
+
+function setInstance(g, idx) {
+  let pos = g.attributes.position;
+  let meshIdx = [];
+  for (let i = 0; i < pos.count; i++) {
+    meshIdx.push(idx);
+  }
+  g.setAttribute("meshIdx", new THREE.Float32BufferAttribute(meshIdx, 1));
+  return g;
+}
+
+</script>
+</html>

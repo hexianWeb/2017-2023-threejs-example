@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!-- https://discourse.threejs.org/t/how-to-load-obj-and-mtl/9110/8  --> 
+<!--  see also the old example without module: https://hofk.de/main/discourse.threejs/2018/loadOBJ/loadOBJ.html -->
+<head>
+  <title> LoadOBJbyModule </title>
+  <meta charset="utf-8" />
+</head>
+
+<body>
+	load OBJ MTL by module - see explanations in the source code -
+	License:	https://poly.google.com/	
+	Spinner 	Hennadiy Kyseliov	
+</body>
+
+<script type="module">
+
+// ----- import from the web -----
+
+// current revision from the repository
+/*
+import * as THREE from 'https://threejs.org/build/three.module.js';
+import { OrbitControls } from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
+import { OBJLoader } from 'https://threejs.org/examples/jsm/loaders/OBJLoader.js';
+import { MTLLoader } from 'https://threejs.org/examples/jsm/loaders/MTLLoader.js';
+*/
+
+// or a specific revision from a CDN ( Content Delivery Network, e.g.  https://www.jsdelivr.com/package/npm/three )
+
+/*
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.124.0/examples/jsm/controls/OrbitControls.js';
+import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.124.0/examples/jsm/loaders/OBJLoader.js';
+import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.124.0/examples/jsm/loaders/MTLLoader.js';
+*/ 
+
+//  ----- import local -----
+
+// NOTE! changed identifiers (.rev) and changed import statements at the beginning of the files
+// https://hofk.de/main/discourse.threejs/Local%20use%20of%20the%20examples.pdf
+// see https://hofk.de/main/discourse.threejs/Module%20usage.pdf
+
+import * as THREE from '../jsm/three.module.124.js'; // 
+import { OrbitControls } from '../jsm/OrbitControls.124.js'; 
+import { OBJLoader } from '../jsm/OBJLoader.124.js';
+import { MTLLoader } from '../jsm/MTLLoader.124.js';
+ 
+/*
+License:
+https://poly.google.com/
+
+Spinner
+Hennadiy Kyseliov
+
+Remix this content
+This content is published under a CC-BY license.
+If you name the author, you can use this content for free.
+*/
+
+// @author hofk
+
+'use strict'
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 20000 );
+camera.position.set( 2, 5, 20 );
+const renderer = new THREE.WebGLRenderer( { antialias: true } );
+renderer.setSize( window.innerWidth, window.innerHeight );
+renderer.setClearColor( 0xeeeeee, 1 );	
+const container = document.createElement( 'div' );
+document.body.appendChild( container );
+container.appendChild( renderer.domElement ); 
+
+const controls = new OrbitControls( camera, renderer.domElement ); //  !  without THREE.
+controls.enableZoom = true;
+
+const clock  = new THREE.Clock( true );	
+let time;	// for animate
+
+let light = new THREE.PointLight(0xeeeeee);
+light.position.set(10, 50, 20);
+scene.add(light);
+
+const lightAmb = new THREE.AmbientLight(0xff77ff);
+scene.add(lightAmb);
+
+const exampleObject = new THREE.Object3D();
+
+const mtlLoaderExample = new MTLLoader( );  //  !  without THREE.
+
+mtlLoaderExample.load(
+
+	'spiner.mtl',  // License
+	
+	function (materials) {
+
+		materials.preload();
+
+		const objLoaderExample = new OBJLoader( ); //  !  without THREE.
+		
+		objLoaderExample.setMaterials( materials );
+		
+		objLoaderExample.load(
+		
+			'spiner.obj', // License
+			
+			function (object) {
+
+				exampleObject.add(object);
+			
+			}
+			
+		);
+	
+	}
+	
+);
+
+exampleObject.scale.set( 2.5, 2.5, 2.5);
+
+scene.add( exampleObject );
+
+animate();
+
+//..................
+
+function animate() {
+
+	requestAnimationFrame( animate );
+	time = clock.getElapsedTime();
+		
+	exampleObject.rotation.x = 0.4 * Math.sin( time / 2);
+	exampleObject.rotation.y = Math.cos( time );
+	exampleObject.rotation.z = Math.sin( time / 2);
+		
+	renderer.render( scene, camera );
+	controls.update();
+	
+}
+
+</script>
+</html>
